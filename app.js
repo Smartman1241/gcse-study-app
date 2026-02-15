@@ -316,8 +316,10 @@
     refreshSubjectSelects();
 
     // default dates
-    $("#taskDue").value = $("#taskDue").value || todayISO();
-
+const dueInput = $("#taskDue");
+if (dueInput) {
+  dueInput.value = dueInput.value || todayISO();
+}
     renderTopStats();
     bus.emit("app:ready", {});
     // restore active set (modules will render when they subscribe)
