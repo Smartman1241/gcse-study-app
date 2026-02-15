@@ -1,151 +1,2382 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>GCSE Focus</title>
-  <meta name="description" content="GCSE Focus — tasks, pomodoro, study sets, flashcards, learn and test modes." />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GCSE Focus</title>
+<meta name="description" content="GCSE Focus — tasks, study sets, flashcards, learn, test, revision, past papers, pomodoro, stats, AI. Everything saved locally." />
+
+<style>
+  :root{
+    --bg:#0b1020;
+    --panel:rgba(255,255,255,.06);
+    --panel2:rgba(255,255,255,.09);
+    --text:rgba(255,255,255,.92);
+    --muted:rgba(255,255,255,.66);
+    --border:rgba(255,255,255,.14);
+    --shadow: 0 18px 60px rgba(0,0,0,.35);
+    --radius:18px;
+    --brand:#8ea2ff;
+    --good:#46e6b3;
+    --warn:#ffd36e;
+    --bad:#ff7b8f;
+    --btn:rgba(255,255,255,.10);
+    --btn2:rgba(255,255,255,.14);
+    --focus:rgba(142,162,255,.45);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+  }
+  [data-theme="light"]{
+    --bg:#f5f7ff;
+    --panel:rgba(0,0,0,.04);
+    --panel2:rgba(0,0,0,.06);
+    --text:rgba(0,0,0,.88);
+    --muted:rgba(0,0,0,.60);
+    --border:rgba(0,0,0,.12);
+    --shadow: 0 18px 60px rgba(18,30,90,.12);
+    --btn:rgba(0,0,0,.06);
+    --btn2:rgba(0,0,0,.10);
+    --focus:rgba(142,162,255,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    background:
+      radial-gradient(1200px 700px at 12% 10%, rgba(142,162,255,.25),transparent 60%),
+      radial-gradient(900px 600px at 86% 22%, rgba(70,230,179,.18),transparent 55%),
+      radial-gradient(900px 600px at 75% 95%, rgba(255,211,110,.14),transparent 55%),
+      var(--bg);
+    color:var(--text);
+    line-height:1.35;
+  }
+  a{color:inherit}
+  button, input, select, textarea{font:inherit; color:inherit}
+  .wrap{max-width:1180px; margin:0 auto; padding:22px 16px 44px;}
+  header{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .brand{
+    display:flex; align-items:center; gap:12px; min-width:260px;
+  }
+  .logo{
+    width:44px; height:44px; border-radius:14px;
+    background: linear-gradient(135deg, rgba(142,162,255,.9), rgba(70,230,179,.75));
+    box-shadow: 0 14px 35px rgba(0,0,0,.18);
+    position:relative; overflow:hidden;
+  }
+  .logo:after{
+    content:""; position:absolute; inset:-40%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.65), transparent 55%);
+    transform: rotate(12deg);
+  }
+  .titleBlock{display:flex; flex-direction:column; gap:2px;}
+  .titleBlock h1{margin:0; font-size:18px; letter-spacing:.2px;}
+  .subtitle{font-size:13px; color:var(--muted);}
+  .toolbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;}
+  .chip{
+    display:inline-flex; align-items:center; gap:10px;
+    padding:10px 12px; border-radius:999px;
+    background:var(--panel); border:1px solid var(--border);
+    box-shadow: 0 10px 26px rgba(0,0,0,.08);
+  }
+  .chip b{font-weight:750;}
+  .chip small{color:var(--muted);}
+  .btn{
+    border:1px solid var(--border);
+    background:var(--btn);
+    padding:10px 12px;
+    border-radius:12px;
+    cursor:pointer;
+    transition: transform .06s ease, background .12s ease, border-color .12s ease;
+    user-select:none;
+  }
+  .btn:hover{background:var(--btn2);}
+  .btn:active{transform:translateY(1px);}
+  .btn.primary{
+    background: linear-gradient(135deg, rgba(142,162,255,.85), rgba(70,230,179,.65));
+    border-color:transparent;
+    color: rgba(10,16,32,.95);
+    font-weight:750;
+  }
+  .btn.danger{background:rgba(255,123,143,.14); border-color:rgba(255,123,143,.22);}
+  .btn.ghost{background:transparent;}
+  .fileBtn{position:relative; overflow:hidden;}
+  .fileBtn input[type="file"]{
+    position:absolute; inset:0; opacity:0; cursor:pointer;
+  }
+
+  .grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:14px;}
+  @media (max-width: 980px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .panelHeader{
+    padding:14px 14px 10px;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    border-bottom:1px solid var(--border);
+    background: linear-gradient(180deg, var(--panel2), transparent);
+  }
+  .panelHeader h2{
+    margin:0;
+    font-size:14px;
+    letter-spacing:.25px;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:800;
+  }
+  .panelBody{padding:14px;}
+  .tabs{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab{
+    padding:10px 12px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--btn);
+    cursor:pointer;
+    user-select:none;
+    font-size:13px;
+    color:var(--muted);
+    transition: background .12s ease, color .12s ease, border-color .12s ease;
+  }
+  .tab[aria-selected="true"]{
+    background: rgba(142,162,255,.18);
+    border-color: rgba(142,162,255,.35);
+    color: var(--text);
+    font-weight:750;
+  }
+
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .field{display:flex; flex-direction:column; gap:6px; min-width:160px; flex:1;}
+  .field.small{min-width:120px; flex:0 0 auto;}
+  .field.full{min-width:100%; flex:1 1 100%;}
+  .label{font-size:12px; color:var(--muted);}
+  input[type="text"], input[type="date"], input[type="number"], select, textarea{
+    width:100%;
+    background: rgba(0,0,0,0);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:10px 12px;
+    outline:none;
+    transition: box-shadow .12s ease, border-color .12s ease;
+  }
+  textarea{min-height:92px; resize:vertical;}
+  input:focus, select:focus, textarea:focus{
+    border-color: rgba(142,162,255,.55);
+    box-shadow: 0 0 0 4px var(--focus);
+  }
+
+  .divider{height:1px; background:var(--border); margin:12px 0;}
+  .muted{color:var(--muted);}
+  .small{font-size:12px;}
+  .mono{font-family:var(--mono);}
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.04);
+    font-size:12px;
+    color:var(--muted);
+  }
+  [data-theme="light"] .pill{background:rgba(0,0,0,.02);}
+
+  .list{display:flex; flex-direction:column; gap:10px;}
+  .item{
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px;
+    background: rgba(255,255,255,.04);
+    display:flex; gap:10px;
+    align-items:flex-start;
+    justify-content:space-between;
+  }
+  [data-theme="light"] .item{background: rgba(0,0,0,.02);}
+  .itemMain{display:flex; gap:10px; align-items:flex-start; flex:1; min-width:0;}
+  .itemText{min-width:0; display:flex; flex-direction:column; gap:4px;}
+  .itemText .topline{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .itemText .name{
+    font-weight:800;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:640px;
+  }
+  .meta{display:flex; gap:8px; flex-wrap:wrap; color:var(--muted); font-size:12px;}
+  .actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+  .iconBtn{
+    border:1px solid var(--border);
+    background:var(--btn);
+    padding:8px 10px;
+    border-radius:12px;
+    cursor:pointer;
+  }
+  .iconBtn:hover{background:var(--btn2);}
+  .check{
+    width:18px; height:18px; margin-top:2px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:transparent;
+    cursor:pointer;
+    flex:0 0 auto;
+    display:grid; place-items:center;
+  }
+  .check[data-done="true"]{
+    background: rgba(70,230,179,.22);
+    border-color: rgba(70,230,179,.35);
+  }
+  .check svg{width:14px; height:14px; opacity:0;}
+  .check[data-done="true"] svg{opacity:1;}
+  .kpiGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  @media (max-width: 620px){ .kpiGrid{grid-template-columns:1fr;} }
+  .kpi{
+    padding:12px;
+    border-radius:14px;
+    border:1px solid var(--border);
+    background: rgba(255,255,255,.04);
+  }
+  [data-theme="light"] .kpi{background:rgba(0,0,0,.02);}
+  .kpi .big{font-size:22px; font-weight:900;}
+  .kpi .label{margin-top:4px; font-size:12px; color:var(--muted);}
+
+  .timerBig{
+    font-size:44px;
+    font-weight:900;
+    letter-spacing:.5px;
+    font-family:var(--mono);
+    text-align:center;
+    padding:10px 0 4px;
+  }
+  .progress{
+    height:10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background: rgba(255,255,255,.04);
+    overflow:hidden;
+  }
+  .progress > div{
+    height:100%;
+    width:0%;
+    background: linear-gradient(90deg, rgba(142,162,255,.9), rgba(70,230,179,.75));
+  }
+
+  .toast{
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 50;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(10,16,32,.75);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    min-width: 220px;
+    max-width: 420px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .18s ease, transform .18s ease;
+    pointer-events:none;
+  }
+  [data-theme="light"] .toast{ background: rgba(255,255,255,.85); }
+  .toast.show{opacity:1; transform: translateY(0);}
+  .dangerText{color: var(--bad);}
+  .goodText{color: var(--good);}
+  .warnText{color: var(--warn);}
+
+  .table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    overflow:hidden;
+    border-radius:14px;
+    border:1px solid var(--border);
+    background: rgba(255,255,255,.03);
+  }
+  [data-theme="light"] .table{background: rgba(0,0,0,.02);}
+  .table th, .table td{
+    padding:10px 10px;
+    border-bottom:1px solid var(--border);
+    text-align:left;
+    font-size:13px;
+    vertical-align:top;
+  }
+  .table th{color:var(--muted); font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.2px;}
+  .table tr:last-child td{border-bottom:none;}
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    font-size:12px;
+  }
+  .badge.good{background: rgba(70,230,179,.14); border-color: rgba(70,230,179,.25);}
+  .badge.warn{background: rgba(255,211,110,.14); border-color: rgba(255,211,110,.25);}
+  .badge.bad{background: rgba(255,123,143,.14); border-color: rgba(255,123,143,.25);}
+</style>
 </head>
 
 <body>
+<div class="wrap">
   <header class="topbar">
     <div class="brand">
-      <div class="logo" aria-hidden="true"></div>
-      <div class="brandText">
+      <div class="logo" title="GCSE Focus"></div>
+      <div class="titleBlock">
         <h1>GCSE Focus</h1>
-        <p class="muted">Study sets • Flashcards • Learn • Test • Tasks • Timer • AI</p>
+        <div class="subtitle">Study Sets • Flashcards • Learn • Test • Revision • Past Papers • Tasks • Timer • AI</div>
       </div>
     </div>
 
-    <div class="topbarActions">
+    <div class="toolbar">
       <div class="chip">
-        <div class="chipLine"><span>📅</span> <strong id="uiToday">—</strong></div>
-        <div class="chipLine muted"><span id="uiStreak">0</span> day streak</div>
+        <div><small>📅 Today</small><div><b id="uiToday">—</b></div></div>
+        <div style="width:1px;height:24px;background:var(--border)"></div>
+        <div><small>🔥 Streak</small><div><b><span id="uiStreak">0</span> days</b></div></div>
       </div>
 
       <button class="btn" id="btnTheme">🌙 Theme</button>
       <button class="btn" id="btnExport">⬇️ Export</button>
-      <label class="btn fileBtn">
-        ⬆️ Import
+
+      <label class="btn fileBtn">⬆️ Import
         <input id="fileImport" type="file" accept="application/json" />
       </label>
+
       <button class="btn danger" id="btnReset">🧨 Reset</button>
     </div>
   </header>
 
-  <main class="layout">
+  <main class="grid">
+    <!-- LEFT -->
     <section class="panel">
       <div class="panelHeader">
         <div>
           <h2>Dashboard</h2>
-          <p class="muted small">Everything saves automatically on this device.</p>
+          <div class="muted small">Everything saves automatically on this device.</div>
         </div>
 
-        <nav class="tabs" role="tablist">
+        <nav class="tabs" role="tablist" aria-label="Main tabs">
           <button class="tab" data-tab="tasks" aria-selected="true">✅ Tasks</button>
-          <button class="tab" data-tab="studysets">📦 Study Sets</button>
-          <button class="tab" data-tab="flashcards">🃏 Flashcards</button>
-          <button class="tab" data-tab="learn">📖 Learn</button>
-          <button class="tab" data-tab="test">📝 Test</button>
-          <button class="tab" data-tab="ai">🤖 AI</button>
+          <button class="tab" data-tab="studysets" aria-selected="false">📦 Study Sets</button>
+          <button class="tab" data-tab="flashcards" aria-selected="false">🃏 Flashcards</button>
+          <button class="tab" data-tab="learn" aria-selected="false">📖 Learn</button>
+          <button class="tab" data-tab="test" aria-selected="false">📝 Test</button>
+          <button class="tab" data-tab="revision" aria-selected="false">📚 Revision</button>
+          <button class="tab" data-tab="papers" aria-selected="false">🧾 Past Papers</button>
+          <button class="tab" data-tab="ai" aria-selected="false">🤖 AI</button>
+          <button class="tab" data-tab="stats" aria-selected="false">📈 Stats</button>
         </nav>
       </div>
 
       <div class="panelBody">
-
-        <!-- Existing sections unchanged -->
-        <!-- (Your Tasks, Studysets, Flashcards, Learn, Test sections remain exactly as before) -->
-
-        <!-- AI TAB -->
-        <section class="tabpanel" data-tabpanel="ai" hidden>
-          <div class="card">
-            <div class="cardHeader">
-              <h3>AI GCSE Explainer</h3>
-              <p class="muted small">
-                Ask for brief summaries, detailed breakdowns, or step-by-step explanations.
-              </p>
+        <!-- TASKS -->
+        <section class="tabpanel" data-tabpanel="tasks">
+          <div class="row">
+            <div class="field">
+              <span class="label">Task</span>
+              <input id="taskName" type="text" placeholder="e.g. Biology: enzymes summary" maxlength="80">
             </div>
-
-            <div class="formGrid">
-              <label class="field full">
-                <span class="label">Your question</span>
-                <textarea id="aiInput"
-                  placeholder="e.g. Explain photosynthesis in detail step-by-step"
-                  maxlength="800"
-                  style="min-height:120px;"></textarea>
-              </label>
+            <div class="field small">
+              <span class="label">Subject</span>
+              <select id="taskSubject"></select>
             </div>
-
-            <div class="row">
-              <button class="btn primary" onclick="askAI()">✨ Explain</button>
+            <div class="field small">
+              <span class="label">Priority</span>
+              <select id="taskPriority">
+                <option value="low">Low</option>
+                <option value="med" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
             </div>
+            <div class="field small">
+              <span class="label">Due</span>
+              <input id="taskDue" type="date">
+            </div>
+            <div class="field small">
+              <span class="label">Repeat</span>
+              <select id="taskRepeat">
+                <option value="none" selected>None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnAddTask">Add</button>
+            </div>
+          </div>
 
-            <div class="divider"></div>
+          <div class="divider"></div>
 
-            <div id="aiOutput" class="card inner muted" style="white-space:pre-wrap;">
-              Your explanation will appear here.
+          <div class="row">
+            <div class="field small">
+              <span class="label">Filter subject</span>
+              <select id="taskFilterSubject"></select>
+            </div>
+            <div class="field small">
+              <span class="label">Show</span>
+              <select id="taskFilterStatus">
+                <option value="all" selected>All</option>
+                <option value="open">Open</option>
+                <option value="done">Completed</option>
+              </select>
+            </div>
+            <div class="field small">
+              <span class="label">Sort</span>
+              <select id="taskSort">
+                <option value="due">Due date</option>
+                <option value="priority" selected>Priority</option>
+                <option value="created">Created</option>
+              </select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn" id="btnClearDone">Clear completed</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="list" id="tasksList"></div>
+        </section>
+
+        <!-- STUDYSETS -->
+        <section class="tabpanel" data-tabpanel="studysets" hidden>
+          <div class="row">
+            <div class="field">
+              <span class="label">Set name</span>
+              <input id="setName" type="text" placeholder="e.g. Biology — Cells" maxlength="60">
+            </div>
+            <div class="field small">
+              <span class="label">Subject</span>
+              <select id="setSubject"></select>
+            </div>
+            <div class="field">
+              <span class="label">Description (optional)</span>
+              <input id="setDesc" type="text" placeholder="What’s in this set?" maxlength="80">
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnCreateSet">Create</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div class="field small">
+              <span class="label">Current set</span>
+              <select id="activeSet"></select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn danger" id="btnDeleteSet">Delete set</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="kpiGrid">
+            <div class="kpi"><div class="big" id="kpiCards">0</div><div class="label">Flashcards in set</div></div>
+            <div class="kpi"><div class="big" id="kpiMcq">0</div><div class="label">MCQs in set</div></div>
+            <div class="kpi"><div class="big" id="kpiUpdated">—</div><div class="label">Last updated</div></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div class="field full">
+              <span class="label">Add flashcard</span>
+              <div class="row">
+                <div class="field">
+                  <input id="cardFront" type="text" placeholder="Front (question / prompt)" maxlength="120">
+                </div>
+                <div class="field">
+                  <input id="cardBack" type="text" placeholder="Back (answer)" maxlength="180">
+                </div>
+                <div class="field small" style="align-self:flex-end">
+                  <button class="btn primary" id="btnAddCard">Add card</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div class="field full">
+              <span class="label">Add MCQ</span>
+              <input id="mcqQ" type="text" placeholder="Question" maxlength="160">
+              <div class="row">
+                <div class="field small"><input id="mcqA" type="text" placeholder="A" maxlength="80"></div>
+                <div class="field small"><input id="mcqB" type="text" placeholder="B" maxlength="80"></div>
+                <div class="field small"><input id="mcqC" type="text" placeholder="C" maxlength="80"></div>
+                <div class="field small"><input id="mcqD" type="text" placeholder="D" maxlength="80"></div>
+                <div class="field small">
+                  <span class="label">Correct</span>
+                  <select id="mcqCorrect">
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                  </select>
+                </div>
+                <div class="field small" style="align-self:flex-end">
+                  <button class="btn primary" id="btnAddMcq">Add MCQ</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div class="field">
+              <span class="label">Cards</span>
+              <div class="list" id="cardsList"></div>
+            </div>
+            <div class="field">
+              <span class="label">MCQs</span>
+              <div class="list" id="mcqList"></div>
             </div>
           </div>
         </section>
 
+        <!-- FLASHCARDS -->
+        <section class="tabpanel" data-tabpanel="flashcards" hidden>
+          <div class="row">
+            <div class="field small">
+              <span class="label">Set</span>
+              <select id="fcSet"></select>
+            </div>
+            <div class="field small">
+              <span class="label">Mode</span>
+              <select id="fcMode">
+                <option value="all" selected>All cards</option>
+                <option value="due">Due today</option>
+              </select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnFcStart">Start</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card" style="border:1px solid var(--border); border-radius:14px; padding:14px; background:rgba(255,255,255,.03)">
+            <div class="row" style="justify-content:space-between">
+              <div class="pill">🃏 <b id="fcCount">0</b> cards</div>
+              <div class="pill">Card <b id="fcIndex">0</b>/<b id="fcTotal">0</b></div>
+            </div>
+            <div class="divider"></div>
+            <div id="fcCard" style="min-height:140px; display:flex; align-items:center; justify-content:center; text-align:center; padding:14px; border-radius:14px; border:1px solid var(--border); background:rgba(0,0,0,.0); cursor:pointer;">
+              <div>
+                <div class="muted small">Click to flip</div>
+                <div style="font-size:18px; font-weight:800; margin-top:6px" id="fcText">Choose a set and press Start.</div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="row" style="justify-content:center">
+              <button class="btn" id="btnFcPrev">← Prev</button>
+              <button class="btn primary" id="btnFcFlip">Flip</button>
+              <button class="btn" id="btnFcNext">Next →</button>
+            </div>
+            <div class="divider"></div>
+            <div class="row" style="justify-content:center">
+              <button class="btn danger" id="btnFcAgain">Again (review tomorrow)</button>
+              <button class="btn" id="btnFcGood">Good (review later)</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- LEARN -->
+        <section class="tabpanel" data-tabpanel="learn" hidden>
+          <div class="row">
+            <div class="field small">
+              <span class="label">Set</span>
+              <select id="learnSet"></select>
+            </div>
+            <div class="field small">
+              <span class="label">Questions</span>
+              <select id="learnCount">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+              </select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnLearnStart">Start drill</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card" style="border:1px solid var(--border); border-radius:14px; padding:14px; background:rgba(255,255,255,.03)">
+            <div class="row" style="justify-content:space-between">
+              <div class="pill">📖 Drill</div>
+              <div class="pill">Q <b id="learnIdx">0</b>/<b id="learnTotal">0</b></div>
+            </div>
+            <div class="divider"></div>
+            <div style="font-size:18px; font-weight:900" id="learnPrompt">Pick a set and start.</div>
+            <div class="divider"></div>
+            <div class="field full">
+              <span class="label">Your answer (optional)</span>
+              <textarea id="learnAnswer" placeholder="Type your answer, then reveal."></textarea>
+            </div>
+            <div class="row" style="justify-content:center">
+              <button class="btn" id="btnLearnReveal">Reveal</button>
+              <button class="btn primary" id="btnLearnNext">Next</button>
+            </div>
+            <div class="divider"></div>
+            <div id="learnRevealBox" class="muted" style="white-space:pre-wrap"></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card" style="border:1px solid var(--border); border-radius:14px; padding:14px; background:rgba(255,255,255,.03)">
+            <h3 style="margin:0 0 8px">Topic confidence</h3>
+            <div class="muted small">Set your confidence per subject topic. This also appears in Stats.</div>
+            <div class="divider"></div>
+            <div id="topicConfidenceList"></div>
+          </div>
+        </section>
+
+        <!-- TEST -->
+        <section class="tabpanel" data-tabpanel="test" hidden>
+          <div class="row">
+            <div class="field small">
+              <span class="label">Set</span>
+              <select id="testSet"></select>
+            </div>
+            <div class="field small">
+              <span class="label">Questions</span>
+              <select id="testCount">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+                <option value="999">All</option>
+              </select>
+            </div>
+            <div class="field small">
+              <span class="label">Timer</span>
+              <select id="testTimerMin">
+                <option value="0" selected>Off</option>
+                <option value="5">5 min</option>
+                <option value="10">10 min</option>
+                <option value="15">15 min</option>
+              </select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnTestStart">Start test</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card" style="border:1px solid var(--border); border-radius:14px; padding:14px; background:rgba(255,255,255,.03)">
+            <div class="row" style="justify-content:space-between">
+              <div class="pill">📝 MCQ Test</div>
+              <div class="pill" id="testTimerPill" hidden>⏱ <b id="testTimerLeft">—</b></div>
+            </div>
+            <div class="divider"></div>
+            <div id="testBox" class="muted">Pick a set and start.</div>
+          </div>
+        </section>
+
+        <!-- REVISION -->
+        <section class="tabpanel" data-tabpanel="revision" hidden>
+          <div class="row">
+            <div class="field small">
+              <span class="label">Subject</span>
+              <select id="revSubject"></select>
+            </div>
+            <div class="field">
+              <span class="label">Topic</span>
+              <input id="revTopic" type="text" placeholder="e.g. Photosynthesis" maxlength="80">
+            </div>
+            <div class="field small">
+              <span class="label">Confidence (0–10)</span>
+              <input id="revConfidence" type="number" min="0" max="10" value="5">
+            </div>
+            <div class="field">
+              <span class="label">Notes</span>
+              <input id="revNotes" type="text" placeholder="Short note / weakness / formula" maxlength="120">
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnRevAdd">Add</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div class="field small">
+              <span class="label">Filter subject</span>
+              <select id="revFilterSubject"></select>
+            </div>
+            <div class="field small">
+              <span class="label">Show</span>
+              <select id="revFilterDue">
+                <option value="all" selected>All topics</option>
+                <option value="due">Due now</option>
+                <option value="weak">Weak (≤4)</option>
+              </select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn" id="btnRevReschedule">Auto-schedule reviews</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="list" id="revList"></div>
+        </section>
+
+        <!-- PAST PAPERS -->
+        <section class="tabpanel" data-tabpanel="papers" hidden>
+          <div class="row">
+            <div class="field small">
+              <span class="label">Subject</span>
+              <select id="ppSubject"></select>
+            </div>
+            <div class="field">
+              <span class="label">Paper name</span>
+              <input id="ppName" type="text" placeholder="e.g. AQA Biology Paper 1 (2022)" maxlength="80">
+            </div>
+            <div class="field small">
+              <span class="label">Date</span>
+              <input id="ppDate" type="date">
+            </div>
+            <div class="field small">
+              <span class="label">Score (%)</span>
+              <input id="ppScore" type="number" min="0" max="100" value="0">
+            </div>
+            <div class="field">
+              <span class="label">Notes</span>
+              <input id="ppNotes" type="text" placeholder="What went wrong / what to fix" maxlength="120">
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnPpAdd">Add</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Subject</th><th>Paper</th><th>Score</th><th>Notes</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="ppTable"></tbody>
+          </table>
+        </section>
+
+        <!-- AI -->
+        <section class="tabpanel" data-tabpanel="ai" hidden>
+          <div class="card" style="border:1px solid var(--border); border-radius:14px; padding:14px; background:rgba(255,255,255,.03)">
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <h3 style="margin:0">AI GCSE Explainer</h3>
+                <div class="muted small">Uses your Vercel backend: <span class="mono">POST /api/ai</span></div>
+              </div>
+              <div class="pill">🤖 OpenAI</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field full">
+              <span class="label">Your question</span>
+              <textarea id="aiInput" placeholder="e.g. Explain photosynthesis step-by-step with an exam-style answer." maxlength="800"></textarea>
+            </div>
+            <div class="row">
+              <button class="btn primary" id="btnAskAI">✨ Explain</button>
+              <button class="btn" id="btnAiClear">Clear</button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div id="aiOutput" class="muted" style="white-space:pre-wrap; line-height:1.45;">Your explanation will appear here.</div>
+          </div>
+        </section>
+
+        <!-- STATS -->
+        <section class="tabpanel" data-tabpanel="stats" hidden>
+          <div class="kpiGrid">
+            <div class="kpi"><div class="big" id="statMinutes">0</div><div class="label">Minutes studied (total)</div></div>
+            <div class="kpi"><div class="big" id="statWeek">0</div><div class="label">Minutes this week</div></div>
+            <div class="kpi"><div class="big" id="statTasksDone">0</div><div class="label">Tasks completed</div></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div class="field">
+              <span class="label">Weekly goal (minutes)</span>
+              <input id="weeklyGoalMin" type="number" min="0" value="600">
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnSaveGoal">Save goal</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="pill">Weekly progress</div>
+          <div class="progress" style="margin-top:8px"><div id="weekProg"></div></div>
+          <div class="muted small" style="margin-top:8px">
+            <span id="weekProgText">0/600</span>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="pill">Weak topics (confidence ≤ 4)</div>
+          <div id="weakTopics" class="muted small" style="margin-top:8px"></div>
+
+          <div class="divider"></div>
+
+          <div class="pill">Past papers average</div>
+          <div class="muted small" style="margin-top:8px"><b id="ppAvg">—</b></div>
+        </section>
       </div>
     </section>
 
-    <!-- RIGHT SIDE TIMER (UNCHANGED) -->
+    <!-- RIGHT -->
     <aside class="panel">
       <div class="panelHeader">
         <h2>Focus timer</h2>
+        <div class="pill">Pomodoro</div>
       </div>
       <div class="panelBody">
-        <!-- Timer content unchanged -->
+        <div class="row" style="justify-content:center">
+          <button class="tab" id="modeFocus" data-mode="focus" aria-selected="true">Focus</button>
+          <button class="tab" id="modeShort" data-mode="short" aria-selected="false">Short break</button>
+          <button class="tab" id="modeLong" data-mode="long" aria-selected="false">Long break</button>
+        </div>
+
+        <div class="timerBig" id="timerDisplay">25:00</div>
+        <div class="muted small" style="text-align:center" id="timerSub">Session 1 • Not running</div>
+
+        <div class="row" style="justify-content:center; margin-top:10px">
+          <button class="btn primary" id="timerStartBtn">Start</button>
+          <button class="btn" id="timerPauseBtn">Pause</button>
+          <button class="btn" id="timerResetBtn">Reset</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <div class="field small">
+            <span class="label">Focus (min)</span>
+            <input id="focusMin" type="number" min="1" value="25">
+          </div>
+          <div class="field small">
+            <span class="label">Short (min)</span>
+            <input id="shortMin" type="number" min="1" value="5">
+          </div>
+          <div class="field small">
+            <span class="label">Long (min)</span>
+            <input id="longMin" type="number" min="1" value="15">
+          </div>
+          <div class="field small" style="align-self:flex-end">
+            <button class="btn" id="btnSaveTimerCfg">Save</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="kpiGrid">
+          <div class="kpi"><div class="big" id="todayMins">0</div><div class="label">Minutes today</div></div>
+          <div class="kpi"><div class="big" id="weekMins">0</div><div class="label">Minutes this week</div></div>
+          <div class="kpi"><div class="big" id="sessionsDone">0</div><div class="label">Focus sessions done</div></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="muted small">Study log (last 7 days)</div>
+        <div id="studyLogMini" class="muted small" style="margin-top:8px; line-height:1.55"></div>
       </div>
     </aside>
   </main>
+</div>
 
-  <div class="toast" id="toast"></div>
+<div class="toast" id="toast"></div>
 
-  <!-- Scripts -->
-  <script src="utils.js"></script>
-  <script src="app.js"></script>
-  <script src="tasks.js"></script>
-  <script src="timer.js"></script>
-  <script src="studysets.js"></script>
-  <script src="flashcards.js"></script>
-  <script src="learnmode.js"></script>
-  <script src="testmode.js"></script>
+<script>
+(() => {
+  "use strict";
 
-  <script>
-    async function askAI() {
-      const topic = document.getElementById("aiInput").value;
-      const output = document.getElementById("aiOutput");
+  // ---------- Utils ----------
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  const prettyDate = (iso) => {
+    if(!iso) return "—";
+    try{
+      const d = new Date(iso + "T00:00:00");
+      return d.toLocaleDateString(undefined, { weekday:"short", month:"short", day:"numeric" });
+    }catch{ return iso; }
+  };
+  const startOfWeekISO = (d=new Date()) => {
+    const dd = new Date(d);
+    const day = (dd.getDay() + 6) % 7; // Monday=0
+    dd.setDate(dd.getDate() - day);
+    return dd.toISOString().slice(0,10);
+  };
+  const addDaysISO = (iso, days) => {
+    const d = new Date(iso + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0,10);
+  };
+  const toastEl = $("#toast");
+  const toast = (msg) => {
+    if(!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(()=>toastEl.classList.remove("show"), 2200);
+  };
+  const downloadJSON = (obj, filename="gcse_focus_export.json") => {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
 
-      if (!topic.trim()) {
-        output.innerText = "Please enter a topic first.";
+  // ---------- Storage ----------
+  const STORAGE_KEY = "gcse_focus_onefile_v2";
+  const THEME_KEY = "gcse_focus_theme_v1";
+
+  const DEFAULT_SUBJECTS = [
+    "Maths","English Language","English Literature",
+    "Biology","Chemistry","Physics","Combined Science",
+    "History","Geography","Computer Science","Religious Studies",
+    "French","Spanish","Art","Music","Business","PE","Other"
+  ];
+
+  const defaultState = () => ({
+    version: 2,
+    subjects: [...DEFAULT_SUBJECTS],
+
+    activeTab: "tasks",
+    activeSetId: null,
+
+    // Tasks
+    tasks: [], // {id,name,subject,priority,done,dueISO,repeat,createdAt,doneAt}
+
+    // Study sets
+    studySets: [], // {id,name,subject,desc,createdAt,updatedAt}
+    cardsBySet: {}, // setId -> [{id,front,back,createdAt, nextReviewISO}]
+    mcqBySet: {}, // setId -> [{id,q,opts:{A,B,C,D},correct,createdAt}]
+
+    // Revision topics
+    topics: [], // {id,subject,topic,confidence,notes,nextReviewISO,updatedAt}
+
+    // Past papers
+    pastPapers: [], // {id,subject,name,dateISO,score,notes,createdAt}
+
+    // Confidence quick list used by Learn tab
+    topicConfidence: {}, // key "Subject|Topic" -> 0..10
+
+    // Timer + logs
+    timer: {
+      config: { focusMin:25, shortMin:5, longMin:15 },
+      mode: "focus",
+      session: 1,
+      remainingSec: 25*60,
+      running:false,
+      lastTickMs:null
+    },
+
+    studyLog: [], // {dateISO, minutes}
+    weeklyGoalMin: 600
+  });
+
+  let state = defaultState();
+
+  const storageGet = () => {
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj || typeof obj !== "object") return null;
+      return obj;
+    }catch{ return null; }
+  };
+  const storageSet = () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  };
+
+  const mergeIn = (saved) => {
+    if(!saved || typeof saved !== "object") return;
+    // Keep defaults for new fields, but merge known ones
+    if(Array.isArray(saved.subjects) && saved.subjects.length) state.subjects = saved.subjects;
+
+    if(Array.isArray(saved.tasks)) state.tasks = saved.tasks;
+    if(Array.isArray(saved.studySets)) state.studySets = saved.studySets;
+    if(saved.cardsBySet && typeof saved.cardsBySet === "object") state.cardsBySet = saved.cardsBySet;
+    if(saved.mcqBySet && typeof saved.mcqBySet === "object") state.mcqBySet = saved.mcqBySet;
+    if(Array.isArray(saved.topics)) state.topics = saved.topics;
+    if(Array.isArray(saved.pastPapers)) state.pastPapers = saved.pastPapers;
+    if(saved.topicConfidence && typeof saved.topicConfidence === "object") state.topicConfidence = saved.topicConfidence;
+
+    if(saved.timer && typeof saved.timer === "object"){
+      state.timer = {...state.timer, ...saved.timer};
+      state.timer.config = {...state.timer.config, ...(saved.timer.config||{})};
+    }
+    if(Array.isArray(saved.studyLog)) state.studyLog = saved.studyLog;
+    if(Number.isFinite(Number(saved.weeklyGoalMin))) state.weeklyGoalMin = Number(saved.weeklyGoalMin);
+    if(typeof saved.activeTab === "string") state.activeTab = saved.activeTab;
+    if(typeof saved.activeSetId === "string") state.activeSetId = saved.activeSetId;
+  };
+
+  // ---------- Tabs ----------
+  function setTab(tab){
+    state.activeTab = tab;
+    storageSet();
+    $$(".tab[data-tab]").forEach(btn => {
+      btn.setAttribute("aria-selected", String(btn.dataset.tab === tab));
+    });
+    $$("[data-tabpanel]").forEach(p => {
+      p.hidden = (p.dataset.tabpanel !== tab);
+    });
+    // Light refresh of some panels when opened
+    if(tab === "flashcards") renderFlashcardsTab();
+    if(tab === "learn") renderLearnTab();
+    if(tab === "test") renderTestTab();
+    if(tab === "studysets") renderStudySetsTab();
+    if(tab === "stats") renderStats();
+    if(tab === "revision") renderRevision();
+    if(tab === "papers") renderPastPapers();
+    if(tab === "tasks") renderTasks();
+  }
+
+  // ---------- Subjects dropdown helper ----------
+  function fillSubjects(selectEl, {includeAll=false, allLabel="All subjects"} = {}){
+    if(!selectEl) return;
+    const v = selectEl.value;
+    selectEl.innerHTML = "";
+    if(includeAll){
+      const opt = document.createElement("option");
+      opt.value = "__all__";
+      opt.textContent = allLabel;
+      selectEl.appendChild(opt);
+    }
+    state.subjects.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      selectEl.appendChild(opt);
+    });
+    // restore
+    if([...selectEl.options].some(o => o.value === v)) selectEl.value = v;
+  }
+
+  // ---------- Tasks ----------
+  const priorityRank = (p) => ({high:3, med:2, low:1}[p] || 0);
+  const priorityBadge = (p) => {
+    if(p==="high") return `<span class="badge bad">High</span>`;
+    if(p==="med") return `<span class="badge warn">Medium</span>`;
+    return `<span class="badge good">Low</span>`;
+  };
+
+  function addTask(){
+    const name = ($("#taskName")?.value || "").trim();
+    const subject = $("#taskSubject")?.value || "Other";
+    const priority = $("#taskPriority")?.value || "med";
+    const dueISO = $("#taskDue")?.value || "";
+    const repeat = $("#taskRepeat")?.value || "none";
+    if(!name){ toast("Enter a task name"); return; }
+    state.tasks.unshift({
+      id: uid(),
+      name, subject, priority, dueISO, repeat,
+      done:false,
+      createdAt: Date.now(),
+      doneAt: null
+    });
+    $("#taskName").value = "";
+    storageSet();
+    renderTasks();
+    renderStats();
+  }
+
+  function toggleTaskDone(id){
+    const t = state.tasks.find(x => x.id===id);
+    if(!t) return;
+    t.done = !t.done;
+    t.doneAt = t.done ? Date.now() : null;
+
+    // Handle repeat: if marking done and repeat daily/weekly, create next instance
+    if(t.done && t.repeat && t.repeat !== "none"){
+      const baseDue = t.dueISO || todayISO();
+      const nextDue = addDaysISO(baseDue, t.repeat==="daily" ? 1 : 7);
+      state.tasks.unshift({
+        ...t,
+        id: uid(),
+        done:false,
+        doneAt:null,
+        dueISO: nextDue,
+        createdAt: Date.now()
+      });
+    }
+    storageSet();
+    renderTasks();
+    renderStats();
+  }
+
+  function deleteTask(id){
+    state.tasks = state.tasks.filter(x => x.id !== id);
+    storageSet();
+    renderTasks();
+    renderStats();
+  }
+
+  function clearDoneTasks(){
+    state.tasks = state.tasks.filter(x => !x.done);
+    storageSet();
+    renderTasks();
+    renderStats();
+  }
+
+  function renderTasks(){
+    const list = $("#tasksList");
+    if(!list) return;
+    const fSubject = $("#taskFilterSubject")?.value || "__all__";
+    const fStatus = $("#taskFilterStatus")?.value || "all";
+    const sort = $("#taskSort")?.value || "priority";
+
+    let items = [...state.tasks];
+
+    if(fSubject !== "__all__") items = items.filter(t => t.subject === fSubject);
+    if(fStatus === "open") items = items.filter(t => !t.done);
+    if(fStatus === "done") items = items.filter(t => t.done);
+
+    items.sort((a,b) => {
+      if(sort==="priority") return priorityRank(b.priority)-priorityRank(a.priority) || (a.createdAt-b.createdAt);
+      if(sort==="due") return (a.dueISO||"9999-12-31").localeCompare(b.dueISO||"9999-12-31");
+      return (b.createdAt - a.createdAt);
+    });
+
+    if(items.length === 0){
+      list.innerHTML = `<div class="muted small">No tasks yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = items.map(t => {
+      const duePart = t.dueISO ? `<span class="pill">📅 ${prettyDate(t.dueISO)}</span>` : "";
+      const repPart = t.repeat && t.repeat!=="none" ? `<span class="pill">🔁 ${t.repeat}</span>` : "";
+      const subj = `<span class="pill">📘 ${escapeHtml(t.subject)}</span>`;
+      const pri = priorityBadge(t.priority);
+      const doneCls = t.done ? "text-decoration:line-through; opacity:.8" : "";
+      return `
+        <div class="item">
+          <div class="itemMain">
+            <div class="check" data-done="${t.done}" role="button" aria-label="Toggle done" data-action="toggleTask" data-id="${t.id}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+            </div>
+            <div class="itemText">
+              <div class="topline">
+                <div class="name" style="${doneCls}">${escapeHtml(t.name)}</div>
+                ${pri}
+              </div>
+              <div class="meta">
+                ${subj}
+                ${duePart}
+                ${repPart}
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="iconBtn" data-action="deleteTask" data-id="${t.id}">🗑</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // bind actions
+    $$("[data-action='toggleTask']").forEach(el => el.onclick = () => toggleTaskDone(el.dataset.id));
+    $$("[data-action='deleteTask']").forEach(el => el.onclick = () => deleteTask(el.dataset.id));
+  }
+
+  // ---------- Study sets / Cards / MCQ ----------
+  function ensureSetStores(setId){
+    if(!state.cardsBySet[setId]) state.cardsBySet[setId] = [];
+    if(!state.mcqBySet[setId]) state.mcqBySet[setId] = [];
+  }
+
+  function createSet(){
+    const name = ($("#setName")?.value || "").trim();
+    const subject = $("#setSubject")?.value || "Other";
+    const desc = ($("#setDesc")?.value || "").trim();
+    if(!name){ toast("Enter a set name"); return; }
+    const now = Date.now();
+    const s = { id: uid(), name, subject, desc, createdAt: now, updatedAt: now };
+    state.studySets.unshift(s);
+    ensureSetStores(s.id);
+    state.activeSetId = s.id;
+    $("#setName").value = "";
+    $("#setDesc").value = "";
+    storageSet();
+    renderStudySetsTab();
+    toast("Set created");
+  }
+
+  function deleteActiveSet(){
+    const id = $("#activeSet")?.value || state.activeSetId;
+    if(!id) return;
+    const set = state.studySets.find(s=>s.id===id);
+    if(!set) return;
+    if(!confirm(`Delete set "${set.name}"? This removes its cards and MCQs.`)) return;
+    state.studySets = state.studySets.filter(s=>s.id!==id);
+    delete state.cardsBySet[id];
+    delete state.mcqBySet[id];
+    if(state.activeSetId === id) state.activeSetId = state.studySets[0]?.id || null;
+    storageSet();
+    renderStudySetsTab();
+    toast("Set deleted");
+  }
+
+  function setActiveSet(id){
+    state.activeSetId = id || null;
+    storageSet();
+    renderStudySetsTab();
+  }
+
+  function addCard(){
+    const setId = $("#activeSet")?.value || state.activeSetId;
+    if(!setId){ toast("Create/select a set"); return; }
+    ensureSetStores(setId);
+    const front = ($("#cardFront")?.value || "").trim();
+    const back = ($("#cardBack")?.value || "").trim();
+    if(!front || !back){ toast("Fill front and back"); return; }
+    state.cardsBySet[setId].unshift({
+      id: uid(), front, back, createdAt: Date.now(),
+      nextReviewISO: todayISO()
+    });
+    bumpSetUpdated(setId);
+    $("#cardFront").value=""; $("#cardBack").value="";
+    storageSet();
+    renderStudySetsTab();
+    toast("Card added");
+  }
+
+  function deleteCard(setId, cardId){
+    ensureSetStores(setId);
+    state.cardsBySet[setId] = state.cardsBySet[setId].filter(c=>c.id!==cardId);
+    bumpSetUpdated(setId);
+    storageSet();
+    renderStudySetsTab();
+  }
+
+  function addMcq(){
+    const setId = $("#activeSet")?.value || state.activeSetId;
+    if(!setId){ toast("Create/select a set"); return; }
+    ensureSetStores(setId);
+    const q = ($("#mcqQ")?.value || "").trim();
+    const A = ($("#mcqA")?.value || "").trim();
+    const B = ($("#mcqB")?.value || "").trim();
+    const C = ($("#mcqC")?.value || "").trim();
+    const D = ($("#mcqD")?.value || "").trim();
+    const correct = $("#mcqCorrect")?.value || "A";
+    if(!q || !A || !B || !C || !D){ toast("Fill question + all options"); return; }
+    state.mcqBySet[setId].unshift({
+      id: uid(),
+      q,
+      opts:{A,B,C,D},
+      correct,
+      createdAt: Date.now()
+    });
+    bumpSetUpdated(setId);
+    $("#mcqQ").value=""; $("#mcqA").value=""; $("#mcqB").value=""; $("#mcqC").value=""; $("#mcqD").value="";
+    storageSet();
+    renderStudySetsTab();
+    toast("MCQ added");
+  }
+
+  function deleteMcq(setId, mcqId){
+    ensureSetStores(setId);
+    state.mcqBySet[setId] = state.mcqBySet[setId].filter(m=>m.id!==mcqId);
+    bumpSetUpdated(setId);
+    storageSet();
+    renderStudySetsTab();
+  }
+
+  function bumpSetUpdated(setId){
+    const s = state.studySets.find(x=>x.id===setId);
+    if(s) s.updatedAt = Date.now();
+  }
+
+  function renderStudySetsTab(){
+    fillSubjects($("#setSubject"));
+    fillSubjects($("#taskSubject"));
+    fillSubjects($("#ppSubject"));
+    fillSubjects($("#revSubject"));
+    fillSubjects($("#taskFilterSubject"), {includeAll:true});
+    fillSubjects($("#revFilterSubject"), {includeAll:true});
+    fillSubjects($("#taskFilterSubject"), {includeAll:true});
+    fillSubjects($("#taskFilterSubject"), {includeAll:true});
+
+    // Active set dropdowns
+    const sels = [$("#activeSet"), $("#fcSet"), $("#learnSet"), $("#testSet")].filter(Boolean);
+    sels.forEach(sel => {
+      const prev = sel.value;
+      sel.innerHTML = "";
+      if(state.studySets.length === 0){
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No sets yet";
+        sel.appendChild(opt);
+      }else{
+        state.studySets.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = `${s.name} (${s.subject})`;
+          sel.appendChild(opt);
+        });
+      }
+      const choose = state.activeSetId || prev || sel.options[0]?.value || "";
+      if([...sel.options].some(o=>o.value===choose)) sel.value = choose;
+    });
+
+    // set activeSetId from selection
+    const selected = $("#activeSet")?.value || state.activeSetId || "";
+    if(selected && selected !== state.activeSetId) state.activeSetId = selected;
+    storageSet();
+
+    const setId = state.activeSetId;
+    if(!setId){
+      $("#kpiCards").textContent = "0";
+      $("#kpiMcq").textContent = "0";
+      $("#kpiUpdated").textContent = "—";
+      $("#cardsList").innerHTML = `<div class="muted small">Create a set to add cards.</div>`;
+      $("#mcqList").innerHTML = `<div class="muted small">Create a set to add MCQs.</div>`;
+      return;
+    }
+
+    ensureSetStores(setId);
+    const cards = state.cardsBySet[setId];
+    const mcqs = state.mcqBySet[setId];
+    $("#kpiCards").textContent = String(cards.length);
+    $("#kpiMcq").textContent = String(mcqs.length);
+    const set = state.studySets.find(s=>s.id===setId);
+    $("#kpiUpdated").textContent = set ? new Date(set.updatedAt).toLocaleDateString() : "—";
+
+    $("#cardsList").innerHTML = cards.length ? cards.map(c => `
+      <div class="item">
+        <div class="itemMain">
+          <div class="itemText">
+            <div class="topline"><div class="name">${escapeHtml(c.front)}</div></div>
+            <div class="meta"><span class="pill">↩ ${escapeHtml(c.back)}</span><span class="pill">Next: ${prettyDate(c.nextReviewISO)}</span></div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="iconBtn" data-action="delCard" data-set="${setId}" data-id="${c.id}">🗑</button>
+        </div>
+      </div>
+    `).join("") : `<div class="muted small">No cards yet.</div>`;
+
+    $("#mcqList").innerHTML = mcqs.length ? mcqs.map(m => `
+      <div class="item">
+        <div class="itemMain">
+          <div class="itemText">
+            <div class="topline"><div class="name">${escapeHtml(m.q)}</div></div>
+            <div class="meta">
+              <span class="pill">A: ${escapeHtml(m.opts.A)}</span>
+              <span class="pill">B: ${escapeHtml(m.opts.B)}</span>
+              <span class="pill">C: ${escapeHtml(m.opts.C)}</span>
+              <span class="pill">D: ${escapeHtml(m.opts.D)}</span>
+              <span class="pill">✅ ${escapeHtml(m.correct)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="iconBtn" data-action="delMcq" data-set="${setId}" data-id="${m.id}">🗑</button>
+        </div>
+      </div>
+    `).join("") : `<div class="muted small">No MCQs yet.</div>`;
+
+    $$("[data-action='delCard']").forEach(b => b.onclick = () => deleteCard(b.dataset.set, b.dataset.id));
+    $$("[data-action='delMcq']").forEach(b => b.onclick = () => deleteMcq(b.dataset.set, b.dataset.id));
+  }
+
+  // ---------- Flashcards ----------
+  let fc = { list:[], idx:0, flipped:false, setId:null, mode:"all" };
+
+  function getCardsForFlashcards(setId, mode){
+    ensureSetStores(setId);
+    const cards = state.cardsBySet[setId] || [];
+    if(mode === "due"){
+      const t = todayISO();
+      return cards.filter(c => (c.nextReviewISO || t) <= t);
+    }
+    return cards;
+  }
+
+  function renderFlashcardsTab(){
+    // ensure selects
+    renderStudySetsTab();
+    const setId = $("#fcSet")?.value || state.activeSetId;
+    const mode = $("#fcMode")?.value || "all";
+    const cards = setId ? getCardsForFlashcards(setId, mode) : [];
+    $("#fcCount").textContent = String(cards.length);
+  }
+
+  function fcStart(){
+    const setId = $("#fcSet")?.value || "";
+    const mode = $("#fcMode")?.value || "all";
+    if(!setId){ toast("Choose a set"); return; }
+    const cards = getCardsForFlashcards(setId, mode);
+    fc = { list: shuffle([...cards]), idx:0, flipped:false, setId, mode };
+    renderFcCard();
+  }
+
+  function renderFcCard(){
+    const total = fc.list.length;
+    $("#fcTotal").textContent = String(total);
+    $("#fcIndex").textContent = total ? String(fc.idx+1) : "0";
+    if(total === 0){
+      $("#fcText").textContent = fc.mode==="due" ? "No cards due today for this set." : "No cards in this set yet.";
+      fc.flipped = false;
+      return;
+    }
+    const card = fc.list[fc.idx];
+    $("#fcText").textContent = fc.flipped ? card.back : card.front;
+  }
+
+  function fcFlip(){ fc.flipped = !fc.flipped; renderFcCard(); }
+  function fcPrev(){ if(fc.list.length){ fc.idx = (fc.idx - 1 + fc.list.length) % fc.list.length; fc.flipped=false; renderFcCard(); } }
+  function fcNext(){ if(fc.list.length){ fc.idx = (fc.idx + 1) % fc.list.length; fc.flipped=false; renderFcCard(); } }
+
+  function fcReview(grade){
+    // grade: "again" or "good"
+    if(!fc.list.length) return;
+    const card = fc.list[fc.idx];
+    const setId = fc.setId;
+    ensureSetStores(setId);
+    const cards = state.cardsBySet[setId];
+    const real = cards.find(c=>c.id===card.id);
+    if(real){
+      const base = todayISO();
+      real.nextReviewISO = grade==="again" ? addDaysISO(base, 1) : addDaysISO(base, 4);
+      bumpSetUpdated(setId);
+      storageSet();
+    }
+    toast(grade==="again" ? "Marked: Again" : "Marked: Good");
+    fcNext();
+    renderStudySetsTab();
+    renderStats();
+  }
+
+  // ---------- Learn Drill + Topic Confidence ----------
+  let learn = { list:[], idx:0, setId:null };
+
+  function renderLearnTab(){
+    renderStudySetsTab();
+    renderTopicConfidenceList();
+  }
+
+  function learnStart(){
+    const setId = $("#learnSet")?.value || "";
+    const count = Number($("#learnCount")?.value || 10);
+    if(!setId){ toast("Choose a set"); return; }
+    ensureSetStores(setId);
+    const cards = state.cardsBySet[setId] || [];
+    if(cards.length === 0){ toast("No cards in that set"); return; }
+    const chosen = shuffle([...cards]).slice(0, count);
+    learn = { list: chosen, idx:0, setId };
+    $("#learnAnswer").value = "";
+    $("#learnRevealBox").textContent = "";
+    renderLearnQ();
+  }
+
+  function renderLearnQ(){
+    const total = learn.list.length;
+    $("#learnTotal").textContent = String(total);
+    $("#learnIdx").textContent = total ? String(learn.idx+1) : "0";
+    if(!total){
+      $("#learnPrompt").textContent = "Pick a set and start.";
+      return;
+    }
+    $("#learnPrompt").textContent = learn.list[learn.idx].front;
+  }
+
+  function learnReveal(){
+    if(!learn.list.length) return;
+    const card = learn.list[learn.idx];
+    $("#learnRevealBox").innerHTML = `<div class="pill">Answer</div><div style="margin-top:8px">${escapeHtml(card.back)}</div>`;
+  }
+
+  function learnNext(){
+    if(!learn.list.length) return;
+    learn.idx++;
+    if(learn.idx >= learn.list.length){
+      toast("Drill complete");
+      learn = { list:[], idx:0, setId:null };
+      $("#learnRevealBox").textContent = "";
+      $("#learnAnswer").value = "";
+      renderLearnQ();
+      return;
+    }
+    $("#learnRevealBox").textContent = "";
+    $("#learnAnswer").value = "";
+    renderLearnQ();
+  }
+
+  function topicKey(subject, topic){ return `${subject}|${topic}`; }
+
+  function renderTopicConfidenceList(){
+    const box = $("#topicConfidenceList");
+    if(!box) return;
+
+    // derive some topics from revision list + study sets names (basic)
+    const topics = new Map();
+    state.topics.forEach(t => topics.set(topicKey(t.subject,t.topic), {subject:t.subject, topic:t.topic}));
+    state.studySets.forEach(s => topics.set(topicKey(s.subject, s.name), {subject:s.subject, topic:s.name}));
+
+    const arr = Array.from(topics.values());
+    if(arr.length === 0){
+      box.innerHTML = `<div class="muted small">Add topics in the Revision tab (or create sets) to track confidence.</div>`;
+      return;
+    }
+
+    box.innerHTML = arr.slice(0, 50).map(t => {
+      const key = topicKey(t.subject, t.topic);
+      const val = Number(state.topicConfidence[key] ?? 5);
+      return `
+        <div class="item">
+          <div class="itemMain">
+            <div class="itemText">
+              <div class="topline"><div class="name">${escapeHtml(t.topic)}</div></div>
+              <div class="meta"><span class="pill">📘 ${escapeHtml(t.subject)}</span></div>
+            </div>
+          </div>
+          <div class="actions" style="min-width:240px">
+            <div class="field" style="min-width:240px">
+              <span class="label">Confidence: <b id="confVal_${escapeAttr(key)}">${val}</b>/10</span>
+              <input type="range" min="0" max="10" value="${val}" data-action="conf" data-key="${escapeAttr(key)}" />
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    $$("input[data-action='conf']").forEach(r => {
+      r.oninput = () => {
+        const key = r.dataset.key;
+        const v = Number(r.value);
+        state.topicConfidence[key] = v;
+        const el = $(`#confVal_${cssSafeId(key)}`);
+        if(el) el.textContent = String(v);
+        storageSet();
+        renderStats();
+      };
+    });
+  }
+
+  // ---------- Test (MCQ) ----------
+  let test = { list:[], idx:0, answers:{}, started:false, endsAt:null, timerInterval:null };
+
+  function renderTestTab(){
+    renderStudySetsTab();
+  }
+
+  function testStart(){
+    const setId = $("#testSet")?.value || "";
+    const count = Number($("#testCount")?.value || 10);
+    const timerMin = Number($("#testTimerMin")?.value || 0);
+    if(!setId){ toast("Choose a set"); return; }
+    ensureSetStores(setId);
+    const mcqs = state.mcqBySet[setId] || [];
+    if(mcqs.length === 0){ toast("No MCQs in that set"); return; }
+
+    const list = shuffle([...mcqs]);
+    const chosen = (count>=999) ? list : list.slice(0, count);
+
+    test = { list: chosen, idx: 0, answers:{}, started:true, endsAt:null, timerInterval:null };
+    if(timerMin > 0){
+      test.endsAt = Date.now() + timerMin*60*1000;
+      $("#testTimerPill").hidden = false;
+      startTestTimer();
+    }else{
+      $("#testTimerPill").hidden = true;
+      stopTestTimer();
+    }
+    renderTestQ();
+  }
+
+  function startTestTimer(){
+    stopTestTimer();
+    test.timerInterval = setInterval(() => {
+      if(!test.endsAt) return;
+      const left = test.endsAt - Date.now();
+      if(left <= 0){
+        $("#testTimerLeft").textContent = "0:00";
+        stopTestTimer();
+        toast("Time up — submitting");
+        testSubmit();
         return;
       }
+      $("#testTimerLeft").textContent = fmtMMSS(Math.ceil(left/1000));
+    }, 250);
+  }
+  function stopTestTimer(){
+    if(test.timerInterval) clearInterval(test.timerInterval);
+    test.timerInterval = null;
+  }
 
-      output.innerText = "Thinking...";
+  function renderTestQ(){
+    const box = $("#testBox");
+    if(!box) return;
+    if(!test.started || test.list.length===0){
+      box.textContent = "Pick a set and start.";
+      return;
+    }
+    const q = test.list[test.idx];
+    const chosen = test.answers[q.id] || "";
+    box.innerHTML = `
+      <div class="row" style="justify-content:space-between">
+        <div class="pill">Question <b>${test.idx+1}</b> / <b>${test.list.length}</b></div>
+        <div class="pill">Answered: <b>${Object.keys(test.answers).length}</b></div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:18px; font-weight:900">${escapeHtml(q.q)}</div>
+      <div class="divider"></div>
+      <div class="row" style="flex-direction:column; align-items:stretch; gap:8px">
+        ${["A","B","C","D"].map(k => `
+          <button class="btn ${chosen===k ? "primary" : ""}" data-action="pick" data-id="${q.id}" data-pick="${k}" style="text-align:left">
+            <span class="pill">${k}</span> ${escapeHtml(q.opts[k])}
+          </button>
+        `).join("")}
+      </div>
+      <div class="divider"></div>
+      <div class="row" style="justify-content:center">
+        <button class="btn" id="btnTestPrev">← Prev</button>
+        <button class="btn" id="btnTestNext">Next →</button>
+        <button class="btn primary" id="btnTestSubmit">Submit</button>
+      </div>
+    `;
 
-      try {
-        const response = await fetch("/api/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topic })
-        });
+    $$("[data-action='pick']").forEach(b => b.onclick = () => {
+      test.answers[b.dataset.id] = b.dataset.pick;
+      renderTestQ();
+    });
+    $("#btnTestPrev").onclick = () => { test.idx = Math.max(0, test.idx-1); renderTestQ(); };
+    $("#btnTestNext").onclick = () => { test.idx = Math.min(test.list.length-1, test.idx+1); renderTestQ(); };
+    $("#btnTestSubmit").onclick = () => testSubmit();
+  }
 
-        const data = await response.json();
+  function testSubmit(){
+    if(!test.started) return;
+    stopTestTimer();
+    const total = test.list.length;
+    let correct = 0;
+    const rows = test.list.map((q,i) => {
+      const ans = test.answers[q.id] || "";
+      const ok = ans === q.correct;
+      if(ok) correct++;
+      return { i:i+1, q, ans, ok };
+    });
 
-        if (data.reply) {
-          output.innerText = data.reply;
-        } else {
-          output.innerText = "Something went wrong.";
-        }
-      } catch (err) {
-        output.innerText = "Error contacting AI service.";
+    const pct = Math.round((correct/Math.max(1,total))*100);
+    const badge = pct>=80 ? "good" : (pct>=50 ? "warn" : "bad");
+
+    const box = $("#testBox");
+    box.innerHTML = `
+      <div class="row" style="justify-content:space-between">
+        <div class="pill">Result</div>
+        <div class="badge ${badge}"><b>${correct}</b> / <b>${total}</b> (${pct}%)</div>
+      </div>
+      <div class="divider"></div>
+      <div class="muted">Review:</div>
+      <div class="divider"></div>
+      <div class="list">
+        ${rows.map(r => `
+          <div class="item">
+            <div class="itemMain">
+              <div class="itemText">
+                <div class="topline"><div class="name">Q${r.i}: ${escapeHtml(r.q.q)}</div></div>
+                <div class="meta">
+                  <span class="pill ${r.ok ? "goodText" : "dangerText"}">Your: ${r.ans || "—"}</span>
+                  <span class="pill goodText">Correct: ${r.q.correct}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+      <div class="divider"></div>
+      <div class="row" style="justify-content:center">
+        <button class="btn primary" id="btnTestAgain">Start again</button>
+      </div>
+    `;
+    $("#btnTestAgain").onclick = () => testStart();
+    test.started = false;
+  }
+
+  // ---------- Revision topics ----------
+  function addRevisionTopic(){
+    const subject = $("#revSubject")?.value || "Other";
+    const topic = ($("#revTopic")?.value || "").trim();
+    const confidence = clamp(Number($("#revConfidence")?.value || 5), 0, 10);
+    const notes = ($("#revNotes")?.value || "").trim();
+    if(!topic){ toast("Enter a topic"); return; }
+
+    const now = Date.now();
+    const next = autoNextReviewISO(confidence);
+    state.topics.unshift({
+      id: uid(),
+      subject,
+      topic,
+      confidence,
+      notes,
+      nextReviewISO: next,
+      updatedAt: now
+    });
+    // seed into confidence map too
+    state.topicConfidence[topicKey(subject,topic)] = confidence;
+
+    $("#revTopic").value = "";
+    $("#revNotes").value = "";
+    storageSet();
+    renderRevision();
+    renderTopicConfidenceList();
+    renderStats();
+    toast("Topic added");
+  }
+
+  function autoNextReviewISO(conf){
+    // Simple spaced schedule: lower confidence => sooner
+    const base = todayISO();
+    if(conf <= 2) return addDaysISO(base, 1);
+    if(conf <= 4) return addDaysISO(base, 2);
+    if(conf <= 6) return addDaysISO(base, 4);
+    if(conf <= 8) return addDaysISO(base, 7);
+    return addDaysISO(base, 14);
+  }
+
+  function rescheduleAllTopics(){
+    state.topics.forEach(t => t.nextReviewISO = autoNextReviewISO(t.confidence));
+    storageSet();
+    renderRevision();
+    renderStats();
+    toast("Auto-scheduled");
+  }
+
+  function updateTopicConfidence(id, newVal){
+    const t = state.topics.find(x=>x.id===id);
+    if(!t) return;
+    t.confidence = clamp(Number(newVal), 0, 10);
+    t.updatedAt = Date.now();
+    t.nextReviewISO = autoNextReviewISO(t.confidence);
+    state.topicConfidence[topicKey(t.subject,t.topic)] = t.confidence;
+    storageSet();
+    renderRevision();
+    renderTopicConfidenceList();
+    renderStats();
+  }
+
+  function deleteTopic(id){
+    state.topics = state.topics.filter(t=>t.id!==id);
+    storageSet();
+    renderRevision();
+    renderStats();
+  }
+
+  function renderRevision(){
+    fillSubjects($("#revSubject"));
+    fillSubjects($("#revFilterSubject"), {includeAll:true});
+    const list = $("#revList");
+    if(!list) return;
+
+    const fSubject = $("#revFilterSubject")?.value || "__all__";
+    const fDue = $("#revFilterDue")?.value || "all";
+    const nowISO = todayISO();
+
+    let items = [...state.topics];
+    if(fSubject !== "__all__") items = items.filter(t => t.subject === fSubject);
+    if(fDue === "due") items = items.filter(t => (t.nextReviewISO || nowISO) <= nowISO);
+    if(fDue === "weak") items = items.filter(t => Number(t.confidence) <= 4);
+
+    // sort: due soon, low confidence
+    items.sort((a,b) => (a.nextReviewISO||"9999-12-31").localeCompare(b.nextReviewISO||"9999-12-31") || (a.confidence-b.confidence));
+
+    if(items.length===0){
+      list.innerHTML = `<div class="muted small">No topics yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = items.map(t => {
+      const badge = t.confidence>=7 ? "good" : (t.confidence>=4 ? "warn" : "bad");
+      const due = t.nextReviewISO ? prettyDate(t.nextReviewISO) : "—";
+      return `
+        <div class="item">
+          <div class="itemMain">
+            <div class="itemText">
+              <div class="topline">
+                <div class="name">${escapeHtml(t.topic)}</div>
+                <span class="badge ${badge}">Conf: <b>${t.confidence}</b>/10</span>
+                <span class="pill">Next: <b>${due}</b></span>
+              </div>
+              <div class="meta">
+                <span class="pill">📘 ${escapeHtml(t.subject)}</span>
+                ${t.notes ? `<span class="pill">📝 ${escapeHtml(t.notes)}</span>` : `<span class="pill">📝 (no notes)</span>`}
+              </div>
+            </div>
+          </div>
+          <div class="actions" style="min-width:260px">
+            <div class="field" style="min-width:260px">
+              <span class="label">Confidence</span>
+              <input type="range" min="0" max="10" value="${t.confidence}" data-action="topicConf" data-id="${t.id}">
+            </div>
+            <button class="iconBtn" data-action="delTopic" data-id="${t.id}">🗑</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    $$("input[data-action='topicConf']").forEach(r => r.oninput = () => updateTopicConfidence(r.dataset.id, r.value));
+    $$("button[data-action='delTopic']").forEach(b => b.onclick = () => deleteTopic(b.dataset.id));
+  }
+
+  // ---------- Past papers ----------
+  function addPastPaper(){
+    const subject = $("#ppSubject")?.value || "Other";
+    const name = ($("#ppName")?.value || "").trim();
+    const dateISO = $("#ppDate")?.value || todayISO();
+    const score = clamp(Number($("#ppScore")?.value || 0), 0, 100);
+    const notes = ($("#ppNotes")?.value || "").trim();
+    if(!name){ toast("Enter a paper name"); return; }
+    state.pastPapers.unshift({
+      id: uid(),
+      subject,
+      name,
+      dateISO,
+      score,
+      notes,
+      createdAt: Date.now()
+    });
+    $("#ppName").value = "";
+    $("#ppNotes").value = "";
+    $("#ppScore").value = "0";
+    storageSet();
+    renderPastPapers();
+    renderStats();
+    toast("Past paper added");
+  }
+
+  function deletePastPaper(id){
+    state.pastPapers = state.pastPapers.filter(p => p.id!==id);
+    storageSet();
+    renderPastPapers();
+    renderStats();
+  }
+
+  function renderPastPapers(){
+    fillSubjects($("#ppSubject"));
+    const body = $("#ppTable");
+    if(!body) return;
+    const rows = [...state.pastPapers].sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||"") || (b.createdAt-a.createdAt));
+    body.innerHTML = rows.length ? rows.map(p => {
+      const badge = p.score>=80 ? "good" : (p.score>=50 ? "warn" : "bad");
+      return `
+        <tr>
+          <td>${escapeHtml(prettyDate(p.dateISO))}</td>
+          <td><span class="pill">${escapeHtml(p.subject)}</span></td>
+          <td>${escapeHtml(p.name)}</td>
+          <td><span class="badge ${badge}"><b>${p.score}%</b></span></td>
+          <td class="muted">${escapeHtml(p.notes || "")}</td>
+          <td><button class="iconBtn" data-action="delPP" data-id="${p.id}">🗑</button></td>
+        </tr>
+      `;
+    }).join("") : `<tr><td colspan="6" class="muted">No past papers yet.</td></tr>`;
+
+    $$("button[data-action='delPP']").forEach(b => b.onclick = () => deletePastPaper(b.dataset.id));
+  }
+
+  // ---------- Timer ----------
+  let timerInterval = null;
+
+  function cfgFromInputs(){
+    const focusMin = clamp(Number($("#focusMin")?.value || 25), 1, 240);
+    const shortMin = clamp(Number($("#shortMin")?.value || 5), 1, 60);
+    const longMin = clamp(Number($("#longMin")?.value || 15), 1, 90);
+    state.timer.config = {focusMin, shortMin, longMin};
+  }
+
+  function setTimerMode(mode){
+    state.timer.mode = mode;
+    state.timer.running = false;
+    state.timer.lastTickMs = null;
+    const mins = state.timer.config[mode+"Min"] || 25;
+    state.timer.remainingSec = mins*60;
+    stopTimer();
+    syncModeButtons();
+    renderTimer();
+    storageSet();
+  }
+
+  function syncModeButtons(){
+    const map = {focus:"#modeFocus", short:"#modeShort", long:"#modeLong"};
+    Object.entries(map).forEach(([m, sel]) => {
+      const el = $(sel);
+      if(el) el.setAttribute("aria-selected", String(state.timer.mode === m));
+    });
+  }
+
+  function startTimer(){
+    if(state.timer.running) return;
+    state.timer.running = true;
+    state.timer.lastTickMs = Date.now();
+    if(timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(tickTimer, 250);
+    renderTimer();
+    storageSet();
+  }
+
+  function pauseTimer(){
+    state.timer.running = false;
+    state.timer.lastTickMs = null;
+    stopTimer();
+    renderTimer();
+    storageSet();
+  }
+
+  function resetTimer(){
+    state.timer.running = false;
+    state.timer.lastTickMs = null;
+    stopTimer();
+    const mins = state.timer.config[state.timer.mode+"Min"] || 25;
+    state.timer.remainingSec = mins*60;
+    renderTimer();
+    storageSet();
+  }
+
+  function stopTimer(){
+    if(timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  function tickTimer(){
+    if(!state.timer.running) return;
+    const now = Date.now();
+    const elapsed = (now - (state.timer.lastTickMs || now)) / 1000;
+    state.timer.lastTickMs = now;
+
+    // subtract elapsed but keep integer seconds display stable
+    const before = state.timer.remainingSec;
+    state.timer.remainingSec = Math.max(0, state.timer.remainingSec - elapsed);
+
+    const prevFloor = Math.floor(before);
+    const newFloor = Math.floor(state.timer.remainingSec);
+
+    // Log minutes only during focus and per full minute boundary crossed
+    if(state.timer.mode === "focus" && newFloor < prevFloor){
+      // if we crossed one or more whole seconds; we only log at minute boundaries:
+      // easiest: when remainingSec hits x*60 exactly (integer)
+      if(newFloor % 60 === 59){ // crossed a minute boundary
+        addStudyMinutes(1);
       }
     }
-  </script>
 
+    if(state.timer.remainingSec <= 0.001){
+      state.timer.remainingSec = 0;
+      state.timer.running = false;
+      state.timer.lastTickMs = null;
+      stopTimer();
+      onTimerComplete();
+    }
+
+    renderTimer();
+    storageSet();
+  }
+
+  function onTimerComplete(){
+    toast("Timer complete!");
+    // Advance session if focus completed
+    if(state.timer.mode === "focus"){
+      state.timer.session += 1;
+      // Every 4th focus -> long break
+      const next = (state.timer.session % 4 === 0) ? "long" : "short";
+      setTimerMode(next);
+    }else{
+      // after break -> focus
+      setTimerMode("focus");
+    }
+    renderStats();
+  }
+
+  function fmtMMSS(sec){
+    sec = Math.max(0, Math.floor(sec));
+    const m = Math.floor(sec/60);
+    const s = sec%60;
+    return `${m}:${String(s).padStart(2,"0")}`;
+  }
+
+  function renderTimer(){
+    $("#timerDisplay").textContent = fmtMMSS(state.timer.remainingSec);
+    const runningText = state.timer.running ? "Running" : "Not running";
+    $("#timerSub").textContent = `Session ${state.timer.session} • ${runningText}`;
+    syncModeButtons();
+
+    // side stats
+    $("#todayMins").textContent = String(getMinutesForDate(todayISO()));
+    $("#weekMins").textContent = String(getMinutesThisWeek());
+    $("#sessionsDone").textContent = String(getFocusSessionsDone());
+
+    $("#studyLogMini").innerHTML = renderMiniLog();
+    $("#uiStreak").textContent = String(calcStreak());
+    $("#uiToday").textContent = new Date().toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"});
+  }
+
+  function getFocusSessionsDone(){
+    // estimate: total focus minutes / focusMin
+    const focusMin = state.timer.config.focusMin || 25;
+    const totalFocus = state.studyLog.reduce((a,x)=>a+Number(x.minutes||0),0);
+    return Math.floor(totalFocus / focusMin);
+  }
+
+  // ---------- Study log / streak / weekly ----------
+  function getMinutesForDate(dateISO){
+    const row = state.studyLog.find(x=>x.dateISO===dateISO);
+    return row ? Number(row.minutes||0) : 0;
+  }
+
+  function addStudyMinutes(min){
+    const d = todayISO();
+    let row = state.studyLog.find(x=>x.dateISO===d);
+    if(!row){
+      row = {dateISO:d, minutes:0};
+      state.studyLog.push(row);
+    }
+    row.minutes = Number(row.minutes||0) + min;
+
+    // Keep logs trimmed (90 days)
+    state.studyLog.sort((a,b)=>a.dateISO.localeCompare(b.dateISO));
+    if(state.studyLog.length > 120) state.studyLog = state.studyLog.slice(-120);
+
+    storageSet();
+    renderTimer();
+    renderStats();
+  }
+
+  function calcStreak(){
+    // streak = consecutive days with minutes > 0 ending today
+    const map = new Map(state.studyLog.map(x=>[x.dateISO, Number(x.minutes||0)]));
+    let streak = 0;
+    let d = todayISO();
+    for(;;){
+      if((map.get(d) || 0) > 0){
+        streak++;
+        d = addDaysISO(d, -1);
+      }else break;
+    }
+    return streak;
+  }
+
+  function getMinutesThisWeek(){
+    const weekStart = startOfWeekISO(new Date());
+    return state.studyLog
+      .filter(x => x.dateISO >= weekStart)
+      .reduce((a,x)=>a+Number(x.minutes||0),0);
+  }
+
+  function renderMiniLog(){
+    const days = [];
+    const base = new Date(todayISO()+"T00:00:00");
+    for(let i=6;i>=0;i--){
+      const d = new Date(base);
+      d.setDate(d.getDate()-i);
+      const iso = d.toISOString().slice(0,10);
+      const mins = getMinutesForDate(iso);
+      days.push({iso, mins, label: d.toLocaleDateString(undefined,{weekday:"short"})});
+    }
+    return days.map(x => `${x.label}: <b>${x.mins}</b> min`).join("<br>");
+  }
+
+  // ---------- Stats ----------
+  function renderStats(){
+    const total = state.studyLog.reduce((a,x)=>a+Number(x.minutes||0),0);
+    const week = getMinutesThisWeek();
+    const done = state.tasks.filter(t=>t.done).length;
+
+    $("#statMinutes").textContent = String(total);
+    $("#statWeek").textContent = String(week);
+    $("#statTasksDone").textContent = String(done);
+
+    // Weekly goal
+    const goal = Number(state.weeklyGoalMin || 600);
+    $("#weeklyGoalMin").value = String(goal);
+    const pct = goal>0 ? clamp(Math.round((week/goal)*100),0,100) : 0;
+    $("#weekProg").style.width = `${pct}%`;
+    $("#weekProgText").textContent = `${week}/${goal} (${pct}%)`;
+
+    // Weak topics
+    const weak = [];
+    // include revision topics & confidence map
+    state.topics.forEach(t => { if(Number(t.confidence)<=4) weak.push(`${t.subject}: ${t.topic} (${t.confidence}/10)`); });
+    // if no topics, use topicConfidence map
+    if(weak.length===0){
+      Object.entries(state.topicConfidence).forEach(([k,v]) => {
+        if(Number(v)<=4){
+          const [sub, top] = k.split("|");
+          weak.push(`${sub}: ${top} (${v}/10)`);
+        }
+      });
+    }
+    $("#weakTopics").innerHTML = weak.length ? weak.slice(0,12).map(x=>`• ${escapeHtml(x)}`).join("<br>") : `<span class="muted">No weak topics yet 🎉</span>`;
+
+    // Past papers avg
+    if(state.pastPapers.length){
+      const avg = Math.round(state.pastPapers.reduce((a,p)=>a+Number(p.score||0),0)/state.pastPapers.length);
+      $("#ppAvg").textContent = `${avg}%`;
+    }else{
+      $("#ppAvg").textContent = "—";
+    }
+
+    // header
+    $("#uiStreak").textContent = String(calcStreak());
+  }
+
+  // ---------- AI ----------
+  async function askAI(){
+    const input = ($("#aiInput")?.value || "").trim();
+    const out = $("#aiOutput");
+    if(!out) return;
+    if(!input){ out.textContent = "Please enter a question first."; return; }
+    out.textContent = "Thinking...";
+    try{
+      const res = await fetch("/api/ai", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ topic: input })
+      });
+      const data = await res.json().catch(()=>({}));
+      if(res.ok && data && data.reply){
+        out.textContent = data.reply;
+      }else{
+        out.textContent = data?.error ? String(data.error) : "Something went wrong.";
+      }
+    }catch(e){
+      out.textContent = "Error contacting AI service.";
+    }
+  }
+
+  // ---------- Export / Import / Reset / Theme ----------
+  function exportAll(){
+    downloadJSON(state, `gcse_focus_export_${todayISO()}.json`);
+    toast("Exported");
+  }
+  function importAll(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const obj = JSON.parse(String(reader.result || ""));
+        // Very defensive: require object
+        if(!obj || typeof obj !== "object") throw new Error("Invalid JSON");
+        state = defaultState();
+        mergeIn(obj);
+        storageSet();
+        bootUI();
+        toast("Imported");
+      }catch{
+        toast("Import failed (invalid file)");
+      }
+    };
+    reader.readAsText(file);
+  }
+  function hardReset(){
+    if(!confirm("Reset everything on this device? This cannot be undone.")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state = defaultState();
+    storageSet();
+    bootUI();
+    toast("Reset complete");
+  }
+  function toggleTheme(){
+    const html = document.documentElement;
+    const cur = html.getAttribute("data-theme") || "dark";
+    const next = cur === "dark" ? "light" : "dark";
+    html.setAttribute("data-theme", next);
+    localStorage.setItem(THEME_KEY, next);
+  }
+
+  // ---------- Safe escaping ----------
+  function escapeHtml(s){
+    return String(s ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
+  function escapeAttr(s){ return escapeHtml(s).replaceAll(" ","_"); }
+  function cssSafeId(s){ return escapeAttr(s); }
+
+  // ---------- Small helpers ----------
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  // ---------- Wiring ----------
+  function bootUI(){
+    // Theme
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+
+    // Fill subject dropdowns
+    fillSubjects($("#taskSubject"));
+    fillSubjects($("#setSubject"));
+    fillSubjects($("#ppSubject"));
+    fillSubjects($("#revSubject"));
+    fillSubjects($("#taskFilterSubject"), {includeAll:true});
+    fillSubjects($("#revFilterSubject"), {includeAll:true});
+
+    // Defaults on filters
+    if($("#taskFilterSubject")) $("#taskFilterSubject").value = "__all__";
+    if($("#revFilterSubject")) $("#revFilterSubject").value = "__all__";
+
+    // Timer config inputs
+    $("#focusMin").value = String(state.timer.config.focusMin ?? 25);
+    $("#shortMin").value = String(state.timer.config.shortMin ?? 5);
+    $("#longMin").value = String(state.timer.config.longMin ?? 15);
+
+    // Weekly goal
+    $("#weeklyGoalMin").value = String(state.weeklyGoalMin ?? 600);
+
+    // Active tab
+    setTab(state.activeTab || "tasks");
+
+    // Render all (safe)
+    renderStudySetsTab();
+    renderTasks();
+    renderRevision();
+    renderPastPapers();
+    renderTopicConfidenceList();
+    renderTimer();
+    renderStats();
+  }
+
+  function bindEvents(){
+    // Tabs
+    $$(".tab[data-tab]").forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+
+    // Tasks
+    $("#btnAddTask")?.addEventListener("click", addTask);
+    $("#btnClearDone")?.addEventListener("click", clearDoneTasks);
+    $("#taskFilterSubject")?.addEventListener("change", renderTasks);
+    $("#taskFilterStatus")?.addEventListener("change", renderTasks);
+    $("#taskSort")?.addEventListener("change", renderTasks);
+
+    // Sets
+    $("#btnCreateSet")?.addEventListener("click", createSet);
+    $("#activeSet")?.addEventListener("change", () => setActiveSet($("#activeSet").value));
+    $("#btnDeleteSet")?.addEventListener("click", deleteActiveSet);
+    $("#btnAddCard")?.addEventListener("click", addCard);
+    $("#btnAddMcq")?.addEventListener("click", addMcq);
+
+    // Flashcards
+    $("#btnFcStart")?.addEventListener("click", fcStart);
+    $("#btnFcFlip")?.addEventListener("click", fcFlip);
+    $("#btnFcPrev")?.addEventListener("click", fcPrev);
+    $("#btnFcNext")?.addEventListener("click", fcNext);
+    $("#btnFcAgain")?.addEventListener("click", () => fcReview("again"));
+    $("#btnFcGood")?.addEventListener("click", () => fcReview("good"));
+    $("#fcCard")?.addEventListener("click", fcFlip);
+    $("#fcSet")?.addEventListener("change", renderFlashcardsTab);
+    $("#fcMode")?.addEventListener("change", renderFlashcardsTab);
+
+    // Learn
+    $("#btnLearnStart")?.addEventListener("click", learnStart);
+    $("#btnLearnReveal")?.addEventListener("click", learnReveal);
+    $("#btnLearnNext")?.addEventListener("click", learnNext);
+
+    // Test
+    $("#btnTestStart")?.addEventListener("click", testStart);
+
+    // Revision
+    $("#btnRevAdd")?.addEventListener("click", addRevisionTopic);
+    $("#revFilterSubject")?.addEventListener("change", renderRevision);
+    $("#revFilterDue")?.addEventListener("change", renderRevision);
+    $("#btnRevReschedule")?.addEventListener("click", rescheduleAllTopics);
+
+    // Past papers
+    $("#btnPpAdd")?.addEventListener("click", addPastPaper);
+
+    // Timer
+    $("#modeFocus")?.addEventListener("click", () => setTimerMode("focus"));
+    $("#modeShort")?.addEventListener("click", () => setTimerMode("short"));
+    $("#modeLong")?.addEventListener("click", () => setTimerMode("long"));
+    $("#timerStartBtn")?.addEventListener("click", startTimer);
+    $("#timerPauseBtn")?.addEventListener("click", pauseTimer);
+    $("#timerResetBtn")?.addEventListener("click", resetTimer);
+    $("#btnSaveTimerCfg")?.addEventListener("click", () => {
+      cfgFromInputs();
+      storageSet();
+      setTimerMode(state.timer.mode); // recalibrate remaining time
+      toast("Timer settings saved");
+    });
+
+    // Stats
+    $("#btnSaveGoal")?.addEventListener("click", () => {
+      state.weeklyGoalMin = clamp(Number($("#weeklyGoalMin").value || 600), 0, 20000);
+      storageSet();
+      renderStats();
+      toast("Goal saved");
+    });
+
+    // AI
+    $("#btnAskAI")?.addEventListener("click", askAI);
+    $("#btnAiClear")?.addEventListener("click", () => {
+      $("#aiInput").value = "";
+      $("#aiOutput").textContent = "Your explanation will appear here.";
+    });
+
+    // Theme / export / import / reset
+    $("#btnTheme")?.addEventListener("click", toggleTheme);
+    $("#btnExport")?.addEventListener("click", exportAll);
+    $("#fileImport")?.addEventListener("change", (e) => {
+      const f = e.target.files?.[0];
+      if(f) importAll(f);
+      e.target.value = "";
+    });
+    $("#btnReset")?.addEventListener("click", hardReset);
+  }
+
+  // ---------- Boot ----------
+  function boot(){
+    // load
+    const saved = storageGet();
+    if(saved) mergeIn(saved);
+
+    // ensure some invariants
+    if(!Array.isArray(state.subjects) || !state.subjects.length) state.subjects = [...DEFAULT_SUBJECTS];
+
+    // Ensure set stores exist
+    state.studySets.forEach(s => ensureSetStores(s.id));
+    if(!state.activeSetId && state.studySets.length) state.activeSetId = state.studySets[0].id;
+
+    // apply theme
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+
+    bindEvents();
+    bootUI();
+  }
+
+  boot();
+})();
+</script>
 </body>
 </html>
