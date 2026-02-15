@@ -1,14 +1,15 @@
 /* ===============================
-   GCSE Focus - app.js (FIXED)
+   GCSE Focus - app.js (HARD FIX)
    Global app state + storage + tabs + theme + import/export
-   Null-safe so UI changes won't crash boot.
+   Extremely null-safe so UI changes/modules can't crash boot.
    =============================== */
 (() => {
   "use strict";
 
+  // ---- Guard: Utils must exist ----
   const U = window.Utils;
   if (!U) {
-    console.error("Utils.js not loaded. Make sure <script src='utils.js'></script> is before app.js");
+    console.error("Utils.js not loaded. Ensure <script src='utils.js'></script> appears before app.js");
     return;
   }
 
@@ -40,7 +41,7 @@
     "Other",
   ];
 
-  // ---- Simple event bus ----
+  // ---- Simple event bus (safe emit) ----
   const bus = (() => {
     const handlers = new Map(); // event -> Set(fn)
     return {
@@ -50,8 +51,11 @@
         return () => handlers.get(event)?.delete(fn);
       },
       emit(event, payload) {
-        handlers.get(event)?.forEach((fn) => {
-          try { fn(payload); } catch (e) { console.warn("bus handler error", event, e); }
+        const set = handlers.get(event);
+        if (!set) return;
+        set.forEach((fn) => {
+          try { fn(payload); }
+          catch (e) { console.warn("bus handler error:", event, e); }
         });
       },
     };
@@ -64,43 +68,53 @@
 
     tasks: [],
 
-    studySets: [],      // {id,name,subject,desc,createdAt,updatedAt}
-    cardsBySet: {},     // setId -> [{id,front,back,createdAt}]
-    mcqBySet: {},       // setId -> [{id,q,opts:{A,B,C,D},correct,createdAt}]
+    studySets: [],
+    cardsBySet: {},
+    mcqBySet: {},
 
     timer: {
       config: { focusMin: 25, shortMin: 5, longMin: 15 },
-      mode: "focus", // focus|short|long
+      mode: "focus",
       session: 1,
       remainingSec: 25 * 60,
       running: false,
       lastTickMs: null,
     },
 
-    studyLog: [], // {dateISO, minutes}
+    studyLog: [],
     weeklyGoalMin: 600,
 
     activeTab: "tasks",
     activeSetId: null,
   };
 
-  // ---- Helpers ----
+  // ---- DOM helpers (never throw) ----
+  function byId(id) {
+    try { return document.getElementById(id); } catch { return null; }
+  }
+
   function safeText(id, value) {
-    const el = document.getElementById(id);
+    const el = byId(id);
     if (el) el.textContent = value;
   }
 
   function safeOn(id, event, handler) {
-    const el = document.getElementById(id);
+    const el = byId(id);
     if (el) el.addEventListener(event, handler);
+  }
+
+  function safeCall(fn, label = "safeCall") {
+    try { return fn(); }
+    catch (e) { console.warn(label, e); return undefined; }
   }
 
   // ---- Load/save ----
   function load() {
-    const saved = storageGet(STORAGE_KEY, null);
+    const saved = safeCall(() => storageGet(STORAGE_KEY, null), "storageGet");
     if (!saved || typeof saved !== "object") return;
 
     if (Array.isArray(saved.subjects) && saved.subjects.length) state.subjects = saved.subjects;
+
     if (Array.isArray(saved.tasks)) state.tasks = saved.tasks;
 
     if (Array.isArray(saved.studySets)) state.studySets = saved.studySets;
@@ -110,6 +124,7 @@
     if (saved.timer && typeof saved.timer === "object") {
       state.timer = { ...state.timer, ...saved.timer };
       state.timer.config = { ...state.timer.config, ...(saved.timer.config || {}) };
+
       // sanity
       if (!Number.isFinite(Number(state.timer.remainingSec))) state.timer.remainingSec = 25 * 60;
       if (!Number.isFinite(Number(state.timer.session))) state.timer.session = 1;
@@ -125,60 +140,67 @@
   }
 
   function save() {
-    storageSet(STORAGE_KEY, state);
+    safeCall(() => storageSet(STORAGE_KEY, state), "storageSet");
   }
 
   // ---- Theme ----
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem(THEME_KEY, theme);
-    const btn = document.getElementById("btnTheme");
+    safeCall(() => localStorage.setItem(THEME_KEY, theme), "setTheme");
+    const btn = byId("btnTheme");
     if (btn) btn.textContent = theme === "light" ? "🌙 Theme" : "☀️ Theme";
   }
 
   function initTheme() {
-    const saved = localStorage.getItem(THEME_KEY);
+    const saved = safeCall(() => localStorage.getItem(THEME_KEY), "getTheme");
     applyTheme(saved || "dark");
   }
 
   // ---- Tabs ----
+  function getAvailableTabs() {
+    return $$(".tab")
+      .map((t) => t?.dataset?.tab)
+      .filter(Boolean);
+  }
+
   function setTab(tab) {
-    if (!tab) tab = "tasks";
-    state.activeTab = tab;
+    const available = new Set(getAvailableTabs());
+    const chosen = (tab && available.has(tab)) ? tab : (available.values().next().value || "tasks");
+
+    state.activeTab = chosen;
     save();
 
-    // Update tab buttons
+    // update button state
     $$(".tab").forEach((b) => {
-      const isActive = b.dataset.tab === tab;
+      const isActive = b.dataset.tab === chosen;
       b.setAttribute("aria-selected", String(isActive));
     });
 
-    // Show/hide panels
-    $$("[data-tabpanel]").forEach((p) => {
-      p.hidden = p.dataset.tabpanel !== tab;
-    });
+    // show/hide panels
+    const panels = $$("[data-tabpanel]");
+    if (panels.length) {
+      panels.forEach((p) => {
+        p.hidden = p.dataset.tabpanel !== chosen;
+      });
+    }
 
-    bus.emit("tab:change", { tab });
+    bus.emit("tab:change", { tab: chosen });
   }
 
   function initTabs() {
     const tabs = $$(".tab");
-    if (tabs.length) {
-      tabs.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const t = btn.dataset.tab;
-          if (t) setTab(t);
-        });
+    tabs.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const t = btn?.dataset?.tab;
+        if (t) setTab(t);
       });
-      // Optional "quick" jump button (safe)
-      const quick = document.getElementById("btnQuickSetTab");
-      if (quick) quick.addEventListener("click", () => setTab("studysets"));
-    }
+    });
 
-    // If the current activeTab doesn't exist in UI, fall back to first tab
-    const validTabs = new Set(tabs.map((t) => t.dataset.tab).filter(Boolean));
-    const initial = validTabs.has(state.activeTab) ? state.activeTab : (tabs[0]?.dataset.tab || "tasks");
-    setTab(initial);
+    // Optional quick jump
+    const quick = byId("btnQuickSetTab");
+    if (quick) quick.addEventListener("click", () => setTab("studysets"));
+
+    setTab(state.activeTab || "tasks");
   }
 
   // ---- Subjects selects ----
@@ -194,21 +216,20 @@
   }
 
   function refreshSubjectSelects() {
-    // Only fill selects that exist (null-safe)
-    fillSelect($("#taskSubject"), state.subjects);
-    fillSelect($("#setSubject"), state.subjects);
+    safeCall(() => fillSelect($("#taskSubject"), state.subjects), "fill taskSubject");
+    safeCall(() => fillSelect($("#setSubject"), state.subjects), "fill setSubject");
 
-    // These are typically filled/overridden by modules; keep safe defaults
-    fillSelect($("#flashSetSelect"), state.studySets.map((s) => s.id));
-    fillSelect($("#learnSetSelect"), state.studySets.map((s) => s.id));
-    fillSelect($("#testSetSelect"), state.studySets.map((s) => s.id));
+    // These are often overridden by modules later; keep safe defaults
+    safeCall(() => fillSelect($("#flashSetSelect"), state.studySets.map((s) => s.id)), "fill flashSetSelect");
+    safeCall(() => fillSelect($("#learnSetSelect"), state.studySets.map((s) => s.id)), "fill learnSetSelect");
+    safeCall(() => fillSelect($("#testSetSelect"), state.studySets.map((s) => s.id)), "fill testSetSelect");
 
     bus.emit("subjects:ready", {});
   }
 
   // ---- Active set ----
   function setActiveSet(setId) {
-    state.activeSetId = setId ?? null;
+    state.activeSetId = (setId ?? null);
     save();
     bus.emit("set:active", { setId: state.activeSetId });
   }
@@ -220,7 +241,7 @@
 
   // ---- Import/Export/Reset ----
   function exportData() {
-    downloadJSON(`gcse-focus-backup-${todayISO()}.json`, state);
+    safeCall(() => downloadJSON(`gcse-focus-backup-${todayISO()}.json`, state), "downloadJSON");
     toast?.("Exported backup.");
   }
 
@@ -230,7 +251,6 @@
       const parsed = JSON.parse(text);
       if (!parsed || typeof parsed !== "object") throw new Error("Invalid JSON");
 
-      // Replace known fields (keep defaults for anything missing)
       Object.keys(state).forEach((k) => delete state[k]);
       Object.assign(state, {
         version: 1,
@@ -241,9 +261,8 @@
         mcqBySet: parsed.mcqBySet && typeof parsed.mcqBySet === "object" ? parsed.mcqBySet : {},
         timer: parsed.timer && typeof parsed.timer === "object"
           ? {
-              ...state.timer,
               ...parsed.timer,
-              config: { ...state.timer.config, ...(parsed.timer.config || {}) },
+              config: { focusMin: 25, shortMin: 5, longMin: 15, ...(parsed.timer.config || {}) },
             }
           : {
               config: { focusMin: 25, shortMin: 5, longMin: 15 },
@@ -259,15 +278,16 @@
         activeSetId: parsed.activeSetId ?? null,
       });
 
-      // Safety: stop running timer on import
+      // stop running timer on import
       state.timer.running = false;
       state.timer.lastTickMs = null;
 
       save();
       toast?.("Imported successfully.");
+
       bus.emit("app:imported", {});
       refreshSubjectSelects();
-      initTabs(); // re-evaluate valid tabs after import
+      initTabs();
       setActiveSet(state.activeSetId);
       renderTopStats();
     } catch (e) {
@@ -278,7 +298,7 @@
 
   function hardReset() {
     if (!confirm("Reset EVERYTHING? This cannot be undone.")) return;
-    localStorage.removeItem(STORAGE_KEY);
+    safeCall(() => localStorage.removeItem(STORAGE_KEY), "remove storage");
     toast?.("Resetting…");
     window.location.reload();
   }
@@ -305,12 +325,11 @@
   }
 
   function renderTopStats() {
-    // These IDs exist in your current index.html
     safeText("uiToday", formatPrettyDate(new Date()));
     safeText("uiStreak", String(calcStreak()));
 
-    // Some versions of your UI had this. Yours currently may not.
-    const todayMinEl = document.getElementById("uiTodayMinutes");
+    // Optional (only if present)
+    const todayMinEl = byId("uiTodayMinutes");
     if (todayMinEl) todayMinEl.textContent = `${getTodayMinutes()}m`;
   }
 
@@ -323,10 +342,10 @@
 
     safeOn("btnExport", "click", exportData);
 
-    const fileImport = document.getElementById("fileImport");
+    const fileImport = byId("fileImport");
     if (fileImport) {
       fileImport.addEventListener("change", (e) => {
-        const file = e.target.files && e.target.files[0];
+        const file = e?.target?.files?.[0];
         if (file) importData(file);
         e.target.value = "";
       });
@@ -368,16 +387,17 @@
     initTabs();
     refreshSubjectSelects();
 
-    // default date (null-safe)
     const dueInput = $("#taskDue");
     if (dueInput) dueInput.value = dueInput.value || todayISO();
 
     renderTopStats();
+
+    // Important: even if a module throws on app:ready, the app must keep running
     bus.emit("app:ready", {});
+
     setActiveSet(state.activeSetId);
   }
 
-  // IMPORTANT: never crash boot
   try {
     boot();
   } catch (e) {
