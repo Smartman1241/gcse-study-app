@@ -19,7 +19,7 @@
 
     <div class="topbarActions">
       <div class="chip">
-        <div class="chipLine"><span>📅</span> <strong id="uiToday">—</strong></div>
+        <div class="chipLine"><strong id="uiToday">—</strong></div>
         <div class="chipLine muted"><span id="uiStreak">0</span> day streak</div>
       </div>
 
@@ -27,13 +27,15 @@
       <button class="btn" id="btnExport">⬇️ Export</button>
       <label class="btn fileBtn">
         ⬆️ Import
-        <input id="fileImport" type="file" accept="application/json" />
+        <input id="fileImport" type="file" accept="application/json" hidden />
       </label>
       <button class="btn danger" id="btnReset">🧨 Reset</button>
     </div>
   </header>
 
   <main class="layout">
+
+    <!-- LEFT PANEL -->
     <section class="panel">
       <div class="panelHeader">
         <div>
@@ -53,36 +55,38 @@
 
       <div class="panelBody">
 
-        <!-- Existing sections unchanged -->
-        <!-- (Your Tasks, Studysets, Flashcards, Learn, Test sections remain exactly as before) -->
+        <!-- TASKS -->
+        <section class="tabpanel" data-tabpanel="tasks">
+          <div id="tasksRoot"></div>
+        </section>
 
-        <!-- AI TAB -->
+        <!-- STUDYSETS -->
+        <section class="tabpanel" data-tabpanel="studysets" hidden>
+          <div id="studysetsRoot"></div>
+        </section>
+
+        <!-- FLASHCARDS -->
+        <section class="tabpanel" data-tabpanel="flashcards" hidden>
+          <div id="flashcardsRoot"></div>
+        </section>
+
+        <!-- LEARN -->
+        <section class="tabpanel" data-tabpanel="learn" hidden>
+          <div id="learnRoot"></div>
+        </section>
+
+        <!-- TEST -->
+        <section class="tabpanel" data-tabpanel="test" hidden>
+          <div id="testRoot"></div>
+        </section>
+
+        <!-- AI -->
         <section class="tabpanel" data-tabpanel="ai" hidden>
           <div class="card">
-            <div class="cardHeader">
-              <h3>AI GCSE Explainer</h3>
-              <p class="muted small">
-                Ask for brief summaries, detailed breakdowns, or step-by-step explanations.
-              </p>
-            </div>
-
-            <div class="formGrid">
-              <label class="field full">
-                <span class="label">Your question</span>
-                <textarea id="aiInput"
-                  placeholder="e.g. Explain photosynthesis in detail step-by-step"
-                  maxlength="800"
-                  style="min-height:120px;"></textarea>
-              </label>
-            </div>
-
-            <div class="row">
-              <button class="btn primary" onclick="askAI()">✨ Explain</button>
-            </div>
-
-            <div class="divider"></div>
-
-            <div id="aiOutput" class="card inner muted" style="white-space:pre-wrap;">
+            <h3>AI GCSE Explainer</h3>
+            <textarea id="aiInput" placeholder="Ask a GCSE question..." maxlength="800"></textarea>
+            <button class="btn primary" onclick="askAI()">✨ Explain</button>
+            <div id="aiOutput" class="muted" style="white-space:pre-wrap;margin-top:12px;">
               Your explanation will appear here.
             </div>
           </div>
@@ -91,15 +95,31 @@
       </div>
     </section>
 
-    <!-- RIGHT SIDE TIMER (UNCHANGED) -->
+    <!-- RIGHT TIMER PANEL -->
     <aside class="panel">
       <div class="panelHeader">
         <h2>Focus timer</h2>
       </div>
+
       <div class="panelBody">
-        <!-- Timer content unchanged -->
+
+        <!-- REQUIRED INPUTS (THIS FIXES YOUR CRASH) -->
+        <input type="number" id="focusMin" value="25" hidden />
+        <input type="number" id="shortMin" value="5" hidden />
+        <input type="number" id="longMin" value="15" hidden />
+        <input type="number" id="weeklyGoalMin" value="600" hidden />
+
+        <div id="timerDisplay">25:00</div>
+        <button class="btn primary" id="timerStartBtn">Start</button>
+        <button class="btn" id="timerResetBtn">Reset</button>
+
+        <div class="muted small" style="margin-top:12px;">
+          Today studied: <span id="todayMinutes">0</span> mins
+        </div>
+
       </div>
     </aside>
+
   </main>
 
   <div class="toast" id="toast"></div>
@@ -134,12 +154,7 @@
         });
 
         const data = await response.json();
-
-        if (data.reply) {
-          output.innerText = data.reply;
-        } else {
-          output.innerText = "Something went wrong.";
-        }
+        output.innerText = data.reply || "Something went wrong.";
       } catch (err) {
         output.innerText = "Error contacting AI service.";
       }
