@@ -496,5 +496,29 @@
   <script src="learnmode.js"></script>
   <script src="testmode.js"></script>
 <script defer src="/_vercel/insights/script.js"></script>
+<div style="margin-top:40px; padding:20px; border-top:1px solid #ccc;">
+  <h2>AI GCSE Explainer</h2>
+  <textarea id="aiInput" placeholder="Enter a GCSE topic..." style="width:100%;height:100px;"></textarea>
+  <br><br>
+  <button onclick="askAI()">Explain</button>
+  <div id="aiOutput" style="margin-top:20px; white-space:pre-wrap;"></div>
+</div>
+
+<script>
+async function askAI() {
+  const topic = document.getElementById("aiInput").value;
+
+  const response = await fetch("/api/ai", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ topic })
+  });
+
+  const data = await response.json();
+  document.getElementById("aiOutput").innerText = data.reply;
+}
+</script>
 </body>
 </html>
