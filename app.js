@@ -1,19 +1,12 @@
 /* ===============================
-   GCSE Focus - app.js (HARD FIX)
+   GCSE Focus - app.js
    Global app state + storage + tabs + theme + import/export
-   Extremely null-safe so UI changes/modules can't crash boot.
+   Other modules (tasks/timer/studysets/learn/test) plug into this.
    =============================== */
 (() => {
   "use strict";
 
-  // ---- Guard: Utils must exist ----
-  const U = window.Utils;
-  if (!U) {
-    console.error("Utils.js not loaded. Ensure <script src='utils.js'></script> appears before app.js");
-    return;
-  }
-
-  const { $, $$, todayISO, formatPrettyDate, storageGet, storageSet, downloadJSON, toast } = U;
+  const { $, $$, todayISO, formatPrettyDate, storageGet, storageSet, downloadJSON, toast } = window.Utils;
 
   // ---- Keys ----
   const STORAGE_KEY = "gcse_focus_mvp_v1";
@@ -41,7 +34,7 @@
     "Other",
   ];
 
-  // ---- Simple event bus (safe emit) ----
+  // ---- Simple event bus (modules subscribe to changes) ----
   const bus = (() => {
     const handlers = new Map(); // event -> Set(fn)
     return {
@@ -51,11 +44,8 @@
         return () => handlers.get(event)?.delete(fn);
       },
       emit(event, payload) {
-        const set = handlers.get(event);
-        if (!set) return;
-        set.forEach((fn) => {
-          try { fn(payload); }
-          catch (e) { console.warn("bus handler error:", event, e); }
+        handlers.get(event)?.forEach((fn) => {
+          try { fn(payload); } catch (e) { console.warn("bus handler error", event, e); }
         });
       },
     };
@@ -66,53 +56,39 @@
     version: 1,
     subjects: [...DEFAULT_SUBJECTS],
 
+    // Tasks module uses this
     tasks: [],
 
-    studySets: [],
-    cardsBySet: {},
-    mcqBySet: {},
+    // Study sets module uses these
+    studySets: [], // each: {id,name,subject,desc,createdAt,updatedAt}
+    cardsBySet: {}, // setId -> [{id,front,back,createdAt}]
+    mcqBySet: {},   // setId -> [{id,q,opts:{A,B,C,D},correct,createdAt}]
 
+    // Timer module uses this
     timer: {
       config: { focusMin: 25, shortMin: 5, longMin: 15 },
-      mode: "focus",
+      mode: "focus", // focus|short|long
       session: 1,
       remainingSec: 25 * 60,
       running: false,
       lastTickMs: null,
     },
 
-    studyLog: [],
+    // Study log for stats
+    studyLog: [], // {dateISO, minutes}
     weeklyGoalMin: 600,
 
+    // UI state
     activeTab: "tasks",
     activeSetId: null,
   };
 
-  // ---- DOM helpers (never throw) ----
-  function byId(id) {
-    try { return document.getElementById(id); } catch { return null; }
-  }
-
-  function safeText(id, value) {
-    const el = byId(id);
-    if (el) el.textContent = value;
-  }
-
-  function safeOn(id, event, handler) {
-    const el = byId(id);
-    if (el) el.addEventListener(event, handler);
-  }
-
-  function safeCall(fn, label = "safeCall") {
-    try { return fn(); }
-    catch (e) { console.warn(label, e); return undefined; }
-  }
-
   // ---- Load/save ----
   function load() {
-    const saved = safeCall(() => storageGet(STORAGE_KEY, null), "storageGet");
+    const saved = storageGet(STORAGE_KEY, null);
     if (!saved || typeof saved !== "object") return;
 
+    // Merge cautiously so new fields keep defaults
     if (Array.isArray(saved.subjects) && saved.subjects.length) state.subjects = saved.subjects;
 
     if (Array.isArray(saved.tasks)) state.tasks = saved.tasks;
@@ -124,12 +100,6 @@
     if (saved.timer && typeof saved.timer === "object") {
       state.timer = { ...state.timer, ...saved.timer };
       state.timer.config = { ...state.timer.config, ...(saved.timer.config || {}) };
-
-      // sanity
-      if (!Number.isFinite(Number(state.timer.remainingSec))) state.timer.remainingSec = 25 * 60;
-      if (!Number.isFinite(Number(state.timer.session))) state.timer.session = 1;
-      if (typeof state.timer.mode !== "string") state.timer.mode = "focus";
-      if (typeof state.timer.running !== "boolean") state.timer.running = false;
     }
 
     if (Array.isArray(saved.studyLog)) state.studyLog = saved.studyLog;
@@ -140,66 +110,36 @@
   }
 
   function save() {
-    safeCall(() => storageSet(STORAGE_KEY, state), "storageSet");
+    storageSet(STORAGE_KEY, state);
   }
 
   // ---- Theme ----
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
-    safeCall(() => localStorage.setItem(THEME_KEY, theme), "setTheme");
-    const btn = byId("btnTheme");
-    if (btn) btn.textContent = theme === "light" ? "🌙 Theme" : "☀️ Theme";
+    localStorage.setItem(THEME_KEY, theme);
+    $("#btnTheme").textContent = theme === "light" ? "🌙 Theme" : "☀️ Theme";
   }
 
   function initTheme() {
-    const saved = safeCall(() => localStorage.getItem(THEME_KEY), "getTheme");
+    const saved = localStorage.getItem(THEME_KEY);
     applyTheme(saved || "dark");
   }
 
   // ---- Tabs ----
-  function getAvailableTabs() {
-    return $$(".tab")
-      .map((t) => t?.dataset?.tab)
-      .filter(Boolean);
-  }
-
   function setTab(tab) {
-    const available = new Set(getAvailableTabs());
-    const chosen = (tab && available.has(tab)) ? tab : (available.values().next().value || "tasks");
-
-    state.activeTab = chosen;
+    state.activeTab = tab;
     save();
 
-    // update button state
-    $$(".tab").forEach((b) => {
-      const isActive = b.dataset.tab === chosen;
-      b.setAttribute("aria-selected", String(isActive));
-    });
+    $$(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+    $$("[data-tabpanel]").forEach((p) => (p.hidden = p.dataset.tabpanel !== tab));
 
-    // show/hide panels
-    const panels = $$("[data-tabpanel]");
-    if (panels.length) {
-      panels.forEach((p) => {
-        p.hidden = p.dataset.tabpanel !== chosen;
-      });
-    }
-
-    bus.emit("tab:change", { tab: chosen });
+    bus.emit("tab:change", { tab });
   }
 
   function initTabs() {
-    const tabs = $$(".tab");
-    tabs.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const t = btn?.dataset?.tab;
-        if (t) setTab(t);
-      });
-    });
-
-    // Optional quick jump
-    const quick = byId("btnQuickSetTab");
-    if (quick) quick.addEventListener("click", () => setTab("studysets"));
-
+    $$(".tab").forEach((btn) => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+    // Quick jump button
+    $("#btnQuickSetTab")?.addEventListener("click", () => setTab("studysets"));
     setTab(state.activeTab || "tasks");
   }
 
@@ -216,22 +156,19 @@
   }
 
   function refreshSubjectSelects() {
-    safeCall(() => fillSelect($("#taskSubject"), state.subjects), "fill taskSubject");
-    safeCall(() => fillSelect($("#setSubject"), state.subjects), "fill setSubject");
-
-    // These are often overridden by modules later; keep safe defaults
-    safeCall(() => fillSelect($("#flashSetSelect"), state.studySets.map((s) => s.id)), "fill flashSetSelect");
-    safeCall(() => fillSelect($("#learnSetSelect"), state.studySets.map((s) => s.id)), "fill learnSetSelect");
-    safeCall(() => fillSelect($("#testSetSelect"), state.studySets.map((s) => s.id)), "fill testSetSelect");
-
+    fillSelect($("#taskSubject"), state.subjects);
+    fillSelect($("#setSubject"), state.subjects);
+    fillSelect($("#flashSetSelect"), state.studySets.map((s) => s.id)); // filled by flashcards module later
+    fillSelect($("#learnSetSelect"), state.studySets.map((s) => s.id)); // module later
+    fillSelect($("#testSetSelect"), state.studySets.map((s) => s.id));  // module later
     bus.emit("subjects:ready", {});
   }
 
   // ---- Active set ----
   function setActiveSet(setId) {
-    state.activeSetId = (setId ?? null);
+    state.activeSetId = setId;
     save();
-    bus.emit("set:active", { setId: state.activeSetId });
+    bus.emit("set:active", { setId });
   }
 
   function getActiveSet() {
@@ -241,8 +178,8 @@
 
   // ---- Import/Export/Reset ----
   function exportData() {
-    safeCall(() => downloadJSON(`gcse-focus-backup-${todayISO()}.json`, state), "downloadJSON");
-    toast?.("Exported backup.");
+    downloadJSON(`gcse-focus-backup-${todayISO()}.json`, state);
+    toast("Exported backup.");
   }
 
   async function importData(file) {
@@ -251,55 +188,50 @@
       const parsed = JSON.parse(text);
       if (!parsed || typeof parsed !== "object") throw new Error("Invalid JSON");
 
+      // Replace state fields we know
       Object.keys(state).forEach((k) => delete state[k]);
       Object.assign(state, {
         version: 1,
-        subjects: Array.isArray(parsed.subjects) && parsed.subjects.length ? parsed.subjects : [...DEFAULT_SUBJECTS],
-        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
-        studySets: Array.isArray(parsed.studySets) ? parsed.studySets : [],
-        cardsBySet: parsed.cardsBySet && typeof parsed.cardsBySet === "object" ? parsed.cardsBySet : {},
-        mcqBySet: parsed.mcqBySet && typeof parsed.mcqBySet === "object" ? parsed.mcqBySet : {},
-        timer: parsed.timer && typeof parsed.timer === "object"
-          ? {
-              ...parsed.timer,
-              config: { focusMin: 25, shortMin: 5, longMin: 15, ...(parsed.timer.config || {}) },
-            }
-          : {
-              config: { focusMin: 25, shortMin: 5, longMin: 15 },
-              mode: "focus",
-              session: 1,
-              remainingSec: 25 * 60,
-              running: false,
-              lastTickMs: null,
-            },
-        studyLog: Array.isArray(parsed.studyLog) ? parsed.studyLog : [],
+        subjects: parsed.subjects || [...DEFAULT_SUBJECTS],
+        tasks: parsed.tasks || [],
+        studySets: parsed.studySets || [],
+        cardsBySet: parsed.cardsBySet || {},
+        mcqBySet: parsed.mcqBySet || {},
+        timer: parsed.timer || {
+          config: { focusMin: 25, shortMin: 5, longMin: 15 },
+          mode: "focus",
+          session: 1,
+          remainingSec: 25 * 60,
+          running: false,
+          lastTickMs: null,
+        },
+        studyLog: parsed.studyLog || [],
         weeklyGoalMin: Number(parsed.weeklyGoalMin || 600),
-        activeTab: typeof parsed.activeTab === "string" ? parsed.activeTab : "tasks",
+        activeTab: parsed.activeTab || "tasks",
         activeSetId: parsed.activeSetId ?? null,
       });
 
-      // stop running timer on import
+      // Safety: stop running timer on import
       state.timer.running = false;
       state.timer.lastTickMs = null;
 
       save();
-      toast?.("Imported successfully.");
-
+      toast("Imported successfully.");
       bus.emit("app:imported", {});
       refreshSubjectSelects();
-      initTabs();
+      setTab(state.activeTab || "tasks");
       setActiveSet(state.activeSetId);
       renderTopStats();
     } catch (e) {
       console.warn(e);
-      toast?.("Import failed (bad file).");
+      toast("Import failed (bad file).");
     }
   }
 
   function hardReset() {
     if (!confirm("Reset EVERYTHING? This cannot be undone.")) return;
-    safeCall(() => localStorage.removeItem(STORAGE_KEY), "remove storage");
-    toast?.("Resetting…");
+    localStorage.removeItem(STORAGE_KEY);
+    toast("Resetting…");
     window.location.reload();
   }
 
@@ -325,33 +257,28 @@
   }
 
   function renderTopStats() {
-    safeText("uiToday", formatPrettyDate(new Date()));
-    safeText("uiStreak", String(calcStreak()));
-
-    // Optional (only if present)
-    const todayMinEl = byId("uiTodayMinutes");
-    if (todayMinEl) todayMinEl.textContent = `${getTodayMinutes()}m`;
+    $("#uiToday").textContent = formatPrettyDate(new Date());
+    $("#uiStreak").textContent = String(calcStreak());
+    // Right panel stats are rendered by timer.js (but we can seed safe defaults)
+    $("#uiTodayMinutes").textContent = `${getTodayMinutes()}m`;
   }
 
   // ---- Wire UI controls ----
   function initChrome() {
-    safeOn("btnTheme", "click", () => {
+    $("#btnTheme").addEventListener("click", () => {
       const cur = document.documentElement.getAttribute("data-theme") || "dark";
       applyTheme(cur === "dark" ? "light" : "dark");
     });
 
-    safeOn("btnExport", "click", exportData);
+    $("#btnExport").addEventListener("click", exportData);
 
-    const fileImport = byId("fileImport");
-    if (fileImport) {
-      fileImport.addEventListener("change", (e) => {
-        const file = e?.target?.files?.[0];
-        if (file) importData(file);
-        e.target.value = "";
-      });
-    }
+    $("#fileImport").addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) importData(file);
+      e.target.value = "";
+    });
 
-    safeOn("btnReset", "click", hardReset);
+    $("#btnReset").addEventListener("click", hardReset);
   }
 
   // ---- Public API for modules ----
@@ -366,6 +293,7 @@
     getActiveSet,
     refreshSubjectSelects,
 
+    // stats helpers some modules may use
     addStudyMinutes(minutes) {
       const m = Math.max(0, Math.round(Number(minutes || 0)));
       if (m <= 0) return;
@@ -387,21 +315,14 @@
     initTabs();
     refreshSubjectSelects();
 
-    const dueInput = $("#taskDue");
-    if (dueInput) dueInput.value = dueInput.value || todayISO();
+    // default dates
+    $("#taskDue").value = $("#taskDue").value || todayISO();
 
     renderTopStats();
-
-    // Important: even if a module throws on app:ready, the app must keep running
     bus.emit("app:ready", {});
-
+    // restore active set (modules will render when they subscribe)
     setActiveSet(state.activeSetId);
   }
 
-  try {
-    boot();
-  } catch (e) {
-    console.error("App boot failed:", e);
-    toast?.("App error: check console.");
-  }
+  boot();
 })();
