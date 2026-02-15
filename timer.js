@@ -1,17 +1,12 @@
 /* ===============================
-   GCSE Focus - timer.js
-   Pomodoro engine + progress ring + stats integration
+   GCSE Focus - timer.js (FIXED + NULL SAFE)
    =============================== */
 (() => {
   "use strict";
 
-  const {
-    $, pad2, clamp, todayISO, startOfWeekISO, dateToMs
-  } = window.Utils;
-
+  const { $, pad2, clamp, todayISO, startOfWeekISO, dateToMs } = window.Utils;
   const { state, save, bus, addStudyMinutes } = window.App;
 
-  // --- Elements ---
   const el = {
     focus: $("#tmFocus"),
     short: $("#tmShort"),
@@ -35,22 +30,20 @@
 
   let interval = null;
 
-  // --- Helpers ---
   function getModeDurationSec(mode) {
     const c = state.timer.config;
-    if (mode === "focus") return c.focusMin * 60;
-    if (mode === "short") return c.shortMin * 60;
-    return c.longMin * 60;
+    if (mode === "focus") return (c.focusMin || 25) * 60;
+    if (mode === "short") return (c.shortMin || 5) * 60;
+    return (c.longMin || 15) * 60;
   }
 
   function formatTime(sec) {
     sec = Math.max(0, Math.floor(sec));
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${pad2(m)}:${pad2(s)}`;
+    return `${pad2(Math.floor(sec / 60))}:${pad2(sec % 60)}`;
   }
 
   function updateRing() {
+    if (!el.circle) return;
     const total = getModeDurationSec(state.timer.mode);
     const done = total - state.timer.remainingSec;
     const pct = clamp((done / total) * 100, 0, 100);
@@ -58,36 +51,26 @@
   }
 
   function updateUI() {
-    el.mode.textContent =
-      state.timer.mode === "focus"
-        ? "Focus"
-        : state.timer.mode === "short"
-        ? "Short break"
-        : "Long break";
+    if (el.mode)
+      el.mode.textContent =
+        state.timer.mode === "focus"
+          ? "Focus"
+          : state.timer.mode === "short"
+          ? "Short break"
+          : "Long break";
 
-    el.time.textContent = formatTime(state.timer.remainingSec);
-    el.hint.textContent = `Session ${state.timer.session} of 4`;
-    el.start.textContent = state.timer.running ? "⏸ Pause" : "▶ Start";
+    if (el.time) el.time.textContent = formatTime(state.timer.remainingSec);
+    if (el.hint) el.hint.textContent = `Session ${state.timer.session} of 4`;
+    if (el.start) el.start.textContent = state.timer.running ? "⏸ Pause" : "▶ Start";
 
     updateRing();
   }
 
-  // --- Timer cycle logic ---
   function advanceMode() {
     if (state.timer.mode === "focus") {
-      // After focus
-      if (state.timer.session >= 4) {
-        state.timer.mode = "long";
-      } else {
-        state.timer.mode = "short";
-      }
+      state.timer.mode = state.timer.session >= 4 ? "long" : "short";
     } else {
-      // After break
-      if (state.timer.mode === "long") {
-        state.timer.session = 1;
-      } else {
-        state.timer.session += 1;
-      }
+      state.timer.session = state.timer.mode === "long" ? 1 : state.timer.session + 1;
       state.timer.mode = "focus";
     }
 
@@ -112,7 +95,7 @@
 
     if (state.timer.remainingSec <= 0) {
       if (state.timer.mode === "focus") {
-        addStudyMinutes(state.timer.config.focusMin);
+        addStudyMinutes(state.timer.config.focusMin || 25);
       }
       advanceMode();
     }
@@ -123,14 +106,13 @@
   }
 
   function startPause() {
-    if (!state.timer.running) {
-      state.timer.running = true;
-      state.timer.lastTickMs = Date.now();
-      if (!interval) interval = setInterval(tick, 300);
-    } else {
-      state.timer.running = false;
-      state.timer.lastTickMs = null;
+    state.timer.running = !state.timer.running;
+    state.timer.lastTickMs = state.timer.running ? Date.now() : null;
+
+    if (state.timer.running && !interval) {
+      interval = setInterval(tick, 300);
     }
+
     save();
     updateUI();
   }
@@ -150,7 +132,6 @@
     renderStats();
   }
 
-  // --- Stats ---
   function getTodayMinutes() {
     const entry = state.studyLog.find((x) => x.dateISO === todayISO());
     return entry ? Number(entry.minutes || 0) : 0;
@@ -159,7 +140,7 @@
   function getWeekMinutes() {
     const start = startOfWeekISO();
     const startMs = dateToMs(start);
-    const endMs = dateToMs(todayISO()) + 24 * 3600 * 1000;
+    const endMs = dateToMs(todayISO()) + 86400000;
 
     return state.studyLog
       .filter((x) => {
@@ -173,51 +154,53 @@
     const today = getTodayMinutes();
     const week = getWeekMinutes();
 
-    el.todayMin.textContent = `${today}m`;
-    el.weekMin.textContent = `${week}m`;
+    if (el.todayMin) el.todayMin.textContent = `${today}m`;
+    if (el.weekMin) el.weekMin.textContent = `${week}m`;
 
-    state.weeklyGoalMin = clamp(Number(el.weeklyGoal.value || 600), 60, 2400);
+    if (el.weeklyGoal) {
+      state.weeklyGoalMin = clamp(Number(el.weeklyGoal.value || 600), 60, 2400);
+    }
+
     const pct = clamp((week / state.weeklyGoalMin) * 100, 0, 100);
 
-    el.goalBar.style.width = pct + "%";
-    el.goalText.textContent = `${week} / ${state.weeklyGoalMin}`;
+    if (el.goalBar) el.goalBar.style.width = pct + "%";
+    if (el.goalText) el.goalText.textContent = `${week} / ${state.weeklyGoalMin}`;
+
     save();
   }
 
-  // --- Config ---
   function syncConfigFromInputs() {
-    state.timer.config.focusMin = clamp(Number(el.focus.value || 25), 10, 90);
-    state.timer.config.shortMin = clamp(Number(el.short.value || 5), 3, 20);
-    state.timer.config.longMin = clamp(Number(el.long.value || 15), 10, 45);
+    if (el.focus) state.timer.config.focusMin = clamp(Number(el.focus.value || 25), 10, 90);
+    if (el.short) state.timer.config.shortMin = clamp(Number(el.short.value || 5), 3, 20);
+    if (el.long) state.timer.config.longMin = clamp(Number(el.long.value || 15), 10, 45);
     save();
   }
 
   function init() {
     if (!el.start) return;
 
-    // load config into inputs
-    el.focus.value = state.timer.config.focusMin;
-    el.short.value = state.timer.config.shortMin;
-    el.long.value = state.timer.config.longMin;
-    el.weeklyGoal.value = state.weeklyGoalMin;
+    if (el.focus) el.focus.value = state.timer.config.focusMin;
+    if (el.short) el.short.value = state.timer.config.shortMin;
+    if (el.long) el.long.value = state.timer.config.longMin;
+    if (el.weeklyGoal) el.weeklyGoal.value = state.weeklyGoalMin;
 
-    el.start.addEventListener("click", startPause);
-    el.skip.addEventListener("click", skip);
-    el.reset.addEventListener("click", resetTimer);
+    el.start?.addEventListener("click", startPause);
+    el.skip?.addEventListener("click", skip);
+    el.reset?.addEventListener("click", resetTimer);
 
-    [el.focus, el.short, el.long].forEach((i) =>
+    [el.focus, el.short, el.long].forEach((i) => {
+      if (!i) return;
       i.addEventListener("change", () => {
         syncConfigFromInputs();
         if (!state.timer.running) {
           state.timer.remainingSec = getModeDurationSec(state.timer.mode);
           updateUI();
         }
-      })
-    );
+      });
+    });
 
-    el.weeklyGoal.addEventListener("change", renderStats);
+    el.weeklyGoal?.addEventListener("change", renderStats);
 
-    // Keyboard shortcuts
     document.addEventListener("keydown", (e) => {
       const tag = document.activeElement?.tagName;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
