@@ -322,6 +322,30 @@
   .badge.good{background: rgba(70,230,179,.14); border-color: rgba(70,230,179,.25);}
   .badge.warn{background: rgba(255,211,110,.14); border-color: rgba(255,211,110,.25);}
   .badge.bad{background: rgba(255,123,143,.14); border-color: rgba(255,123,143,.25);}
+
+<style>
+  /* existing CSS */
+
+  .nav-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .nav-buttons button {
+    background: rgba(255,255,255,0.08);
+    border: none;
+    padding: 8px 14px;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .nav-buttons button:hover {
+    background: rgba(255,255,255,0.18);
+  }
 </style>
 </head>
 
@@ -332,9 +356,17 @@
       <div class="logo" title="GCSE Focus"></div>
       <div class="titleBlock">
         <h1>GCSE Focus</h1>
-        <div class="subtitle">Study Sets • Flashcards • Learn • Test • Revision • Past Papers • Tasks • Timer • AI</div>
-      </div>
-    </div>
+<div class="nav-buttons">
+  <button onclick="setTab('studysets')">Study Sets</button>
+  <button onclick="setTab('flashcards')">Flashcards</button>
+  <button onclick="setTab('learn')">Learn</button>
+  <button onclick="setTab('test')">Test</button>
+  <button onclick="setTab('revision')">Revision</button>
+  <button onclick="setTab('papers')">Past Papers</button>
+  <button onclick="setTab('tasks')">Tasks</button>
+  <button onclick="setTab('stats')">Stats</button>
+  <button onclick="setTab('ai')">AI</button>
+</div>
 
     <div class="toolbar">
 <div class="account-wrapper" style="position:relative;">
@@ -383,18 +415,7 @@
           <div class="muted small">Your progress is securely saved and synced to your account.</div>
         </div>
 
-        <nav class="tabs" role="tablist" aria-label="Main tabs">
-          <button class="tab" data-tab="tasks" aria-selected="true">✅ Tasks</button>
-          <button class="tab" data-tab="studysets" aria-selected="false">📦 Study Sets</button>
-          <button class="tab" data-tab="flashcards" aria-selected="false">🃏 Flashcards</button>
-          <button class="tab" data-tab="learn" aria-selected="false">📖 Learn</button>
-          <button class="tab" data-tab="test" aria-selected="false">📝 Test</button>
-          <button class="tab" data-tab="revision" aria-selected="false">📚 Revision</button>
-          <button class="tab" data-tab="papers" aria-selected="false">🧾 Past Papers</button>
-          <button class="tab" data-tab="ai" aria-selected="false">🤖 AI</button>
-          <button class="tab" data-tab="stats" aria-selected="false">📈 Stats</button>
-        </nav>
-      </div>
+
 
       <div class="panelBody">
         <!-- TASKS -->
