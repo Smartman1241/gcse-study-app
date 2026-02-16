@@ -110,7 +110,7 @@ if (settingsError) {
 
 if (settings?.role === "admin") {
   // 👑 ADMIN – unlimited
-  model = "gpt-5-mini";
+  model = "gpt-4o-mini";
 } else {
 
   if (inputUsed < 400 && outputUsed < 400) {
