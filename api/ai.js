@@ -38,16 +38,13 @@ module.exports = async function handler(req, res) {
     }
 
     const userId = userData.user.id;
-// 🔥 Get role + tier + timezone
-const { data: settings, error: settingsError } = await supabaseAdmin
-  .from("user_settings")
-  .select("role, tier, timezone")
-  .eq("user_id", userId)
-  .single();
 
-if (settingsError) {
-  console.error("Error fetching user settings:", settingsError);
-}
+    // ---------- SETTINGS ----------
+    const { data: settings } = await supabaseAdmin
+      .from("user_settings")
+      .select("role, tier, timezone")
+      .eq("user_id", userId)
+      .maybeSingle();
 
     // ---------- INPUT ----------
     const { question, topic, history, timezone } = req.body || {};
@@ -63,22 +60,14 @@ if (settingsError) {
         ? timezone
         : null;
 
-    const { data: settingsRow } = await supabaseAdmin
-      .from("user_settings")
-      .select("timezone")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const tz = tzCandidate || settings?.timezone || "UTC";
 
-    const tz = tzCandidate || settingsRow?.timezone || "UTC";
-
-    if (!settingsRow?.timezone || (tzCandidate && tzCandidate !== settingsRow.timezone)) {
-      await supabaseAdmin
-        .from("user_settings")
-        .upsert({
-          user_id: userId,
-          timezone: tz,
-          updated_at: new Date().toISOString()
-        });
+    if (!settings?.timezone || (tzCandidate && tzCandidate !== settings.timezone)) {
+      await supabaseAdmin.from("user_settings").upsert({
+        user_id: userId,
+        timezone: tz,
+        updated_at: new Date().toISOString()
+      });
     }
 
     // ---------- DAILY ROW ----------
@@ -108,29 +97,26 @@ if (settingsError) {
     // ---------- MODEL SELECTION ----------
     let model;
 
-if (settings?.role === "admin") {
-  // 👑 ADMIN – unlimited
-  model = "gpt-4o-mini";
-} else {
+    if (settings?.role === "admin") {
+      model = "gpt-4o-mini"; // safe default for admin
+    } else {
+      if (inputUsed < 400 && outputUsed < 400) {
+        model = "gpt-5-mini";
+      } else if (inputUsed < 1500 && outputUsed < 1500) {
+        model = "gpt-4o-mini";
+      } else if (nanoUsed < 3000) {
+        model = "gpt-5-nano";
+      } else {
+        return res.status(429).json({
+          error: "Daily AI limit reached. Try again after midnight in your timezone."
+        });
+      }
+    }
 
-  if (inputUsed < 400 && outputUsed < 400) {
-    model = "gpt-5-mini";
-  } else if (inputUsed < 1500 && outputUsed < 1500) {
-    model = "gpt-4o-mini";
-  } else if (nanoUsed < 3000) {
-    model = "gpt-5-nano";
-  } else {
-    return res
-      .status(429)
-      .json({ error: "Daily AI limit reached. Try again after midnight in your timezone." });
-  }
-
-}
-
-const maxCompletionTokens = 1500;
+    const maxOutputTokens = 1500;
 
     // ---------- SYSTEM PROMPT ----------
-    const messages = [
+    const inputPayload = [
       {
         role: "system",
         content:
@@ -146,73 +132,53 @@ const maxCompletionTokens = 1500;
       { role: "user", content: userQuestion }
     ];
 
-    // ---------- OPENAI REQUEST ----------
-    const bodyPayload = {
-      model,
-      messages,
-      max_completion_tokens: maxCompletionTokens
-    };
-
-    if (model === "gpt-4o-mini") {
-      bodyPayload.temperature = 0.7;
-    }
-
-    const resp = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify(bodyPayload)
-      }
-    );
+    // ---------- OPENAI REQUEST (RESPONSES API) ----------
+    const resp = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model,
+        input: inputPayload,
+        max_output_tokens: maxOutputTokens,
+        temperature: model === "gpt-4o-mini" ? 0.7 : undefined
+      })
+    });
 
     const data = await resp.json();
 
     if (!resp.ok) {
       console.error("OpenAI error:", data);
-      return res
-        .status(500)
-        .json({ error: data?.error?.message || "OpenAI request failed" });
+      return res.status(500).json({
+        error: data?.error?.message || "OpenAI request failed"
+      });
     }
 
+    // ---------- EXTRACT RESPONSE ----------
     const reply =
-      data?.choices?.[0]?.message?.content ||
+      data?.output?.[0]?.content?.[0]?.text ||
       "No response generated.";
 
     // ---------- TOKEN TRACKING ----------
-const promptTokens = Number(data?.usage?.prompt_tokens || 0);
-const completionTokens = Number(
-  data?.usage?.completion_tokens || 0
-);
+    const promptTokens = Number(data?.usage?.input_tokens || 0);
+    const completionTokens = Number(data?.usage?.output_tokens || 0);
 
-// 👑 Only track usage for non-admin users
-if (settings?.role !== "admin") {
-
-  if (model === "gpt-5-nano") {
-    await supabaseAdmin
-      .from("ai_usage_daily")
-      .update({
-        nano_tokens: nanoUsed + promptTokens + completionTokens,
-        updated_at: new Date().toISOString()
-      })
-      .eq("user_id", userId)
-      .eq("day", day);
-  } else {
-    await supabaseAdmin
-      .from("ai_usage_daily")
-      .update({
-        input_tokens: inputUsed + promptTokens,
-        output_tokens: outputUsed + completionTokens,
-        updated_at: new Date().toISOString()
-      })
-      .eq("user_id", userId)
-      .eq("day", day);
-  }
-
-}
+    if (settings?.role !== "admin") {
+      if (model === "gpt-5-nano") {
+        await supabaseAdmin.from("ai_usage_daily").update({
+          nano_tokens: nanoUsed + promptTokens + completionTokens,
+          updated_at: new Date().toISOString()
+        }).eq("user_id", userId).eq("day", day);
+      } else {
+        await supabaseAdmin.from("ai_usage_daily").update({
+          input_tokens: inputUsed + promptTokens,
+          output_tokens: outputUsed + completionTokens,
+          updated_at: new Date().toISOString()
+        }).eq("user_id", userId).eq("day", day);
+      }
+    }
 
     return res.status(200).json({
       reply,
