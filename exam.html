@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Exam Mode – GCSE Focus</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<style>
+body {
+  background: #f8f8f8;
+  font-family: Georgia, serif;
+  color: #000;
+  margin: 0;
+}
+
+.exam-container {
+  max-width: 800px;
+  margin: 60px auto;
+  background: #fff;
+  padding: 40px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.exam-header {
+  text-align: center;
+  border-bottom: 2px solid #000;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+.exam-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.exam-controls {
+  margin-bottom: 30px;
+}
+
+.exam-controls select,
+.exam-controls button {
+  padding: 8px 12px;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+.question-box {
+  margin: 30px 0;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.answer-box textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 10px;
+  font-size: 15px;
+  font-family: Georgia, serif;
+}
+
+.mark-btn {
+  margin-top: 15px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.result-box {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f1f1f1;
+  border-left: 4px solid #000;
+  white-space: pre-wrap;
+}
+</style>
+</head>
+
+<body>
+
+<div id="navbar"></div>
+
+<div class="exam-container">
+
+  <div class="exam-header">
+    <h1>GCSE Science Exam Mode</h1>
+    <p>Answer as if you are in the real exam.</p>
+  </div>
+
+  <div class="exam-controls">
+    <select id="subject">
+      <option value="Biology">Biology</option>
+      <option value="Chemistry">Chemistry</option>
+      <option value="Physics">Physics</option>
+    </select>
+
+    <select id="tier">
+      <option value="Foundation">Foundation</option>
+      <option value="Higher">Higher</option>
+    </select>
+
+    <select id="marks">
+      <option value="2">2 marks</option>
+      <option value="3">3 marks</option>
+      <option value="4">4 marks</option>
+      <option value="5">5 marks</option>
+      <option value="6">6 marks</option>
+    </select>
+
+    <button onclick="generateQuestion()">Generate Question</button>
+  </div>
+
+  <div class="question-box" id="questionBox">
+    Question will appear here.
+  </div>
+
+  <div class="answer-box">
+    <textarea id="studentAnswer" placeholder="Write your answer here..."></textarea>
+    <button class="mark-btn" onclick="markAnswer()">Mark My Answer</button>
+  </div>
+
+  <div class="result-box" id="resultBox">
+    Marking feedback will appear here.
+  </div>
+
+</div>
+
+<script src="/js/navbar.js"></script>
+
+<script>
+let currentQuestion = "";
+
+async function generateQuestion() {
+  const subject = document.getElementById("subject").value;
+  const tier = document.getElementById("tier").value;
+  const marks = document.getElementById("marks").value;
+
+  const prompt = `
+Generate one GCSE ${subject} ${tier} tier exam-style question worth ${marks} marks.
+Do not include the answer.
+Write it exactly how it would appear on a real exam paper.
+  `;
+
+  const response = await fetch("/api/ai", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + localStorage.getItem("access_token")
+    },
+    body: JSON.stringify({ question: prompt })
+  });
+
+  const data = await response.json();
+
+  currentQuestion = data.reply;
+  document.getElementById("questionBox").innerText = currentQuestion;
+  document.getElementById("resultBox").innerText = "";
+}
+
+async function markAnswer() {
+  const answer = document.getElementById("studentAnswer").value;
+
+  if (!answer || !currentQuestion) {
+    alert("Generate a question and write an answer first.");
+    return;
+  }
+
+  const prompt = `
+You are a GCSE science examiner.
+
+Question:
+${currentQuestion}
+
+Student Answer:
+${answer}
+
+Mark this answer strictly using GCSE mark scheme logic.
+
+Return:
+- Mark awarded out of total
+- Bullet point mark scheme
+- What student got correct
+- What student missed
+- A full-mark model answer
+  `;
+
+  const response = await fetch("/api/ai", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + localStorage.getItem("access_token")
+    },
+    body: JSON.stringify({ question: prompt })
+  });
+
+  const data = await response.json();
+
+  document.getElementById("resultBox").innerText = data.reply;
+}
+</script>
+
+</body>
+</html>
