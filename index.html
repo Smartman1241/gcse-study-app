@@ -923,50 +923,14 @@
 
 <div class="toast" id="toast"></div>
 <script>
-const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-
-  if (!session) {
-    window.location.href = "auth.html";
-    return;
-  }
-
-  // Show email in dropdown
-  const emailBox = document.getElementById("accountEmail");
-  if (emailBox) {
-    emailBox.textContent = session.user.email;
-  }
-
-  // Toggle dropdown
-  const btn = document.getElementById("accountBtn");
-  const dropdown = document.getElementById("accountDropdown");
-
-  btn?.addEventListener("click", () => {
-    dropdown.style.display =
-      dropdown.style.display === "block" ? "none" : "block";
-  });
-
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".account-wrapper")) {
-      dropdown.style.display = "none";
-    }
-  });
-
-  // Logout
-  document.getElementById("btnLogout")?.addEventListener("click", async () => {
-    await supabaseClient.auth.signOut();
-    window.location.href = "auth.html";
-  });
-});
-</script>
-<script>
 (() => {
   "use strict";
+
+  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
 
   // ---------- Utils ----------
   const $ = (sel, root=document) => root.querySelector(sel);
@@ -1059,6 +1023,44 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   let state = defaultState();
+let currentUser = null;
+
+async function loadUserData() {
+  if (!currentUser) return;
+
+  const { data, error } = await supabaseClient
+    .from("user_data")
+    .select("data")
+    .eq("user_id", currentUser.id)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Load error:", error);
+    return;
+  }
+
+  if (data && data.data) {
+    state = defaultState();
+    mergeIn(data.data);
+  }
+
+  bootUI();
+}
+
+async function saveUserData() {
+  if (!currentUser) return;
+
+  const { error } = await supabaseClient
+    .from("user_data")
+    .upsert({
+      user_id: currentUser.id,
+      data: state
+    });
+
+  if (error) {
+    console.error("Save error:", error);
+  }
+}
 
   const storageGet = () => {
     try{
@@ -1069,9 +1071,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       return obj;
     }catch{ return null; }
   };
-  const storageSet = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  };
+const storageSet = () => {
+  saveUserData();
+};
 
   const mergeIn = (saved) => {
     if(!saved || typeof saved !== "object") return;
@@ -2417,8 +2419,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ---------- Boot ----------
   function boot(){
     // load
-    const saved = storageGet();
-    if(saved) mergeIn(saved);
 
     // ensure some invariants
     if(!Array.isArray(state.subjects) || !state.subjects.length) state.subjects = [...DEFAULT_SUBJECTS];
@@ -2435,8 +2435,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     bootUI();
   }
 
-  boot();
-})();
+async function init() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+
+  if (!session) {
+    window.location.href = "auth.html";
+    return;
+  }
+
+  currentUser = session.user;
+
+  await loadUserData();  // this loads state and runs bootUI()
+
+  // Account UI wiring
+  const emailBox = document.getElementById("accountEmail");
+  if (emailBox) {
+    emailBox.textContent = currentUser.email;
+  }
+
+  const btn = document.getElementById("accountBtn");
+  const dropdown = document.getElementById("accountDropdown");
+
+  btn?.addEventListener("click", () => {
+    dropdown.style.display =
+      dropdown.style.display === "block" ? "none" : "block";
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".account-wrapper")) {
+      dropdown.style.display = "none";
+    }
+  });
+
+  document.getElementById("btnLogout")?.addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "auth.html";
+  });
+}
+
+init();})();
 </script>
 </body>
 </html>
