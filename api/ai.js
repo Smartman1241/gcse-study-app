@@ -4,7 +4,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Accept BOTH question and topic (fixes mismatch bug)
     const { question, topic, history } = req.body || {};
     const userQuestion = question || topic;
 
@@ -39,13 +38,14 @@ export default async function handler(req, res) {
           "Give clear, exam-style answers. " +
           "Do NOT use markdown symbols like ** or *. " +
           "Do NOT use LaTeX. " +
-"Write chemical formulas using proper Unicode subscript characters like CO₂, H₂O, C₆H₁₂O₆. Do NOT use HTML tags or LaTeX."          "Keep answers concise unless user asks for detailed."
+          "Write chemical formulas using proper Unicode subscript characters like CO₂, H₂O, C₆H₁₂O₆. " +
+          "Do NOT use HTML tags. " +
+          "Keep answers concise unless user asks for detailed."
       },
       ...(Array.isArray(history) ? history : []),
       { role: "user", content: userQuestion }
     ];
 
-    // ===== CALL OPENAI =====
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
