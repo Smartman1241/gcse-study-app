@@ -357,6 +357,40 @@ select option {
   background-color: var(--bg);
   color: var(--text);
 }
+.account-dropdown{
+  position:absolute;
+  right:0;
+  top:48px;
+  width:260px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:16px;
+  display:none;
+  z-index:1000;
+  box-shadow:var(--shadow);
+}
+
+.account-header{
+  margin-bottom:8px;
+}
+
+.account-name{
+  font-weight:800;
+  font-size:15px;
+}
+
+.account-email{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:4px;
+}
+
+.btn.full{
+  width:100%;
+  margin-top:8px;
+}
+
 </style>
 </head>
 
@@ -381,23 +415,20 @@ select option {
 
     <div class="toolbar">
 <div class="account-wrapper" style="position:relative;">
-  <button class="btn" id="accountBtn">👤 Account</button>
+  <button class="btn" id="accountBtn">
+    👤 <span id="navUsername">Loading...</span>
+  </button>
 
-  <div id="accountDropdown" style="
-    position:absolute;
-    right:0;
-    top:48px;
-    background:rgba(20,20,40,.95);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:14px;
-    width:240px;
-    display:none;
-    z-index:999;
-  ">
-    <div id="accountEmail" style="font-size:13px; margin-bottom:10px; opacity:.7;"></div>
+  <div id="accountDropdown" class="account-dropdown">
+    <div class="account-header">
+      <div id="dropdownUsername" class="account-name"></div>
+      <div id="accountEmail" class="account-email"></div>
+    </div>
+
     <div class="divider"></div>
-    <button class="btn ghost" style="width:100%; margin-top:6px;" id="btnLogout">Logout</button>
+
+    <button class="btn ghost full" id="btnAccountPage">Account Settings</button>
+    <button class="btn ghost full" id="btnLogout">Logout</button>
   </div>
 </div>
       <div class="chip">
@@ -2523,16 +2554,52 @@ async function init() {
 
   await loadUserData();  // this loads state and runs bootUI()
 bindEvents();
+// Fetch username
+const { data: settings } = await supabaseClient
+  .from("user_settings")
+  .select("username")
+  .eq("user_id", currentUser.id)
+  .single();
+
+const username = settings?.username || currentUser.email;
+
+document.getElementById("navUsername").textContent = username;
+document.getElementById("dropdownUsername").textContent = username;
+document.getElementById("accountEmail").textContent = currentUser.email;
+
+// Dropdown toggle
+const dropdown = document.getElementById("accountDropdown");
+const btn = document.getElementById("accountBtn");
+
+btn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  dropdown.style.display =
+    dropdown.style.display === "block" ? "none" : "block";
+});
+
+// Click outside closes dropdown
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".account-wrapper")) {
+    dropdown.style.display = "none";
+  }
+});
+
+// Account page button
+document.getElementById("btnAccountPage")
+  ?.addEventListener("click", () => {
+    window.location.href = "account.html";
+  });
+
+// Logout
+document.getElementById("btnLogout")
+  ?.addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "auth.html";
+  });
 
   // Account UI wiring
-  const emailBox = document.getElementById("accountEmail");
-  if (emailBox) {
-    emailBox.textContent = currentUser.email;
-  }
-
-  document.getElementById("accountBtn")?.addEventListener("click", () => {
-  window.location.href = "account.html";
-});
+  
+ 
 
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".account-wrapper")) {

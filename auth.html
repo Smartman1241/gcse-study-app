@@ -18,6 +18,7 @@
 }
 
 *{box-sizing:border-box}
+
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto;
@@ -28,55 +29,46 @@ body{
   color:var(--text);
   height:100vh;
   display:flex;
-}
-
-.left{
-  flex:1;
-  display:flex;
-  align-items:center;
   justify-content:center;
-  padding:40px;
+  align-items:center;
 }
 
-.brand{
-  max-width:400px;
-}
-
-.brand h1{
-  font-size:38px;
-  margin:0;
-}
-
-.brand p{
-  margin-top:12px;
-  color:var(--muted);
-}
-
-.right{
+.auth-box{
   width:420px;
+  padding:40px;
   background:var(--panel);
   backdrop-filter:blur(20px);
-  border-left:1px solid var(--border);
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  padding:40px;
+  border:1px solid var(--border);
+  border-radius:20px;
+}
+
+h1{
+  margin:0 0 8px 0;
+  font-size:28px;
+  text-align:center;
+}
+
+.subtitle{
+  text-align:center;
+  color:var(--muted);
+  margin-bottom:25px;
+  font-size:14px;
 }
 
 input{
   width:100%;
   padding:12px;
-  margin-top:10px;
+  margin-top:12px;
   border-radius:10px;
   border:1px solid var(--border);
   background:transparent;
-  color:white;
+  color:var(--text);
 }
 
 button{
   width:100%;
   padding:12px;
-  margin-top:14px;
+  margin-top:16px;
   border:none;
   border-radius:10px;
   background:linear-gradient(135deg,#8ea2ff,#46e6b3);
@@ -104,46 +96,64 @@ button{
   text-align:center;
   color:#ff7b8f;
 }
+
+.success{
+  color:#46e6b3;
+}
+
+footer{
+  position:absolute;
+  bottom:20px;
+  width:100%;
+  text-align:center;
+  font-size:13px;
+}
+footer a{
+  color:white;
+  text-decoration:none;
+  margin:0 6px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="left">
-  <div class="brand">
-    <h1>GCSE Focus</h1>
-    <p>Study Sets • Flashcards • Learn • Test • Revision • AI</p>
-  </div>
+<div class="auth-box">
+
+<h1>GCSE Focus</h1>
+<div class="subtitle">Study smarter. Focus better.</div>
+
+<div id="signin">
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="signIn()">Sign In</button>
+  <div class="link" onclick="showSignup()">Create account</div>
+  <div class="link" onclick="showReset()">Forgot password?</div>
+  <div id="signinMsg" class="message"></div>
 </div>
 
-<div class="right">
-  <div id="signin">
-    <h2>Sign In</h2>
-    <input id="email" type="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-    <button onclick="signIn()">Sign In</button>
-    <div class="link" onclick="showSignup()">Create account</div>
-    <div class="link" onclick="showReset()">Forgot password?</div>
-    <div id="signinMsg" class="message"></div>
-  </div>
-
-  <div id="signup" class="hidden">
-    <h2>Create Account</h2>
-    <input id="signupEmail" type="email" placeholder="Email">
-    <input id="signupPassword" type="password" placeholder="Password">
-    <button onclick="signUp()">Create Account</button>
-    <div class="link" onclick="showSignin()">Back to sign in</div>
-    <div id="signupMsg" class="message"></div>
-  </div>
-
-  <div id="reset" class="hidden">
-    <h2>Reset Password</h2>
-    <input id="resetEmail" type="email" placeholder="Email">
-    <button onclick="resetPassword()">Send Reset Link</button>
-    <div class="link" onclick="showSignin()">Back to sign in</div>
-    <div id="resetMsg" class="message"></div>
-  </div>
+<div id="signup" class="hidden">
+  <input id="signupUsername" type="text" placeholder="Choose username">
+  <input id="signupEmail" type="email" placeholder="Email">
+  <input id="signupPassword" type="password" placeholder="Password">
+  <button onclick="signUp()">Create Account</button>
+  <div class="link" onclick="showSignin()">Back to sign in</div>
+  <div id="signupMsg" class="message"></div>
 </div>
+
+<div id="reset" class="hidden">
+  <input id="resetEmail" type="email" placeholder="Email">
+  <button onclick="resetPassword()">Send Reset Link</button>
+  <div class="link" onclick="showSignin()">Back to sign in</div>
+  <div id="resetMsg" class="message"></div>
+</div>
+
+</div>
+
+<footer>
+  <a href="privacy.html">Privacy Policy</a> |
+  <a href="terms.html">Terms of Service</a>
+</footer>
 
 <script>
 const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
@@ -151,12 +161,9 @@ const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Auto redirect if already logged in
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) {
-    window.location.href = "index.html";
-  }
+  if (session) window.location.href = "index.html";
 });
 
 function showSignup(){
@@ -178,8 +185,10 @@ function showReset(){
 }
 
 async function signIn(){
+  signinMsg.textContent = "";
+
   const { error } = await supabaseClient.auth.signInWithPassword({
-    email: email.value,
+    email: email.value.trim(),
     password: password.value
   });
 
@@ -191,46 +200,74 @@ async function signIn(){
 }
 
 async function signUp(){
-  const { error } = await supabaseClient.auth.signUp({
-    email: signupEmail.value,
-    password: signupPassword.value
+  signupMsg.textContent = "";
+
+  const username = signupUsername.value.trim();
+  const emailVal = signupEmail.value.trim();
+  const passwordVal = signupPassword.value;
+
+  if(!username){
+    signupMsg.textContent = "Please choose a username.";
+    return;
+  }
+
+  // Check username uniqueness
+  const { data: existing } = await supabaseClient
+    .from("user_settings")
+    .select("id")
+    .eq("username", username)
+    .maybeSingle();
+
+  if(existing){
+    signupMsg.textContent = "Username already taken.";
+    return;
+  }
+
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: emailVal,
+    password: passwordVal
   });
 
   if(error){
     signupMsg.textContent = error.message;
-  } else {
-    signupMsg.style.color = "#46e6b3";
-    signupMsg.textContent = "Account created. You can now sign in.";
+    return;
   }
+
+  if(data.user){
+    await supabaseClient.from("user_settings").insert({
+      user_id: data.user.id,
+      username: username,
+      tier: "free",
+      role: "user",
+      preferred_theme: "auto",
+      reminder_time: "08:00",
+      notify_updates: true,
+      notify_promos: false
+    });
+  }
+
+  signupMsg.classList.add("success");
+  signupMsg.textContent = "Account created. You can now sign in.";
 }
 
 async function resetPassword(){
-  const { error } = await supabaseClient.auth.resetPasswordForEmail(resetEmail.value, {
-    redirectTo: window.location.origin + "/auth.html"
-  });
+  resetMsg.textContent = "";
+
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(
+    resetEmail.value.trim(),
+    {
+      redirectTo: window.location.origin + "/auth.html"
+    }
+  );
 
   if(error){
     resetMsg.textContent = error.message;
   } else {
-    resetMsg.style.color = "#46e6b3";
+    resetMsg.classList.add("success");
     resetMsg.textContent = "Reset email sent.";
   }
 }
 </script>
-<footer style="
-  position:absolute;
-  bottom:20px;
-  width:100%;
-  text-align:center;
-  font-size:13px;
-">
-  <a href="privacy.html" style="color:#ffffff; text-decoration:none;">
-    Privacy Policy
-  </a>
-  |
-  <a href="terms.html" style="color:#ffffff; text-decoration:none;">
-    Terms of Service
-  </a>
-</footer>
+
 </body>
 </html>

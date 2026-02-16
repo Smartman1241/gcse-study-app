@@ -13,6 +13,8 @@
   --text:rgba(255,255,255,.92);
   --muted:rgba(255,255,255,.66);
   --border:rgba(255,255,255,.14);
+  --accent:#8ea2ff;
+  --danger:#ff4d4d;
   --radius:18px;
 }
 html[data-theme="light"]{
@@ -21,10 +23,12 @@ html[data-theme="light"]{
   --text:rgba(0,0,0,.9);
   --muted:rgba(0,0,0,.6);
   --border:rgba(0,0,0,.12);
+  --accent:#5b6cff;
+  --danger:#d60000;
 }
 body{
   margin:0;
-  font-family: system-ui, sans-serif;
+  font-family:system-ui,sans-serif;
   background:var(--bg);
   color:var(--text);
 }
@@ -37,40 +41,60 @@ body{
   background:var(--panel);
   border:1px solid var(--border);
   border-radius:var(--radius);
-  padding:20px;
-  margin-bottom:20px;
+  padding:22px;
+  margin-bottom:22px;
 }
-h2{
-  margin-top:0;
-  font-size:18px;
+h1{margin:0;}
+h2{margin-top:0;font-size:18px;}
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:30px;
 }
 .row{
   display:flex;
   justify-content:space-between;
-  margin:8px 0;
+  align-items:center;
+  margin:12px 0;
+  gap:20px;
 }
-.label{color:var(--muted);}
+.label{
+  color:var(--muted);
+  min-width:160px;
+}
+input, select{
+  background:var(--panel);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:6px 10px;
+}
+input[type="checkbox"]{
+  transform:scale(1.1);
+}
 .btn{
   padding:8px 14px;
   border-radius:12px;
   border:1px solid var(--border);
   background:transparent;
+  color:var(--text);
   cursor:pointer;
 }
 .btn.primary{
-  background:rgba(142,162,255,.8);
-  color:black;
+  background:var(--accent);
+  color:white;
   border:none;
 }
 .btn.danger{
-  background:rgba(255,0,0,.2);
-  border:1px solid rgba(255,0,0,.3);
+  background:rgba(255,0,0,.15);
+  border:1px solid var(--danger);
+  color:var(--danger);
 }
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:20px;
+.notice{
+  font-size:13px;
+  color:var(--muted);
+  margin-top:6px;
 }
 </style>
 </head>
@@ -80,25 +104,43 @@ h2{
 
 <div class="topbar">
   <h1>Account</h1>
-  <button class="btn" onclick="window.location.href='index.html'">← Back</button>
+  <div>
+    <button class="btn" onclick="window.location.href='index.html'">← Back</button>
+    <button class="btn" id="btnLogout">Logout</button>
+  </div>
 </div>
 
+<!-- PROFILE -->
 <div class="panel">
   <h2>Profile</h2>
-  <div class="row"><span class="label">Username</span><span id="username">Loading...</span></div>
-  <div class="row"><span class="label">Email</span><span id="email">Loading...</span></div>
+  <div class="row">
+    <span class="label">Username</span>
+    <input type="text" id="usernameInput">
+  </div>
+  <div class="row">
+    <span class="label">Email</span>
+    <span id="email"></span>
+  </div>
 </div>
 
+<!-- SUBSCRIPTION -->
 <div class="panel">
   <h2>Subscription</h2>
-  <div class="row"><span class="label">Account type</span><span>Student</span></div>
-  <div class="row"><span class="label">Subscription type</span><span id="tier">Free</span></div>
+  <div class="row">
+    <span class="label">Account type</span>
+    <span>Student</span>
+  </div>
+  <div class="row">
+    <span class="label">Subscription type</span>
+    <span id="tier">Free</span>
+  </div>
   <div class="row">
     <span class="label">Payment</span>
     <button class="btn">Manage</button>
   </div>
 </div>
 
+<!-- APPEARANCE -->
 <div class="panel">
   <h2>Appearance</h2>
   <div class="row">
@@ -111,11 +153,12 @@ h2{
   </div>
 </div>
 
+<!-- NOTIFICATIONS -->
 <div class="panel">
   <h2>Notifications</h2>
   <div class="row">
     <span class="label">Study reminders</span>
-    <input type="time" id="reminderTime" value="08:00">
+    <input type="time" id="reminderTime">
   </div>
   <div class="row">
     <span class="label">Email updates</span>
@@ -127,9 +170,10 @@ h2{
   </div>
 </div>
 
+<!-- SECURITY -->
 <div class="panel">
   <h2>Security</h2>
-  <button class="btn primary" id="btnChangePassword">Change Password</button>
+  <button class="btn primary" id="btnChangePassword">Request Password Reset</button>
   <button class="btn danger" id="btnDeleteAccount">Delete Account</button>
 </div>
 
@@ -141,34 +185,114 @@ const supabaseClient = supabase.createClient(
   "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
 );
 
+async function saveSettings(updates, userId){
+  await supabaseClient
+    .from("user_settings")
+    .update(updates)
+    .eq("user_id", userId);
+}
+
 async function init(){
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
-    window.location.href = "auth.html";
+    window.location.href="auth.html";
     return;
   }
 
+  const userId = session.user.id;
   document.getElementById("email").textContent = session.user.email;
 
   const { data } = await supabaseClient
     .from("user_settings")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", userId)
     .single();
 
   if(data){
-    document.getElementById("username").textContent = data.username || "Not set";
+    document.getElementById("usernameInput").value = data.username || "";
     document.getElementById("tier").textContent = data.tier || "Free";
+    document.getElementById("themeSelect").value = data.preferred_theme || "auto";
+    document.getElementById("reminderTime").value = data.reminder_time || "08:00";
+    document.getElementById("notifyUpdates").checked = data.notify_updates ?? true;
+    document.getElementById("notifyPromos").checked = data.notify_promos ?? false;
+
+    applyTheme(data.preferred_theme || "auto");
   }
 
-  document.getElementById("btnChangePassword").onclick = async () => {
-    await supabaseClient.auth.resetPasswordForEmail(session.user.email);
-    alert("Password reset email sent.");
-  };
+  // Username update with uniqueness check
+  document.getElementById("usernameInput")
+    .addEventListener("change", async (e)=>{
+      const newUsername = e.target.value.trim();
+      if(!newUsername) return;
 
-  document.getElementById("btnDeleteAccount").onclick = () => {
-    alert("Account deletion requires secure server implementation.");
-  };
+      const { data:existing } = await supabaseClient
+        .from("user_settings")
+        .select("id")
+        .eq("username", newUsername)
+        .neq("user_id", userId)
+        .maybeSingle();
+
+      if(existing){
+        alert("Username already in use.");
+        return;
+      }
+
+      await saveSettings({ username:newUsername }, userId);
+      alert("Username updated");
+  });
+
+  // Theme change
+  document.getElementById("themeSelect")
+    .addEventListener("change", async (e)=>{
+      const value = e.target.value;
+      applyTheme(value);
+      await saveSettings({ preferred_theme:value }, userId);
+  });
+
+  // Notifications
+  document.getElementById("reminderTime")
+    .addEventListener("change", e=>{
+      saveSettings({ reminder_time:e.target.value }, userId);
+  });
+
+  document.getElementById("notifyUpdates")
+    .addEventListener("change", e=>{
+      saveSettings({ notify_updates:e.target.checked }, userId);
+  });
+
+  document.getElementById("notifyPromos")
+    .addEventListener("change", e=>{
+      saveSettings({ notify_promos:e.target.checked }, userId);
+  });
+
+  // Password reset
+  document.getElementById("btnChangePassword")
+    .addEventListener("click", async ()=>{
+      await supabaseClient.auth.resetPasswordForEmail(session.user.email);
+      alert("Password reset email sent.");
+  });
+
+  // Logout
+  document.getElementById("btnLogout")
+    .addEventListener("click", async ()=>{
+      await supabaseClient.auth.signOut();
+      window.location.href="auth.html";
+  });
+
+  // Delete account placeholder
+  document.getElementById("btnDeleteAccount")
+    .addEventListener("click", ()=>{
+      alert("Account deletion must be implemented securely via server.");
+  });
+}
+
+function applyTheme(value){
+  if(value==="auto"){
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", prefersDark?"dark":"light");
+  } else {
+    document.documentElement.setAttribute("data-theme", value);
+  }
 }
 
 init();
