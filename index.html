@@ -2522,6 +2522,7 @@ async function init() {
   currentUser = session.user;
 
   await loadUserData();  // this loads state and runs bootUI()
+bindEvents();
 
   // Account UI wiring
   const emailBox = document.getElementById("accountEmail");
