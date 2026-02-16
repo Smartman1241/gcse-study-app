@@ -1,0 +1,30 @@
+[33md9e869c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fix tab switching bug (boot() error)
+[33m7c1e0b9[m Fix tab switching bug (boot() error)
+[33med9a1f1[m Enable static file routing
+[33m68e5602[m Added Science Exam Mode page
+[33m43ecc8c[m Upgraded to OpenAI Responses API
+[33md733503[m Admin unlimited logic
+[33m1fec5c6[m Admin unlimited logic
+[33m0e0ce0d[m Fixed privacy filename casing
+[33m10e993e[m Fixed footer link visibility
+[33m33118cf[m Added Privacy Policy and Terms of Service
+[33m4caa7ee[m Trigger redeploy
+[33me0fa41a[m Replace ai.js with clean production version
+[33m4d339fe[m Fix CommonJS export for Vercel function
+[33m0b804ca[m Fix Supabase import for CommonJS
+[33mdc9a269[m Fix GPT-5 temperature compatibility
+[33mc16034a[m Fix GPT-5 token parameter
+[33md6fc612[m Fix user_data schema and upsert logic
+[33mbf91a1b[m Add per-user AI token limits with timezone reset
+[33m735e7d1[m Add gitignore and remove node_modules from tracking
+[33mff81c84[m Initialize Node project and add Supabase SDK
+[33m2ac0680[m Added localStorage fallback alongside Supabase cloud save
+[33mf8a93a5[m Moved Supabase auth init inside main script
+[33mc77cb35[m Updated dashboard save message
+[33mbb80e4a[m Added Supabase auth system
+[33m89b143f[m Force clean deploy
+[33m78b2b39[m Fix broken system prompt string
+[33mc15f513[m Fix AI question handling
+[33m1fb20e6[m Fix AI question handling
+[33md29987d[m Simplify AI to gpt-4o-mini only
+[33madfbc55[m Remove backend debug text

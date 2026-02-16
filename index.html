@@ -1145,6 +1145,7 @@ const storageSet = () => {
     if(tab === "papers") renderPastPapers();
     if(tab === "tasks") renderTasks();
   }
+window.setTab = setTab;
 
   // ---------- Subjects dropdown helper ----------
   function fillSubjects(selectEl, {includeAll=false, allLabel="All subjects"} = {}){
