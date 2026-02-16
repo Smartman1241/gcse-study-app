@@ -1023,7 +1023,6 @@
   });
 
   let state = defaultState();
-let currentUser = null;
 
 async function loadUserData() {
   if (!currentUser) return;
@@ -1044,7 +1043,7 @@ async function loadUserData() {
     mergeIn(data.data);
   }
 
-  bootUI();
+  boot();
 }
 
 async function saveUserData() {
@@ -1072,9 +1071,16 @@ async function saveUserData() {
     }catch{ return null; }
   };
 const storageSet = () => {
+  // Save locally as backup
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn("Local save failed:", e);
+  }
+
+  // Save to Supabase
   saveUserData();
 };
-
   const mergeIn = (saved) => {
     if(!saved || typeof saved !== "object") return;
     // Keep defaults for new fields, but merge known ones
