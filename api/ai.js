@@ -4,14 +4,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { question, history } = req.body;
+    // Accept BOTH question and topic (fixes mismatch bug)
+    const { question, topic, history } = req.body || {};
+    const userQuestion = question || topic;
 
-    if (!question) {
+    if (!userQuestion || typeof userQuestion !== "string") {
       return res.status(400).json({ error: "No question provided" });
     }
 
     // ===== TOKEN CONTROL =====
-    const lower = question.toLowerCase();
+    const lower = userQuestion.toLowerCase();
     let maxTokens = 250;
 
     const detailedKeywords = [
@@ -41,7 +43,7 @@ export default async function handler(req, res) {
           "Keep answers concise unless user asks for detailed."
       },
       ...(Array.isArray(history) ? history : []),
-      { role: "user", content: question }
+      { role: "user", content: userQuestion }
     ];
 
     // ===== CALL OPENAI =====
@@ -69,7 +71,7 @@ export default async function handler(req, res) {
     }
 
     const reply =
-      data.choices?.[0]?.message?.content || "No response generated.";
+      data?.choices?.[0]?.message?.content || "No response generated.";
 
     return res.status(200).json({ reply });
 
