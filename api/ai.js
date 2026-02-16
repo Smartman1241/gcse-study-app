@@ -133,11 +133,11 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: maxTokens,
-        temperature: 0.7
-      })
+  model,
+  messages,
+  max_completion_tokens: maxTokens,
+  temperature: 0.7
+})
     });
 
     const data = await resp.json();
