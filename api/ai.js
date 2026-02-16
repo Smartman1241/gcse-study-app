@@ -39,8 +39,7 @@ export default async function handler(req, res) {
           "Give clear, exam-style answers. " +
           "Do NOT use markdown symbols like ** or *. " +
           "Do NOT use LaTeX. " +
-          "Write chemical formulas using HTML subscript tags like CO<sub>2</sub>. " +
-          "Keep answers concise unless user asks for detailed."
+"Write chemical formulas using proper Unicode subscript characters like CO₂, H₂O, C₆H₁₂O₆. Do NOT use HTML tags or LaTeX."          "Keep answers concise unless user asks for detailed."
       },
       ...(Array.isArray(history) ? history : []),
       { role: "user", content: userQuestion }
