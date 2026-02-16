@@ -38,6 +38,16 @@ module.exports = async function handler(req, res) {
     }
 
     const userId = userData.user.id;
+// 🔥 Get role + tier + timezone
+const { data: settings, error: settingsError } = await supabaseAdmin
+  .from("user_settings")
+  .select("role, tier, timezone")
+  .eq("user_id", userId)
+  .single();
+
+if (settingsError) {
+  console.error("Error fetching user settings:", settingsError);
+}
 
     // ---------- INPUT ----------
     const { question, topic, history, timezone } = req.body || {};
@@ -98,19 +108,26 @@ module.exports = async function handler(req, res) {
     // ---------- MODEL SELECTION ----------
     let model;
 
-    if (inputUsed < 400 && outputUsed < 400) {
-      model = "gpt-5-mini";
-    } else if (inputUsed < 1500 && outputUsed < 1500) {
-      model = "gpt-4o-mini";
-    } else if (nanoUsed < 3000) {
-      model = "gpt-5-nano";
-    } else {
-      return res
-        .status(429)
-        .json({ error: "Daily AI limit reached. Try again after midnight in your timezone." });
-    }
+if (settings?.role === "admin") {
+  // 👑 ADMIN – unlimited
+  model = "gpt-5-mini";
+} else {
 
-    const maxCompletionTokens = 1500;
+  if (inputUsed < 400 && outputUsed < 400) {
+    model = "gpt-5-mini";
+  } else if (inputUsed < 1500 && outputUsed < 1500) {
+    model = "gpt-4o-mini";
+  } else if (nanoUsed < 3000) {
+    model = "gpt-5-nano";
+  } else {
+    return res
+      .status(429)
+      .json({ error: "Daily AI limit reached. Try again after midnight in your timezone." });
+  }
+
+}
+
+const maxCompletionTokens = 1500;
 
     // ---------- SYSTEM PROMPT ----------
     const messages = [
@@ -166,31 +183,36 @@ module.exports = async function handler(req, res) {
       "No response generated.";
 
     // ---------- TOKEN TRACKING ----------
-    const promptTokens = Number(data?.usage?.prompt_tokens || 0);
-    const completionTokens = Number(
-      data?.usage?.completion_tokens || 0
-    );
+const promptTokens = Number(data?.usage?.prompt_tokens || 0);
+const completionTokens = Number(
+  data?.usage?.completion_tokens || 0
+);
 
-    if (model === "gpt-5-nano") {
-      await supabaseAdmin
-        .from("ai_usage_daily")
-        .update({
-          nano_tokens: nanoUsed + promptTokens + completionTokens,
-          updated_at: new Date().toISOString()
-        })
-        .eq("user_id", userId)
-        .eq("day", day);
-    } else {
-      await supabaseAdmin
-        .from("ai_usage_daily")
-        .update({
-          input_tokens: inputUsed + promptTokens,
-          output_tokens: outputUsed + completionTokens,
-          updated_at: new Date().toISOString()
-        })
-        .eq("user_id", userId)
-        .eq("day", day);
-    }
+// 👑 Only track usage for non-admin users
+if (settings?.role !== "admin") {
+
+  if (model === "gpt-5-nano") {
+    await supabaseAdmin
+      .from("ai_usage_daily")
+      .update({
+        nano_tokens: nanoUsed + promptTokens + completionTokens,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", userId)
+      .eq("day", day);
+  } else {
+    await supabaseAdmin
+      .from("ai_usage_daily")
+      .update({
+        input_tokens: inputUsed + promptTokens,
+        output_tokens: outputUsed + completionTokens,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", userId)
+      .eq("day", day);
+  }
+
+}
 
     return res.status(200).json({
       reply,
