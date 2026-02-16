@@ -2530,13 +2530,9 @@ bindEvents();
     emailBox.textContent = currentUser.email;
   }
 
-  const btn = document.getElementById("accountBtn");
-  const dropdown = document.getElementById("accountDropdown");
-
-  btn?.addEventListener("click", () => {
-    dropdown.style.display =
-      dropdown.style.display === "block" ? "none" : "block";
-  });
+  document.getElementById("accountBtn")?.addEventListener("click", () => {
+  window.location.href = "account.html";
+});
 
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".account-wrapper")) {

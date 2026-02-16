@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Account • GCSE Focus</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --bg:#0b1020;
+  --panel:rgba(255,255,255,.06);
+  --text:rgba(255,255,255,.92);
+  --muted:rgba(255,255,255,.66);
+  --border:rgba(255,255,255,.14);
+  --radius:18px;
+}
+html[data-theme="light"]{
+  --bg:#f5f7ff;
+  --panel:rgba(0,0,0,.05);
+  --text:rgba(0,0,0,.9);
+  --muted:rgba(0,0,0,.6);
+  --border:rgba(0,0,0,.12);
+}
+body{
+  margin:0;
+  font-family: system-ui, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+.wrap{
+  max-width:900px;
+  margin:40px auto;
+  padding:20px;
+}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:20px;
+}
+h2{
+  margin-top:0;
+  font-size:18px;
+}
+.row{
+  display:flex;
+  justify-content:space-between;
+  margin:8px 0;
+}
+.label{color:var(--muted);}
+.btn{
+  padding:8px 14px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:transparent;
+  cursor:pointer;
+}
+.btn.primary{
+  background:rgba(142,162,255,.8);
+  color:black;
+  border:none;
+}
+.btn.danger{
+  background:rgba(255,0,0,.2);
+  border:1px solid rgba(255,0,0,.3);
+}
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<div class="topbar">
+  <h1>Account</h1>
+  <button class="btn" onclick="window.location.href='index.html'">← Back</button>
+</div>
+
+<div class="panel">
+  <h2>Profile</h2>
+  <div class="row"><span class="label">Username</span><span id="username">Loading...</span></div>
+  <div class="row"><span class="label">Email</span><span id="email">Loading...</span></div>
+</div>
+
+<div class="panel">
+  <h2>Subscription</h2>
+  <div class="row"><span class="label">Account type</span><span>Student</span></div>
+  <div class="row"><span class="label">Subscription type</span><span id="tier">Free</span></div>
+  <div class="row">
+    <span class="label">Payment</span>
+    <button class="btn">Manage</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Appearance</h2>
+  <div class="row">
+    <span class="label">Theme</span>
+    <select id="themeSelect">
+      <option value="auto">Auto</option>
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+    </select>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Notifications</h2>
+  <div class="row">
+    <span class="label">Study reminders</span>
+    <input type="time" id="reminderTime" value="08:00">
+  </div>
+  <div class="row">
+    <span class="label">Email updates</span>
+    <input type="checkbox" id="notifyUpdates">
+  </div>
+  <div class="row">
+    <span class="label">Promotions</span>
+    <input type="checkbox" id="notifyPromos">
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Security</h2>
+  <button class="btn primary" id="btnChangePassword">Change Password</button>
+  <button class="btn danger" id="btnDeleteAccount">Delete Account</button>
+</div>
+
+</div>
+
+<script>
+const supabaseClient = supabase.createClient(
+  "https://mgpwknnbhaljsscsvucm.supabase.co",
+  "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+);
+
+async function init(){
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(!session){
+    window.location.href = "auth.html";
+    return;
+  }
+
+  document.getElementById("email").textContent = session.user.email;
+
+  const { data } = await supabaseClient
+    .from("user_settings")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .single();
+
+  if(data){
+    document.getElementById("username").textContent = data.username || "Not set";
+    document.getElementById("tier").textContent = data.tier || "Free";
+  }
+
+  document.getElementById("btnChangePassword").onclick = async () => {
+    await supabaseClient.auth.resetPasswordForEmail(session.user.email);
+    alert("Password reset email sent.");
+  };
+
+  document.getElementById("btnDeleteAccount").onclick = () => {
+    alert("Account deletion requires secure server implementation.");
+  };
+}
+
+init();
+</script>
+
+</body>
+</html>
