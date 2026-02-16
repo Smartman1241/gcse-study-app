@@ -10,6 +10,7 @@
 :root{
   --bg:#0b1020;
   --panel:rgba(255,255,255,.06);
+  --panel-strong:rgba(255,255,255,.09);
   --text:rgba(255,255,255,.92);
   --muted:rgba(255,255,255,.66);
   --border:rgba(255,255,255,.14);
@@ -17,26 +18,33 @@
   --danger:#ff4d4d;
   --radius:18px;
 }
+
 html[data-theme="light"]{
   --bg:#f5f7ff;
   --panel:rgba(0,0,0,.05);
+  --panel-strong:rgba(0,0,0,.08);
   --text:rgba(0,0,0,.9);
   --muted:rgba(0,0,0,.6);
   --border:rgba(0,0,0,.12);
   --accent:#5b6cff;
   --danger:#d60000;
 }
+
+*{box-sizing:border-box}
+
 body{
   margin:0;
   font-family:system-ui,sans-serif;
   background:var(--bg);
   color:var(--text);
 }
+
 .wrap{
   max-width:900px;
   margin:40px auto;
   padding:20px;
 }
+
 .panel{
   background:var(--panel);
   border:1px solid var(--border);
@@ -44,53 +52,89 @@ body{
   padding:22px;
   margin-bottom:22px;
 }
+
 h1{margin:0;}
 h2{margin-top:0;font-size:18px;}
+
 .topbar{
   display:flex;
   justify-content:space-between;
   align-items:center;
   margin-bottom:30px;
 }
+
 .row{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin:12px 0;
+  margin:14px 0;
   gap:20px;
+  flex-wrap:wrap;
 }
+
 .label{
   color:var(--muted);
   min-width:160px;
 }
-input, select{
-  background:var(--panel);
+
+input[type="text"],
+input[type="time"],
+select{
+  background:var(--panel-strong);
   color:var(--text);
   border:1px solid var(--border);
   border-radius:10px;
-  padding:6px 10px;
+  padding:8px 12px;
+  outline:none;
 }
+
+select option{
+  background:var(--bg);
+  color:var(--text);
+}
+
+input:focus,
+select:focus{
+  border-color:var(--accent);
+}
+
 input[type="checkbox"]{
-  transform:scale(1.1);
+  width:18px;
+  height:18px;
+  accent-color:var(--accent);
+  cursor:pointer;
 }
+
 .btn{
   padding:8px 14px;
   border-radius:12px;
   border:1px solid var(--border);
-  background:transparent;
+  background:var(--panel-strong);
   color:var(--text);
   cursor:pointer;
+  transition:0.15s ease;
 }
+
+.btn:hover{
+  background:var(--panel);
+}
+
 .btn.primary{
   background:var(--accent);
   color:white;
   border:none;
 }
+
+html[data-theme="light"] .btn.primary{
+  color:white;
+}
+
 .btn.danger{
   background:rgba(255,0,0,.15);
   border:1px solid var(--danger);
   color:var(--danger);
 }
+
 .notice{
   font-size:13px;
   color:var(--muted);
@@ -110,7 +154,6 @@ input[type="checkbox"]{
   </div>
 </div>
 
-<!-- PROFILE -->
 <div class="panel">
   <h2>Profile</h2>
   <div class="row">
@@ -123,7 +166,6 @@ input[type="checkbox"]{
   </div>
 </div>
 
-<!-- SUBSCRIPTION -->
 <div class="panel">
   <h2>Subscription</h2>
   <div class="row">
@@ -140,7 +182,6 @@ input[type="checkbox"]{
   </div>
 </div>
 
-<!-- APPEARANCE -->
 <div class="panel">
   <h2>Appearance</h2>
   <div class="row">
@@ -153,7 +194,6 @@ input[type="checkbox"]{
   </div>
 </div>
 
-<!-- NOTIFICATIONS -->
 <div class="panel">
   <h2>Notifications</h2>
   <div class="row">
@@ -170,7 +210,6 @@ input[type="checkbox"]{
   </div>
 </div>
 
-<!-- SECURITY -->
 <div class="panel">
   <h2>Security</h2>
   <button class="btn primary" id="btnChangePassword">Request Password Reset</button>
@@ -219,7 +258,6 @@ async function init(){
     applyTheme(data.preferred_theme || "auto");
   }
 
-  // Username update with uniqueness check
   document.getElementById("usernameInput")
     .addEventListener("change", async (e)=>{
       const newUsername = e.target.value.trim();
@@ -241,7 +279,6 @@ async function init(){
       alert("Username updated");
   });
 
-  // Theme change
   document.getElementById("themeSelect")
     .addEventListener("change", async (e)=>{
       const value = e.target.value;
@@ -249,7 +286,6 @@ async function init(){
       await saveSettings({ preferred_theme:value }, userId);
   });
 
-  // Notifications
   document.getElementById("reminderTime")
     .addEventListener("change", e=>{
       saveSettings({ reminder_time:e.target.value }, userId);
@@ -265,21 +301,18 @@ async function init(){
       saveSettings({ notify_promos:e.target.checked }, userId);
   });
 
-  // Password reset
   document.getElementById("btnChangePassword")
     .addEventListener("click", async ()=>{
       await supabaseClient.auth.resetPasswordForEmail(session.user.email);
       alert("Password reset email sent.");
   });
 
-  // Logout
   document.getElementById("btnLogout")
     .addEventListener("click", async ()=>{
       await supabaseClient.auth.signOut();
       window.location.href="auth.html";
   });
 
-  // Delete account placeholder
   document.getElementById("btnDeleteAccount")
     .addEventListener("click", ()=>{
       alert("Account deletion must be implemented securely via server.");
