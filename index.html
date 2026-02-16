@@ -1031,7 +1031,7 @@ async function loadUserData() {
     .from("user_data")
     .select("data")
     .eq("user_id", currentUser.id)
-    .single();
+    .maybeSingle();
 
   if (error && error.code !== "PGRST116") {
     console.error("Load error:", error);
@@ -2213,29 +2213,66 @@ const storageSet = () => {
     $("#uiStreak").textContent = String(calcStreak());
   }
 
-  // ---------- AI ----------
-  async function askAI(){
-    const input = ($("#aiInput")?.value || "").trim();
-    const out = $("#aiOutput");
-    if(!out) return;
-    if(!input){ out.textContent = "Please enter a question first."; return; }
-    out.textContent = "Thinking...";
-    try{
-      const res = await fetch("/api/ai", {
-        method:"POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ topic: input })
-      });
-      const data = await res.json().catch(()=>({}));
-      if(res.ok && data && data.reply){
-        out.textContent = data.reply;
-      }else{
-        out.textContent = data?.error ? String(data.error) : "Something went wrong.";
-      }
-    }catch(e){
-      out.textContent = "Error contacting AI service.";
-    }
+ // ---------- AI ----------
+async function askAI() {
+  const input = ($("#aiInput")?.value || "").trim();
+  const out = $("#aiOutput");
+
+  if (!out) return;
+  if (!input) {
+    out.textContent = "Please enter a question first.";
+    return;
   }
+
+  out.textContent = "Thinking...";
+
+  try {
+    // Get current logged-in session
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    if (!session) {
+      out.textContent = "You must be logged in to use AI.";
+      return;
+    }
+
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const res = await fetch("/api/ai", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        question: input,
+        timezone
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 429) {
+      out.textContent = data?.error || "Daily AI limit reached.";
+      return;
+    }
+
+    if (res.status === 401) {
+      out.textContent = "Session expired. Please log in again.";
+      window.location.href = "auth.html";
+      return;
+    }
+
+    if (res.ok && data?.reply) {
+      out.textContent = data.reply;
+    } else {
+      out.textContent = data?.error || "Something went wrong.";
+    }
+
+  } catch (e) {
+    console.error("AI request error:", e);
+    out.textContent = "Error contacting AI service.";
+  }
+}
 
   // ---------- Export / Import / Reset / Theme ----------
   function exportAll(){
