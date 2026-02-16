@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>GCSE Focus</title>
 <meta name="description" content="GCSE Focus — tasks, study sets, flashcards, learn, test, revision, past papers, pomodoro, stats, AI. Everything saved locally." />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
   :root{
@@ -901,7 +902,19 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<script>
+const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) {
+    window.location.href = "auth.html";
+  }
+});
+</script>
 <script>
 (() => {
   "use strict";
