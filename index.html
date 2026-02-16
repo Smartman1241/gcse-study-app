@@ -337,6 +337,26 @@
     </div>
 
     <div class="toolbar">
+<div class="account-wrapper" style="position:relative;">
+  <button class="btn" id="accountBtn">👤 Account</button>
+
+  <div id="accountDropdown" style="
+    position:absolute;
+    right:0;
+    top:48px;
+    background:rgba(20,20,40,.95);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+    width:240px;
+    display:none;
+    z-index:999;
+  ">
+    <div id="accountEmail" style="font-size:13px; margin-bottom:10px; opacity:.7;"></div>
+    <div class="divider"></div>
+    <button class="btn ghost" style="width:100%; margin-top:6px;" id="btnLogout">Logout</button>
+  </div>
+</div>
       <div class="chip">
         <div><small>📅 Today</small><div><b id="uiToday">—</b></div></div>
         <div style="width:1px;height:24px;background:var(--border)"></div>
@@ -360,7 +380,7 @@
       <div class="panelHeader">
         <div>
           <h2>Dashboard</h2>
-          <div class="muted small">Everything saves automatically on this device.</div>
+          <div class="muted small">Your progress is securely saved and synced to your account.</div>
         </div>
 
         <nav class="tabs" role="tablist" aria-label="Main tabs">
@@ -910,9 +930,38 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
+
   if (!session) {
     window.location.href = "auth.html";
+    return;
   }
+
+  // Show email in dropdown
+  const emailBox = document.getElementById("accountEmail");
+  if (emailBox) {
+    emailBox.textContent = session.user.email;
+  }
+
+  // Toggle dropdown
+  const btn = document.getElementById("accountBtn");
+  const dropdown = document.getElementById("accountDropdown");
+
+  btn?.addEventListener("click", () => {
+    dropdown.style.display =
+      dropdown.style.display === "block" ? "none" : "block";
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".account-wrapper")) {
+      dropdown.style.display = "none";
+    }
+  });
+
+  // Logout
+  document.getElementById("btnLogout")?.addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "auth.html";
+  });
 });
 </script>
 <script>
