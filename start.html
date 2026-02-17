@@ -24,12 +24,11 @@
         radial-gradient(900px 600px at 75% 95%, rgba(255,211,110,.14),transparent 55%),
         var(--bg);
     }
-    a{color:inherit}
     .wrap{max-width:980px; margin:0 auto; padding:28px 18px}
     .top{display:flex; justify-content:space-between; align-items:center; gap:12px}
     .logo{width:38px; height:38px; border-radius:12px; background:var(--panel2); border:1px solid var(--border)}
     .brand{display:flex; align-items:center; gap:10px}
-    .brand h1{margin:0; font-size:18px; letter-spacing:.2px}
+    .brand h1{margin:0; font-size:18px}
     .btn{
       border:1px solid var(--border); background:var(--btn); color:var(--text);
       padding:10px 14px; border-radius:12px; cursor:pointer;
@@ -37,15 +36,12 @@
     .btn:hover{background:var(--btn2)}
     .btn.primary{background:rgba(142,162,255,.22); border-color:rgba(142,162,255,.45)}
     .hero{margin-top:22px; padding:20px; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); box-shadow:var(--shadow)}
-    .hero h2{margin:0 0 8px; font-size:34px; line-height:1.05}
+    .hero h2{margin:0 0 8px; font-size:34px}
     .muted{color:var(--muted)}
-    .grid{display:grid; grid-template-columns:1.2fr .8fr; gap:14px; margin-top:14px}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px}
     .card{padding:16px; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel)}
-    .card h3{margin:0 0 6px}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-    .links{display:flex; gap:12px; flex-wrap:wrap; margin-top:10px}
     footer{margin-top:18px; color:var(--muted); font-size:13px}
-    @media (max-width: 860px){ .grid{grid-template-columns:1fr} .hero h2{font-size:30px} }
+    @media (max-width: 860px){ .grid{grid-template-columns:1fr} }
   </style>
 </head>
 
@@ -53,49 +49,44 @@
   <div class="wrap">
     <div class="top">
       <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
+        <div class="logo"></div>
         <div>
           <h1>FocusGCSE</h1>
           <div class="muted" style="font-size:13px">Tasks • Study Sets • Flashcards • Past Papers • AI</div>
         </div>
       </div>
 
-      <div class="row">
-        <button class="btn" id="btnLogin">Log in</button>
-        <button class="btn primary" id="btnSignup">Create account</button>
+      <div>
+        <button class="btn" onclick="goAuth('login')">Log in</button>
+        <button class="btn primary" onclick="goAuth('signup')">Create account</button>
       </div>
     </div>
 
     <div class="hero">
       <h2>Revise like it’s actually 2026.</h2>
-      <div class="muted" style="font-size:15px; margin-top:8px">
-        A single place to plan your week, drill flashcards, track progress, and get exam-focused explanations.
-      </div>
-
-      <div class="links">
-        <a href="privacy.html">Privacy Policy</a>
-        <a href="terms.html">Terms</a>
+      <div class="muted" style="margin-top:8px">
+        Plan smarter. Track progress. Master past papers. Use AI built for GCSE success.
       </div>
     </div>
 
     <div class="grid">
       <div class="card">
-        <h3>What you can do</h3>
+        <h3>All in one place</h3>
         <div class="muted">
-          • Build study sets and flashcards<br/>
-          • Plan tasks with priorities and due dates<br/>
-          • Track revision topics and confidence<br/>
-          • Use AI explanations (with fair limits)<br/>
-          • Past papers: organise links + mark schemes
+          • Study sets & flashcards<br>
+          • Task planner<br>
+          • Revision tracking<br>
+          • Past paper organiser<br>
+          • AI exam explanations
         </div>
       </div>
 
       <div class="card">
-        <h3>Ready?</h3>
-        <div class="muted">Log in to continue, or create an account in 30 seconds.</div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn" id="btnLogin2">Log in</button>
-          <button class="btn primary" id="btnSignup2">Create account</button>
+        <h3>Get started</h3>
+        <div class="muted">Log in or create your free account.</div>
+        <div style="margin-top:12px;">
+          <button class="btn" onclick="goAuth('login')">Log in</button>
+          <button class="btn primary" onclick="goAuth('signup')">Create account</button>
         </div>
       </div>
     </div>
@@ -104,35 +95,23 @@
   </div>
 
 <script>
-  // 1) Supabase init (use your existing project URL + anon key)
-  // IMPORTANT: paste your existing values here (same ones used in your current app.js / auth.html).
   const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // 2) If already logged in, redirect to your logged-in page
-  (async () => {
-    document.getElementById("year").textContent = new Date().getFullYear();
+  document.getElementById("year").textContent = new Date().getFullYear();
 
-    const { data } = await supabase.auth.getSession();
-    if (data?.session) {
-      // change this to whatever your logged-in main page is called
-      window.location.replace("index.html");
-      return;
+  // 🔥 If logged in → go to home screen
+  (async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) {
+      window.location.replace("home.html");
     }
   })();
 
-  // 3) Buttons -> your existing auth page
-  const goAuth = (mode) => {
-    // If your auth.html supports a mode, keep it. If not, just send to auth.html.
-    window.location.href = "auth.html" + (mode ? `?mode=${mode}` : "");
-  };
-
-  document.getElementById("btnLogin").onclick = () => goAuth("login");
-  document.getElementById("btnLogin2").onclick = () => goAuth("login");
-  document.getElementById("btnSignup").onclick = () => goAuth("signup");
-  document.getElementById("btnSignup2").onclick = () => goAuth("signup");
+  function goAuth(mode){
+    window.location.href = "auth.html?mode=" + mode;
+  }
 </script>
 </body>
 </html>
