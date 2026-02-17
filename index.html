@@ -327,25 +327,32 @@
   /* existing CSS */
 
   .nav-buttons {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-  }
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
 
-  .nav-buttons button {
-    background: rgba(255,255,255,0.08);
-    border: none;
-    padding: 8px 14px;
-    border-radius: 10px;
-    color: white;
-    cursor: pointer;
-    transition: 0.2s;
-  }
+.nav-buttons button {
+  background: var(--btn);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
 
-  .nav-buttons button:hover {
-    background: rgba(255,255,255,0.18);
-  }
+.nav-buttons button:hover {
+  background: var(--btn2);
+}
+
+/* Light theme enhancement */
+html[data-theme="light"] .nav-buttons button {
+  background: rgba(0,0,0,0.06);
+  color: var(--text);
+}
 /* Theme-aware select styling */
 select {
   background-color: var(--panel);

@@ -16,6 +16,13 @@
   --brand:#8ea2ff;
 }
 
+html[data-theme="light"]{
+  --bg:#f5f7ff;
+  --glass:rgba(0,0,0,.05);
+  --border:rgba(0,0,0,.15);
+  --text:rgba(0,0,0,.88);
+}
+
 body{
   margin:0;
   min-height:100vh;
@@ -64,9 +71,15 @@ select{
   margin-top:8px;
   border-radius:12px;
   border:1px solid var(--border);
-  background:rgba(255,255,255,.06);
-  color:white;
+  background:var(--glass);
+  color:var(--text);
   font-size:15px;
+}
+
+/* FIXED DROPDOWN READABILITY */
+select option{
+  background:var(--bg);
+  color:var(--text);
 }
 
 button{
@@ -82,7 +95,7 @@ button{
 }
 
 .back{
-  background:rgba(255,255,255,.08);
+  background:var(--glass);
   margin-top:15px;
 }
 
@@ -90,7 +103,7 @@ button{
   margin-top:30px;
   padding:20px;
   border-radius:16px;
-  background:rgba(255,255,255,.05);
+  background:var(--glass);
   border:1px solid var(--border);
 }
 
