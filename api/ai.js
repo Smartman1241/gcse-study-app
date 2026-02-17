@@ -5,7 +5,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Convert "now" into YYYY-MM-DD for a given IANA timezone
 function todayInTimezone(tz) {
   const dtf = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -42,9 +41,11 @@ module.exports = async function handler(req, res) {
     // ---------- SETTINGS ----------
     const { data: settings } = await supabaseAdmin
       .from("user_settings")
-      .select("role, tier, timezone")
+      .select("role, timezone")
       .eq("user_id", userId)
       .maybeSingle();
+
+    const role = settings?.role || "user";
 
     // ---------- INPUT ----------
     const { question, topic, history, timezone } = req.body || {};
@@ -54,25 +55,10 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "No question provided" });
     }
 
-    // ---------- TIMEZONE ----------
-    const tzCandidate =
-      typeof timezone === "string" && timezone.length < 80
-        ? timezone
-        : null;
-
-    const tz = tzCandidate || settings?.timezone || "UTC";
-
-    if (!settings?.timezone || (tzCandidate && tzCandidate !== settings.timezone)) {
-      await supabaseAdmin.from("user_settings").upsert({
-        user_id: userId,
-        timezone: tz,
-        updated_at: new Date().toISOString()
-      });
-    }
-
-    // ---------- DAILY ROW ----------
+    const tz = timezone || settings?.timezone || "UTC";
     const day = todayInTimezone(tz);
 
+    // ---------- DAILY USAGE ----------
     let { data: usage } = await supabaseAdmin
       .from("ai_usage_daily")
       .select("*")
@@ -83,37 +69,47 @@ module.exports = async function handler(req, res) {
     if (!usage) {
       const { data: newRow } = await supabaseAdmin
         .from("ai_usage_daily")
-        .insert([{ user_id: userId, day }])
+        .insert([{ user_id: userId, day, input_tokens: 0, output_tokens: 0 }])
         .select()
         .single();
 
       usage = newRow;
     }
 
-    const inputUsed = usage.input_tokens || 0;
-    const outputUsed = usage.output_tokens || 0;
-    const nanoUsed = usage.nano_tokens || 0;
+    const usedTokens =
+      (usage.input_tokens || 0) +
+      (usage.output_tokens || 0);
 
-    // ---------- MODEL SELECTION ----------
-    let model;
+    const DAILY_LIMIT = 1500;
 
-    if (settings?.role === "admin") {
-      model = "gpt-4o-mini"; // safe default for admin
-    } else {
-      if (inputUsed < 400 && outputUsed < 400) {
-        model = "gpt-5-mini";
-      } else if (inputUsed < 1500 && outputUsed < 1500) {
-        model = "gpt-4o-mini";
-      } else if (nanoUsed < 3000) {
-        model = "gpt-5-nano";
+    if (role !== "admin" && usedTokens >= DAILY_LIMIT) {
+      return res.status(429).json({
+        error: "Sorry, you have run out of AI usage for today."
+      });
+    }
+
+    // ---------- OUTPUT TOKEN LOGIC ----------
+    let maxOutputTokens = 250;
+
+    const isDetailed = /detailed/i.test(userQuestion);
+
+    if (isDetailed) {
+      if (usedTokens + 500 <= DAILY_LIMIT) {
+        maxOutputTokens = 500;
+      } else if (usedTokens + 250 <= DAILY_LIMIT) {
+        maxOutputTokens = 250;
       } else {
         return res.status(429).json({
-          error: "Daily AI limit reached. Try again after midnight in your timezone."
+          error: "Sorry, you have run out of AI usage for today."
+        });
+      }
+    } else {
+      if (usedTokens + 250 > DAILY_LIMIT && role !== "admin") {
+        return res.status(429).json({
+          error: "Sorry, you have run out of AI usage for today."
         });
       }
     }
-
-    const maxOutputTokens = 1500;
 
     // ---------- SYSTEM PROMPT ----------
     const inputPayload = [
@@ -122,17 +118,16 @@ module.exports = async function handler(req, res) {
         content:
           "You are a professional GCSE tutor. " +
           "Give clear, exam-style answers. " +
-          "Do NOT use markdown symbols like ** or *. " +
+          "Do NOT use markdown symbols. " +
           "Do NOT use LaTeX. " +
-          "Write chemical formulas using proper Unicode subscript characters like CO₂, H₂O, C₆H₁₂O₆. " +
-          "Do NOT use HTML tags. " +
+          "Write chemical formulas using Unicode subscripts like CO₂. " +
           "Keep answers concise unless user asks for detailed."
       },
       ...(Array.isArray(history) ? history : []),
       { role: "user", content: userQuestion }
     ];
 
-    // ---------- OPENAI REQUEST (RESPONSES API) ----------
+    // ---------- OPENAI REQUEST ----------
     const resp = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -140,10 +135,10 @@ module.exports = async function handler(req, res) {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model,
+        model: "gpt-4o-mini",
         input: inputPayload,
         max_output_tokens: maxOutputTokens,
-        temperature: model === "gpt-4o-mini" ? 0.7 : undefined
+        temperature: 0.7
       })
     });
 
@@ -156,36 +151,33 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // ---------- EXTRACT RESPONSE ----------
     const reply =
       data?.output?.[0]?.content?.[0]?.text ||
       "No response generated.";
 
-    // ---------- TOKEN TRACKING ----------
     const promptTokens = Number(data?.usage?.input_tokens || 0);
     const completionTokens = Number(data?.usage?.output_tokens || 0);
 
-    if (settings?.role !== "admin") {
-      if (model === "gpt-5-nano") {
-        await supabaseAdmin.from("ai_usage_daily").update({
-          nano_tokens: nanoUsed + promptTokens + completionTokens,
+    // ---------- UPDATE USAGE ----------
+    if (role !== "admin") {
+      await supabaseAdmin
+        .from("ai_usage_daily")
+        .update({
+          input_tokens: (usage.input_tokens || 0) + promptTokens,
+          output_tokens: (usage.output_tokens || 0) + completionTokens,
           updated_at: new Date().toISOString()
-        }).eq("user_id", userId).eq("day", day);
-      } else {
-        await supabaseAdmin.from("ai_usage_daily").update({
-          input_tokens: inputUsed + promptTokens,
-          output_tokens: outputUsed + completionTokens,
-          updated_at: new Date().toISOString()
-        }).eq("user_id", userId).eq("day", day);
-      }
+        })
+        .eq("user_id", userId)
+        .eq("day", day);
     }
 
     return res.status(200).json({
       reply,
-      model_used: model,
       usage: { promptTokens, completionTokens },
-      day,
-      timezone: tz
+      remaining_tokens:
+        role === "admin"
+          ? "Unlimited"
+          : DAILY_LIMIT - (usedTokens + promptTokens + completionTokens)
     });
 
   } catch (error) {
