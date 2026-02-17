@@ -76,7 +76,6 @@ select{
   font-size:15px;
 }
 
-/* FIXED DROPDOWN READABILITY */
 select option{
   background:var(--bg);
   color:var(--text);
@@ -125,31 +124,30 @@ a{
     <h1>AQA Past Papers</h1>
 
     <label>Subject</label>
-    <select id="subject" onchange="updatePaperOptions()">
-      <option value="english-language">English Language</option>
-      <option value="english-literature">English Literature</option>
-      <option value="biology">Biology</option>
-      <option value="chemistry">Chemistry</option>
-      <option value="physics">Physics</option>
-      <option value="maths">Maths</option>
+    <select id="subject" onchange="updatePaperOptions(); updateTierOptions();">
+      <option value="English Language">English Language</option>
+      <option value="English Literature">English Literature</option>
+      <option value="Biology">Biology</option>
+      <option value="Chemistry">Chemistry</option>
+      <option value="Physics">Physics</option>
+      <option value="Maths">Maths</option>
     </select>
 
     <label>Paper</label>
     <select id="paper"></select>
 
     <label>Tier</label>
-    <select id="tier">
-      <option value="foundation">Foundation</option>
-      <option value="higher">Higher</option>
-    </select>
+    <select id="tier"></select>
 
     <label>Year</label>
     <select id="year">
-      <option>2024</option>
-      <option>2023</option>
-      <option>2022</option>
-      <option>2021</option>
-      <option>2020</option>
+      <option value="2024">2024</option>
+      <option value="2023">2023</option>
+      <option value="2022">2022</option>
+      <option value="2021">2021</option>
+      <option value="2020">2020</option>
+      <option value="2019">2019</option>
+      <option value="2018">2018</option>
     </select>
 
     <button onclick="findPaper()">Find Paper</button>
@@ -173,16 +171,31 @@ function updatePaperOptions(){
   const paperSelect = document.getElementById("paper");
   paperSelect.innerHTML = "";
 
-  if(subject === "maths"){
+  if(subject === "Maths"){
     paperSelect.innerHTML = `
-      <option value="paper-1-non-calculator">Paper 1 Non-Calculator</option>
-      <option value="paper-2-calculator">Paper 2 Calculator</option>
-      <option value="paper-3-calculator">Paper 3 Calculator</option>
+      <option value="Paper 1 Non Calculator">Paper 1 Non Calculator</option>
+      <option value="Paper 2 Calculator">Paper 2 Calculator</option>
+      <option value="Paper 3 Calculator">Paper 3 Calculator</option>
     `;
   } else {
     paperSelect.innerHTML = `
-      <option value="paper-1">Paper 1</option>
-      <option value="paper-2">Paper 2</option>
+      <option value="Paper 1">Paper 1</option>
+      <option value="Paper 2">Paper 2</option>
+    `;
+  }
+}
+
+function updateTierOptions(){
+  const subject = document.getElementById("subject").value;
+  const tierSelect = document.getElementById("tier");
+  tierSelect.innerHTML = "";
+
+  if(subject === "English Language" || subject === "English Literature"){
+    tierSelect.innerHTML = `<option value="N/A">N/A</option>`;
+  } else {
+    tierSelect.innerHTML = `
+      <option value="Foundation">Foundation</option>
+      <option value="Higher">Higher</option>
     `;
   }
 }
@@ -213,13 +226,14 @@ async function findPaper(){
   }
 
   results.innerHTML = `
-    <h3>${year} ${subject.replace("-", " ").toUpperCase()} (${tier})</h3>
+    <h3>${year} ${subject} - ${paper_type} (${tier})</h3>
     <a href="${data.question_link}" target="_blank">📄 View Official Paper</a>
     <a href="${data.markscheme_link}" target="_blank">📝 View Mark Scheme</a>
   `;
 }
 
 updatePaperOptions();
+updateTierOptions();
 </script>
 
 </body>
