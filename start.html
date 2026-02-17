@@ -184,10 +184,10 @@
 
   // If logged in → go to home screen
   (async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) {
-      window.location.replace("home.html");
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+if (session) {
+  window.location.replace("home.html");
+}
   })();
 </script>
 
