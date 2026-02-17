@@ -14,7 +14,6 @@
   --text:rgba(255,255,255,.92);
   --muted:rgba(255,255,255,.6);
   --border:rgba(255,255,255,.15);
-  --brand:#8ea2ff;
 }
 
 *{box-sizing:border-box}
@@ -84,9 +83,7 @@ button{
   cursor:pointer;
 }
 
-.link:hover{
-  color:white;
-}
+.link:hover{color:white;}
 
 .hidden{display:none;}
 
@@ -97,9 +94,7 @@ button{
   color:#ff7b8f;
 }
 
-.success{
-  color:#46e6b3;
-}
+.success{color:#46e6b3;}
 
 footer{
   position:absolute;
@@ -108,6 +103,7 @@ footer{
   text-align:center;
   font-size:13px;
 }
+
 footer a{
   color:white;
   text-decoration:none;
@@ -161,9 +157,12 @@ const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// If already logged in → go to HOME
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) window.location.href = "start.html";
+  if (session) {
+    window.location.href = "home.html";
+  }
 });
 
 function showSignup(){
@@ -195,7 +194,7 @@ async function signIn(){
   if(error){
     signinMsg.textContent = error.message;
   } else {
-    window.location.href = "start.html";
+    window.location.href = "home.html";
   }
 }
 
@@ -211,7 +210,6 @@ async function signUp(){
     return;
   }
 
-  // Check username uniqueness
   const { data: existing } = await supabaseClient
     .from("user_settings")
     .select("id")
