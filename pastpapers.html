@@ -1,16 +1,170 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GCSE Focus – Past Papers</title>
-</head>
-<body style="font-family: system-ui; padding:40px;">
-  <h1>Past Papers</h1>
-  <p>This page is loading correctly.</p>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GCSE Focus – AQA Past Papers</title>
 
-  <button onclick="window.location.href='index.html'">
+<style>
+body{
+  font-family:system-ui;
+  background:#0b1020;
+  color:white;
+  padding:40px;
+}
+
+h1{
+  margin-bottom:25px;
+}
+
+.card{
+  background:rgba(255,255,255,.06);
+  padding:30px;
+  border-radius:18px;
+  max-width:700px;
+}
+
+label{
+  display:block;
+  margin-top:18px;
+  font-weight:600;
+}
+
+select, button{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.2);
+  background:#111630;
+  color:white;
+}
+
+button{
+  background:#8ea2ff;
+  font-weight:600;
+  cursor:pointer;
+  margin-top:20px;
+}
+
+.results{
+  margin-top:30px;
+  padding:20px;
+  background:rgba(255,255,255,.05);
+  border-radius:12px;
+}
+
+a{
+  color:#8ea2ff;
+  display:block;
+  margin-top:10px;
+  text-decoration:none;
+  font-weight:500;
+}
+</style>
+</head>
+
+<body>
+
+<h1>AQA Past Papers</h1>
+
+<div class="card">
+
+  <!-- SUBJECT -->
+  <label>Subject</label>
+  <select id="subject" onchange="updatePaperOptions()">
+    <option value="english-language">English Language</option>
+    <option value="english-literature">English Literature</option>
+    <option value="biology">Biology</option>
+    <option value="chemistry">Chemistry</option>
+    <option value="physics">Physics</option>
+    <option value="maths">Maths</option>
+  </select>
+
+  <!-- PAPER -->
+  <label>Paper</label>
+  <select id="paper"></select>
+
+  <!-- TIER -->
+  <label>Tier</label>
+  <select id="tier">
+    <option value="foundation">Foundation</option>
+    <option value="higher">Higher</option>
+  </select>
+
+  <!-- YEAR -->
+  <label>Year</label>
+  <select id="year">
+    <option>2024</option>
+    <option>2023</option>
+    <option>2022</option>
+    <option>2021</option>
+    <option>2020</option>
+  </select>
+
+  <button onclick="findPaper()">Find Paper</button>
+
+  <div class="results" id="results" style="display:none;"></div>
+
+  <button onclick="window.location.href='index.html'" style="background:#333;">
     ← Back to Dashboard
   </button>
+
+</div>
+
+<script>
+
+// Update paper dropdown based on subject
+function updatePaperOptions(){
+
+  const subject = document.getElementById("subject").value;
+  const paperSelect = document.getElementById("paper");
+
+  paperSelect.innerHTML = "";
+
+  if(subject === "maths"){
+    paperSelect.innerHTML = `
+      <option value="paper-1-non-calculator">Paper 1 Non-Calculator</option>
+      <option value="paper-2-calculator">Paper 2 Calculator</option>
+      <option value="paper-3-calculator">Paper 3 Calculator</option>
+    `;
+  } else {
+    paperSelect.innerHTML = `
+      <option value="paper-1">Paper 1</option>
+      <option value="paper-2">Paper 2</option>
+    `;
+  }
+}
+
+// Generate links (placeholder AQA structure)
+function findPaper(){
+
+  const subject = document.getElementById("subject").value;
+  const paper = document.getElementById("paper").value;
+  const tier = document.getElementById("tier").value;
+  const year = document.getElementById("year").value;
+
+  const subjectName = document.getElementById("subject").selectedOptions[0].text;
+  const paperName = document.getElementById("paper").selectedOptions[0].text;
+
+  // This is placeholder logic – next step we’ll generate real AQA PDF URLs
+  const base = "https://www.aqa.org.uk/subjects";
+
+  const results = document.getElementById("results");
+
+  results.innerHTML = `
+    <h3>${year} ${subjectName} ${paperName} (${tier})</h3>
+    <a href="${base}" target="_blank">📄 View Official Paper</a>
+    <a href="${base}" target="_blank">📝 View Mark Scheme</a>
+  `;
+
+  results.style.display = "block";
+}
+
+// Initialize on load
+updatePaperOptions();
+
+</script>
+
 </body>
 </html>
