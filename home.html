@@ -3,10 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FocusGCSE</title>
-  <meta name="description" content="FocusGCSE — revise smarter with tasks, study sets, flashcards, past papers, and AI." />
+  <title>FocusGCSE — Home</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
     :root{
       --bg:#0b1020; --panel:rgba(255,255,255,.06); --panel2:rgba(255,255,255,.10);
@@ -24,115 +22,95 @@
         radial-gradient(900px 600px at 75% 95%, rgba(255,211,110,.14),transparent 55%),
         var(--bg);
     }
-    a{color:inherit}
     .wrap{max-width:980px; margin:0 auto; padding:28px 18px}
-    .top{display:flex; justify-content:space-between; align-items:center; gap:12px}
-    .logo{width:38px; height:38px; border-radius:12px; background:var(--panel2); border:1px solid var(--border)}
-    .brand{display:flex; align-items:center; gap:10px}
-    .brand h1{margin:0; font-size:18px; letter-spacing:.2px}
-    .btn{
-      border:1px solid var(--border); background:var(--btn); color:var(--text);
-      padding:10px 14px; border-radius:12px; cursor:pointer;
-    }
+    .card{padding:16px; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); box-shadow:var(--shadow)}
+    .muted{color:var(--muted)}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .btn{border:1px solid var(--border); background:var(--btn); color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer}
     .btn:hover{background:var(--btn2)}
     .btn.primary{background:rgba(142,162,255,.22); border-color:rgba(142,162,255,.45)}
-    .hero{margin-top:22px; padding:20px; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); box-shadow:var(--shadow)}
-    .hero h2{margin:0 0 8px; font-size:34px; line-height:1.05}
-    .muted{color:var(--muted)}
-    .grid{display:grid; grid-template-columns:1.2fr .8fr; gap:14px; margin-top:14px}
-    .card{padding:16px; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel)}
-    .card h3{margin:0 0 6px}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-    .links{display:flex; gap:12px; flex-wrap:wrap; margin-top:10px}
-    footer{margin-top:18px; color:var(--muted); font-size:13px}
-    @media (max-width: 860px){ .grid{grid-template-columns:1fr} .hero h2{font-size:30px} }
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px}
+    @media (max-width: 860px){ .grid{grid-template-columns:1fr} }
+    h1{margin:0 0 8px}
   </style>
 </head>
-
 <body>
   <div class="wrap">
-    <div class="top">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-          <h1>FocusGCSE</h1>
-          <div class="muted" style="font-size:13px">Tasks • Study Sets • Flashcards • Past Papers • AI</div>
-        </div>
-      </div>
+    <div class="card">
+      <h1 id="hello">Welcome back</h1>
+      <div class="muted" id="sub">Let’s pick up where you left off.</div>
 
-      <div class="row">
-        <button class="btn" id="btnLogin">Log in</button>
-        <button class="btn primary" id="btnSignup">Create account</button>
-      </div>
-    </div>
-
-    <div class="hero">
-      <h2>Revise like it’s actually 2026.</h2>
-      <div class="muted" style="font-size:15px; margin-top:8px">
-        A single place to plan your week, drill flashcards, track progress, and get exam-focused explanations.
-      </div>
-
-      <div class="links">
-        <a href="privacy.html">Privacy Policy</a>
-        <a href="terms.html">Terms</a>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="btnContinue">Continue</button>
+        <button class="btn" id="btnDashboard">Go to dashboard</button>
+        <button class="btn" id="btnLogout">Logout</button>
       </div>
     </div>
 
     <div class="grid">
       <div class="card">
-        <h3>What you can do</h3>
-        <div class="muted">
-          • Build study sets and flashcards<br/>
-          • Plan tasks with priorities and due dates<br/>
-          • Track revision topics and confidence<br/>
-          • Use AI explanations (with fair limits)<br/>
-          • Past papers: organise links + mark schemes
+        <h3 style="margin:0 0 6px">How about trying something else?</h3>
+        <div class="muted">Jump straight into a mode.</div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" data-go="index.html#tasks">Tasks</button>
+          <button class="btn" data-go="index.html#studysets">Study Sets</button>
+          <button class="btn" data-go="index.html#flashcards">Flashcards</button>
+          <button class="btn" data-go="index.html#ai">AI</button>
+          <button class="btn" data-go="pastpapers.html">Past Papers</button>
         </div>
       </div>
 
       <div class="card">
-        <h3>Ready?</h3>
-        <div class="muted">Log in to continue, or create an account in 30 seconds.</div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn" id="btnLogin2">Log in</button>
-          <button class="btn primary" id="btnSignup2">Create account</button>
-        </div>
+        <h3 style="margin:0 0 6px">Next up</h3>
+        <div class="muted">We can show your last session here later (timer, last set, last tab, etc.).</div>
       </div>
     </div>
-
-    <footer>© <span id="year"></span> FocusGCSE</footer>
   </div>
 
 <script>
-  // 1) Supabase init (use your existing project URL + anon key)
-  // IMPORTANT: paste your existing values here (same ones used in your current app.js / auth.html).
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-
+  // Paste same Supabase values
+  const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY";
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // 2) If already logged in, redirect to your logged-in page
-  (async () => {
-    document.getElementById("year").textContent = new Date().getFullYear();
+  // Where to continue:
+  // We'll use localStorage for now (super simple).
+  // Your app can set these keys whenever the user changes section/page.
+  const DEFAULT_CONTINUE = "index.html";
+  const CONTINUE_KEY = "focusgcse:last_url";
 
+  (async () => {
     const { data } = await supabase.auth.getSession();
-    if (data?.session) {
-      // change this to whatever your logged-in main page is called
-      window.location.replace("index.html");
+    if (!data?.session) {
+      window.location.replace("home.html");
       return;
     }
+
+    const user = data.session.user;
+    const name = user.user_metadata?.full_name || user.email || "Welcome back";
+    document.getElementById("hello").textContent = `Welcome back, ${name}`;
   })();
 
-  // 3) Buttons -> your existing auth page
-  const goAuth = (mode) => {
-    // If your auth.html supports a mode, keep it. If not, just send to auth.html.
-    window.location.href = "auth.html" + (mode ? `?mode=${mode}` : "");
+  document.getElementById("btnContinue").onclick = () => {
+    const last = localStorage.getItem(CONTINUE_KEY) || DEFAULT_CONTINUE;
+    window.location.href = last;
   };
 
-  document.getElementById("btnLogin").onclick = () => goAuth("login");
-  document.getElementById("btnLogin2").onclick = () => goAuth("login");
-  document.getElementById("btnSignup").onclick = () => goAuth("signup");
-  document.getElementById("btnSignup2").onclick = () => goAuth("signup");
+  document.getElementById("btnDashboard").onclick = () => {
+    window.location.href = "index.html";
+  };
+
+  document.getElementById("btnLogout").onclick = async () => {
+    await supabase.auth.signOut();
+    window.location.replace("home.html");
+  };
+
+  document.querySelectorAll("[data-go]").forEach(btn => {
+    btn.onclick = () => {
+      const url = btn.getAttribute("data-go");
+      window.location.href = url;
+    };
+  });
 </script>
 </body>
 </html>
