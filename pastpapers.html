@@ -5,23 +5,51 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>GCSE Focus – AQA Past Papers</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-body{
-  font-family:system-ui;
-  background:#0b1020;
-  color:white;
-  padding:40px;
+:root{
+  --bg:#0b1020;
+  --glass:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.15);
+  --text:rgba(255,255,255,.92);
+  --brand:#8ea2ff;
 }
 
-h1{
-  margin-bottom:25px;
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:system-ui;
+  background:
+    radial-gradient(1000px 600px at 15% 10%, rgba(142,162,255,.25), transparent 60%),
+    radial-gradient(900px 500px at 85% 20%, rgba(70,230,179,.18), transparent 55%),
+    radial-gradient(900px 500px at 70% 90%, rgba(255,211,110,.14), transparent 55%),
+    var(--bg);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:var(--text);
+}
+
+.container{
+  width:100%;
+  max-width:700px;
+  padding:30px;
 }
 
 .card{
-  background:rgba(255,255,255,.06);
-  padding:30px;
-  border-radius:18px;
-  max-width:700px;
+  backdrop-filter:blur(20px);
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:40px;
+  box-shadow:0 20px 60px rgba(0,0,0,.35);
+}
+
+h1{
+  text-align:center;
+  margin-bottom:30px;
+  font-size:28px;
 }
 
 label{
@@ -30,96 +58,106 @@ label{
   font-weight:600;
 }
 
-select, button{
+select{
   width:100%;
-  padding:10px;
+  padding:12px;
   margin-top:8px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.2);
-  background:#111630;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.06);
   color:white;
+  font-size:15px;
 }
 
 button{
-  background:#8ea2ff;
-  font-weight:600;
+  width:100%;
+  padding:14px;
+  margin-top:25px;
+  border-radius:14px;
+  border:none;
+  background:var(--brand);
+  font-weight:700;
   cursor:pointer;
-  margin-top:20px;
+  font-size:15px;
+}
+
+.back{
+  background:rgba(255,255,255,.08);
+  margin-top:15px;
 }
 
 .results{
   margin-top:30px;
   padding:20px;
+  border-radius:16px;
   background:rgba(255,255,255,.05);
-  border-radius:12px;
+  border:1px solid var(--border);
 }
 
 a{
-  color:#8ea2ff;
   display:block;
-  margin-top:10px;
+  margin-top:12px;
+  color:var(--brand);
+  font-weight:600;
   text-decoration:none;
-  font-weight:500;
 }
 </style>
 </head>
 
 <body>
 
-<h1>AQA Past Papers</h1>
+<div class="container">
+  <div class="card">
 
-<div class="card">
+    <h1>AQA Past Papers</h1>
 
-  <!-- SUBJECT -->
-  <label>Subject</label>
-  <select id="subject" onchange="updatePaperOptions()">
-    <option value="english-language">English Language</option>
-    <option value="english-literature">English Literature</option>
-    <option value="biology">Biology</option>
-    <option value="chemistry">Chemistry</option>
-    <option value="physics">Physics</option>
-    <option value="maths">Maths</option>
-  </select>
+    <label>Subject</label>
+    <select id="subject" onchange="updatePaperOptions()">
+      <option value="english-language">English Language</option>
+      <option value="english-literature">English Literature</option>
+      <option value="biology">Biology</option>
+      <option value="chemistry">Chemistry</option>
+      <option value="physics">Physics</option>
+      <option value="maths">Maths</option>
+    </select>
 
-  <!-- PAPER -->
-  <label>Paper</label>
-  <select id="paper"></select>
+    <label>Paper</label>
+    <select id="paper"></select>
 
-  <!-- TIER -->
-  <label>Tier</label>
-  <select id="tier">
-    <option value="foundation">Foundation</option>
-    <option value="higher">Higher</option>
-  </select>
+    <label>Tier</label>
+    <select id="tier">
+      <option value="foundation">Foundation</option>
+      <option value="higher">Higher</option>
+    </select>
 
-  <!-- YEAR -->
-  <label>Year</label>
-  <select id="year">
-    <option>2024</option>
-    <option>2023</option>
-    <option>2022</option>
-    <option>2021</option>
-    <option>2020</option>
-  </select>
+    <label>Year</label>
+    <select id="year">
+      <option>2024</option>
+      <option>2023</option>
+      <option>2022</option>
+      <option>2021</option>
+      <option>2020</option>
+    </select>
 
-  <button onclick="findPaper()">Find Paper</button>
+    <button onclick="findPaper()">Find Paper</button>
 
-  <div class="results" id="results" style="display:none;"></div>
+    <div class="results" id="results" style="display:none;"></div>
 
-  <button onclick="window.location.href='index.html'" style="background:#333;">
-    ← Back to Dashboard
-  </button>
+    <button class="back" onclick="window.location.href='index.html'">
+      ← Back to Dashboard
+    </button>
 
+  </div>
 </div>
 
 <script>
+const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Update paper dropdown based on subject
 function updatePaperOptions(){
-
   const subject = document.getElementById("subject").value;
   const paperSelect = document.getElementById("paper");
-
   paperSelect.innerHTML = "";
 
   if(subject === "maths"){
@@ -136,34 +174,39 @@ function updatePaperOptions(){
   }
 }
 
-// Generate links (placeholder AQA structure)
-function findPaper(){
+async function findPaper(){
 
   const subject = document.getElementById("subject").value;
-  const paper = document.getElementById("paper").value;
+  const paper_type = document.getElementById("paper").value;
   const tier = document.getElementById("tier").value;
-  const year = document.getElementById("year").value;
-
-  const subjectName = document.getElementById("subject").selectedOptions[0].text;
-  const paperName = document.getElementById("paper").selectedOptions[0].text;
-
-  // This is placeholder logic – next step we’ll generate real AQA PDF URLs
-  const base = "https://www.aqa.org.uk/subjects";
+  const year = parseInt(document.getElementById("year").value);
 
   const results = document.getElementById("results");
+  results.style.display = "block";
+  results.innerHTML = "Searching...";
+
+  const { data, error } = await supabaseClient
+    .from("past_papers")
+    .select("*")
+    .eq("subject", subject)
+    .eq("paper_type", paper_type)
+    .eq("tier", tier)
+    .eq("year", year)
+    .single();
+
+  if(error || !data){
+    results.innerHTML = "Paper not found in database.";
+    return;
+  }
 
   results.innerHTML = `
-    <h3>${year} ${subjectName} ${paperName} (${tier})</h3>
-    <a href="${base}" target="_blank">📄 View Official Paper</a>
-    <a href="${base}" target="_blank">📝 View Mark Scheme</a>
+    <h3>${year} ${subject.replace("-", " ").toUpperCase()} (${tier})</h3>
+    <a href="${data.question_link}" target="_blank">📄 View Official Paper</a>
+    <a href="${data.markscheme_link}" target="_blank">📝 View Mark Scheme</a>
   `;
-
-  results.style.display = "block";
 }
 
-// Initialize on load
 updatePaperOptions();
-
 </script>
 
 </body>
