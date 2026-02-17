@@ -37,31 +37,10 @@
     }
 
     .wrap{max-width:980px; margin:0 auto; padding:28px 18px}
-
-    .top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-
-    .logo{
-      width:38px;
-      height:38px;
-      border-radius:12px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-    }
-
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-
-    .brand h1{margin:0; font-size:18px}
-
+    .top{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
+    .logo{width:38px; height:38px; border-radius:12px; background:var(--panel2); border:1px solid var(--border);}
+    .brand{display:flex; align-items:center; gap:10px;}
+    .brand h1{margin:0; font-size:18px;}
     .btn{
       border:1px solid var(--border);
       background:var(--btn);
@@ -73,14 +52,11 @@
       cursor:pointer;
       transition:0.2s;
     }
-
-    .btn:hover{background:var(--btn2)}
-
+    .btn:hover{background:var(--btn2);}
     .btn.primary{
       background:rgba(142,162,255,.22);
       border-color:rgba(142,162,255,.45);
     }
-
     .hero{
       margin-top:22px;
       padding:20px;
@@ -89,37 +65,22 @@
       background:var(--panel);
       box-shadow:var(--shadow);
     }
-
-    .hero h2{
-      margin:0 0 8px;
-      font-size:34px;
-    }
-
-    .muted{color:var(--muted)}
-
+    .hero h2{margin:0 0 8px; font-size:34px;}
+    .muted{color:var(--muted);}
     .grid{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:14px;
       margin-top:14px;
     }
-
     .card{
       padding:16px;
       border:1px solid var(--border);
       border-radius:var(--radius);
       background:var(--panel);
     }
-
-    footer{
-      margin-top:18px;
-      color:var(--muted);
-      font-size:13px;
-    }
-
-    @media (max-width: 860px){
-      .grid{grid-template-columns:1fr}
-    }
+    footer{margin-top:18px; color:var(--muted); font-size:13px;}
+    @media (max-width: 860px){ .grid{grid-template-columns:1fr} }
   </style>
 </head>
 
@@ -182,13 +143,22 @@
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
-  // If logged in → go to home screen
-  (async () => {
+  async function redirectIfLoggedIn() {
     const { data: { session } } = await supabase.auth.getSession();
-if (session) {
-  window.location.replace("home.html");
-}
-  })();
+    if (session) {
+      window.location.href = "home.html";
+    }
+  }
+
+  // Run after small delay to allow session restore
+  setTimeout(redirectIfLoggedIn, 150);
+
+  // Also listen for login events
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      window.location.href = "home.html";
+    }
+  });
 </script>
 
 </body>
