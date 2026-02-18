@@ -18,9 +18,7 @@
   --btn:rgba(255,255,255,.10);
   --btn2:rgba(255,255,255,.14);
 }
-
 *{box-sizing:border-box}
-
 body{
   margin:0;
   min-height:100vh;
@@ -31,7 +29,6 @@ body{
     radial-gradient(900px 600px at 86% 22%, rgba(70,230,179,.18),transparent 55%),
     var(--bg);
 }
-
 .wrap{max-width:980px; margin:0 auto; padding:28px 18px}
 .card{
   padding:20px;
@@ -90,7 +87,7 @@ body{
   <div class="card">
     <h3>Next up</h3>
     <div class="muted">
-      We’ll soon show your last session here (timer, last topic, last mode, etc.).
+      We’ll soon show your last session here.
     </div>
   </div>
 </div>
@@ -98,17 +95,19 @@ body{
 </div>
 
 <script>
-const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+document.addEventListener("DOMContentLoaded", async () => {
 
-const CONTINUE_KEY = "focusgcse:last_url";
-const DEFAULT_PAGE = "index.html";
+  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// 🔐 Protect page
-async function protectPage(){
-  const { data:{ session } } = await supabase.auth.getSession();
-  if(!session){
+  const CONTINUE_KEY = "focusgcse:last_url";
+  const DEFAULT_PAGE = "index.html";
+
+  // 🔐 Protect page
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
     window.location.href = "start.html";
     return;
   }
@@ -116,35 +115,34 @@ async function protectPage(){
   const user = session.user;
   document.getElementById("hello").textContent =
     `Welcome back, ${user.user_metadata?.full_name || user.email}`;
-}
 
-protectPage();
-
-// Continue button
-document.getElementById("btnContinue").onclick = () => {
-  const last = localStorage.getItem(CONTINUE_KEY) || DEFAULT_PAGE;
-  window.location.href = last;
-};
-
-// Dashboard button
-document.getElementById("btnDashboard").onclick = () => {
-  window.location.href = "index.html";
-};
-
-// Logout button
-document.getElementById("btnLogout").onclick = async () => {
-  await supabase.auth.signOut();
-  localStorage.removeItem(CONTINUE_KEY);
-  window.location.href = "start.html";
-};
-
-// Jump buttons
-document.querySelectorAll(".go").forEach(btn => {
-  btn.onclick = () => {
-    const url = btn.dataset.url;
-    localStorage.setItem(CONTINUE_KEY, url);
-    window.location.href = url;
+  // Continue
+  document.getElementById("btnContinue").onclick = () => {
+    const last = localStorage.getItem(CONTINUE_KEY) || DEFAULT_PAGE;
+    window.location.href = last;
   };
+
+  // Dashboard
+  document.getElementById("btnDashboard").onclick = () => {
+    window.location.href = "index.html";
+  };
+
+  // Logout
+  document.getElementById("btnLogout").onclick = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem(CONTINUE_KEY);
+    window.location.href = "start.html";
+  };
+
+  // Jump buttons
+  document.querySelectorAll(".go").forEach(btn => {
+    btn.onclick = () => {
+      const url = btn.dataset.url;
+      localStorage.setItem(CONTINUE_KEY, url);
+      window.location.href = url;
+    };
+  });
+
 });
 </script>
 
