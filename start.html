@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FocusGCSE</title>
   <meta name="description" content="FocusGCSE — revise smarter with tasks, study sets, flashcards, past papers, and AI." />
+
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Shared auth guard -->
+  <script src="auth-guard.js"></script>
 
   <style>
     :root{
@@ -137,27 +142,11 @@
   </div>
 
 <script>
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
   document.getElementById("year").textContent = new Date().getFullYear();
 
-  async function redirectIfLoggedIn() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      window.location.href = "home.html";
-    }
-  }
-
-  // Run after small delay to allow session restore
-  setTimeout(redirectIfLoggedIn, 150);
-
-  // Also listen for login events
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (session) {
-      window.location.href = "home.html";
-    }
+  // 🚪 Redirect logged-in users away from landing page
+  document.addEventListener("DOMContentLoaded", () => {
+    redirectIfLoggedIn();
   });
 </script>
 
