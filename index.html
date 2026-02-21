@@ -497,72 +497,7 @@
         </section>
 
         <!-- TASKS -->
-        <section class="tabpanel" data-tabpanel="tasks" hidden>
-          <div class="row">
-            <div class="field">
-              <span class="label">Task</span>
-              <input id="taskName" type="text" placeholder="e.g. Biology: enzymes summary" maxlength="80">
-            </div>
-            <div class="field small">
-              <span class="label">Subject</span>
-              <select id="taskSubject"></select>
-            </div>
-            <div class="field small">
-              <span class="label">Priority</span>
-              <select id="taskPriority">
-                <option value="low">Low</option>
-                <option value="med" selected>Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-            <div class="field small">
-              <span class="label">Due</span>
-              <input id="taskDue" type="date">
-            </div>
-            <div class="field small">
-              <span class="label">Repeat</span>
-              <select id="taskRepeat">
-                <option value="none" selected>None</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-              </select>
-            </div>
-            <div class="field small" style="align-self:flex-end">
-              <button class="btn primary" id="btnAddTask">Add</button>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="row">
-            <div class="field small">
-              <span class="label">Filter subject</span>
-              <select id="taskFilterSubject"></select>
-            </div>
-            <div class="field small">
-              <span class="label">Show</span>
-              <select id="taskFilterStatus">
-                <option value="all" selected>All</option>
-                <option value="open">Open</option>
-                <option value="done">Completed</option>
-              </select>
-            </div>
-            <div class="field small">
-              <span class="label">Sort</span>
-              <select id="taskSort">
-                <option value="due">Due date</option>
-                <option value="priority" selected>Priority</option>
-                <option value="created">Created</option>
-              </select>
-            </div>
-            <div class="field small" style="align-self:flex-end">
-              <button class="btn" id="btnClearDone">Clear completed</button>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-          <div class="list" id="tasksList"></div>
-        </section>
+        
 
         <!-- STUDYSETS -->
         <section class="tabpanel" data-tabpanel="studysets" hidden>
@@ -1188,7 +1123,6 @@
     if(tab === "studysets") renderStudySetsTab();
     if(tab === "stats") renderStats();
     if(tab === "revision") renderRevision();
-    if(tab === "tasks") renderTasks();
     if(tab === "ai") {/* no-op */}
   }
   window.setTab = setTab;
@@ -2376,20 +2310,23 @@
   function bindEvents(){
     // Continue dropdown
     $("#navContinue")?.addEventListener("change", (e) => {
-      const v = e.target.value;
-      if(v === "pastpapers"){
-        window.location.href = "pastpapers.html";
-        return;
-      }
-      setTab(v);
-    });
+  const v = e.target.value;
+
+  if(v === "pastpapers"){
+    window.location.href = "pastpapers.html";
+    return;
+  }
+
+  if(v === "tasks"){
+    window.location.href = "tasks.html";
+    return;
+  }
+
+  setTab(v);
+});
 
     // Tasks
-    $("#btnAddTask")?.addEventListener("click", addTask);
-    $("#btnClearDone")?.addEventListener("click", clearDoneTasks);
-    $("#taskFilterSubject")?.addEventListener("change", renderTasks);
-    $("#taskFilterStatus")?.addEventListener("change", renderTasks);
-    $("#taskSort")?.addEventListener("change", renderTasks);
+   
 
     // Sets
     $("#btnCreateSet")?.addEventListener("click", createSet);
@@ -2464,7 +2401,9 @@
     $("#btnReset")?.addEventListener("click", hardReset);
 
     // Dashboard quick buttons
-    $("#dashGoTasks")?.addEventListener("click", () => setTab("tasks"));
+    $("#dashGoTasks")?.addEventListener("click", () => {
+  window.location.href = "tasks.html";
+});
     $("#dashGoAI")?.addEventListener("click", () => setTab("ai"));
     $("#dashGoTimer")?.addEventListener("click", () => toast("Timer is on the right →"));
 
@@ -2517,7 +2456,6 @@
 
     // render all core
     renderStudySetsTab();
-    renderTasks();
     renderRevision();
     renderTopicConfidenceList();
     renderTimer();
