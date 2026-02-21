@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReviseFlow • Tasks</title>
+
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d26;
+  --accent: #5b9cff;
+  --accent2: #7c4dff;
+  --text: #f5f7fa;
+  --muted: #8b93a7;
+  --border: #2a2f3a;
+  --success: #00c853;
+  --danger: #ff5252;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: Inter, sans-serif; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  padding: 40px;
+}
+
+h1 {
+  font-size: 28px;
+  margin-bottom: 25px;
+  background: linear-gradient(90deg,var(--accent),var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+}
+
+.card {
+  background: var(--card);
+  padding: 25px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  margin-bottom: 25px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.full { grid-column: span 2; }
+
+input, select {
+  background: #12141b;
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 10px;
+  color: var(--text);
+  width: 100%;
+}
+
+button {
+  background: linear-gradient(90deg,var(--accent),var(--accent2));
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+  font-weight: 600;
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+.task {
+  padding: 15px;
+  border-radius: 12px;
+  background: #12141b;
+  border: 1px solid var(--border);
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: inline-block;
+}
+
+.priority-high { background: var(--danger); }
+.priority-medium { background: orange; }
+.priority-low { background: var(--success); }
+
+.small { font-size: 12px; color: var(--muted); }
+
+.delete-btn {
+  background: var(--danger);
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>📋 Task Manager</h1>
+
+  <div class="card">
+    <div class="form-grid">
+      <input class="full" id="taskName" placeholder="Task name (e.g. Maths revision paper)">
+      
+      <select id="taskSubject">
+        <option>Maths</option>
+        <option>English</option>
+        <option>Science</option>
+        <option>History</option>
+        <option>Geography</option>
+      </select>
+
+      <input type="date" id="taskDue">
+
+      <select id="taskPriority">
+        <option value="low">Low Priority</option>
+        <option value="medium">Medium Priority</option>
+        <option value="high">High Priority</option>
+      </select>
+
+      <select id="taskStatus">
+        <option>To Do</option>
+        <option>In Progress</option>
+        <option>Done</option>
+      </select>
+
+      <button onclick="addTask()">Create Task</button>
+    </div>
+  </div>
+
+  <div id="taskList"></div>
+</div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem("rf_tasks")) || [];
+
+function saveTasks() {
+  localStorage.setItem("rf_tasks", JSON.stringify(tasks));
+}
+
+function renderTasks() {
+  const list = document.getElementById("taskList");
+  list.innerHTML = "";
+
+  tasks.forEach((task, index) => {
+    const div = document.createElement("div");
+    div.className = "task";
+
+    div.innerHTML = `
+      <div class="task-info">
+        <strong>${task.name}</strong>
+        <span class="small">${task.subject} • Due: ${task.due || "No date"} • ${task.status}</span>
+        <span class="badge priority-${task.priority}">
+          ${task.priority.toUpperCase()}
+        </span>
+      </div>
+      <button class="delete-btn" onclick="deleteTask(${index})">Delete</button>
+    `;
+
+    list.appendChild(div);
+  });
+}
+
+function addTask() {
+  const name = document.getElementById("taskName").value.trim();
+  const subject = document.getElementById("taskSubject").value;
+  const due = document.getElementById("taskDue").value;
+  const priority = document.getElementById("taskPriority").value;
+  const status = document.getElementById("taskStatus").value;
+
+  if (!name) {
+    alert("Enter a task name");
+    return;
+  }
+
+  tasks.push({ name, subject, due, priority, status });
+  saveTasks();
+  renderTasks();
+
+  document.getElementById("taskName").value = "";
+}
+
+function deleteTask(index) {
+  tasks.splice(index, 1);
+  saveTasks();
+  renderTasks();
+}
+
+renderTasks();
+</script>
+
+</body>
+</html>
