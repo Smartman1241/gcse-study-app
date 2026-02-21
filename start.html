@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FocusGCSE</title>
-  <meta name="description" content="FocusGCSE — revise smarter with tasks, study sets, flashcards, past papers, and AI." />
+  <title>ReviseFlow</title>
+  <meta name="description" content="ReviseFlow — revise smarter with tasks, study sets, flashcards, past papers, and AI." />
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,37 +15,129 @@
   <style>
     :root{
       --bg:#0b1020;
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.70);
+      --border:rgba(255,255,255,.14);
+
       --panel:rgba(255,255,255,.06);
       --panel2:rgba(255,255,255,.10);
-      --text:rgba(255,255,255,.92);
-      --muted:rgba(255,255,255,.66);
-      --border:rgba(255,255,255,.14);
+
       --radius:18px;
-      --shadow:0 18px 60px rgba(0,0,0,.35);
-      --brand:#8ea2ff;
+      --shadow:0 18px 70px rgba(0,0,0,.45);
+
+      --brand: #8ea2ff;
+      --brand2:#46e6b3;
+      --brand3:#ffd36e;
+
       --btn:rgba(255,255,255,.10);
-      --btn2:rgba(255,255,255,.14);
+      --btn2:rgba(255,255,255,.16);
     }
 
     *{box-sizing:border-box}
+    html,body{height:100%}
 
     body{
       margin:0;
-      min-height:100vh;
       color:var(--text);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background:
-        radial-gradient(1200px 700px at 12% 10%, rgba(142,162,255,.25),transparent 60%),
-        radial-gradient(900px 600px at 86% 22%, rgba(70,230,179,.18),transparent 55%),
-        radial-gradient(900px 600px at 75% 95%, rgba(255,211,110,.14),transparent 55%),
+        radial-gradient(1200px 700px at 12% 10%, rgba(142,162,255,.28),transparent 60%),
+        radial-gradient(900px 600px at 86% 18%, rgba(70,230,179,.18),transparent 55%),
+        radial-gradient(900px 600px at 74% 96%, rgba(255,211,110,.14),transparent 55%),
+        linear-gradient(180deg, rgba(255,255,255,.03), transparent 35%),
         var(--bg);
+      overflow-x:hidden;
     }
 
-    .wrap{max-width:980px; margin:0 auto; padding:28px 18px}
-    .top{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
-    .logo{width:38px; height:38px; border-radius:12px; background:var(--panel2); border:1px solid var(--border);}
-    .brand{display:flex; align-items:center; gap:10px;}
-    .brand h1{margin:0; font-size:18px;}
+    /* subtle animated glow layer */
+    .glow{
+      position:fixed;
+      inset:-120px;
+      pointer-events:none;
+      opacity:.55;
+      filter: blur(40px);
+      background:
+        radial-gradient(600px 380px at 20% 20%, rgba(142,162,255,.22), transparent 60%),
+        radial-gradient(520px 320px at 78% 30%, rgba(70,230,179,.14), transparent 60%),
+        radial-gradient(520px 320px at 70% 85%, rgba(255,211,110,.10), transparent 60%);
+      animation: floatGlow 9s ease-in-out infinite;
+    }
+    @keyframes floatGlow{
+      0%{transform:translate3d(0,0,0) scale(1)}
+      50%{transform:translate3d(0,-10px,0) scale(1.03)}
+      100%{transform:translate3d(0,0,0) scale(1)}
+    }
+
+    .wrap{
+      max-width:1080px;
+      margin:0 auto;
+      padding:28px 18px 44px;
+      position:relative;
+      z-index:1;
+    }
+
+    .top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .brandRow{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:260px;
+    }
+
+    .logo{
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      background:
+        radial-gradient(14px 14px at 30% 35%, rgba(255,255,255,.35), transparent 55%),
+        linear-gradient(135deg, rgba(142,162,255,.35), rgba(70,230,179,.22));
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow: 0 12px 28px rgba(0,0,0,.35);
+      position:relative;
+      overflow:hidden;
+    }
+    .logo:after{
+      content:"";
+      position:absolute;
+      inset:-60%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.20), transparent);
+      transform: rotate(25deg);
+      animation: sheen 3.4s ease-in-out infinite;
+      opacity:.9;
+    }
+    @keyframes sheen{
+      0%{transform:translateX(-40%) rotate(25deg)}
+      60%{transform:translateX(40%) rotate(25deg)}
+      100%{transform:translateX(40%) rotate(25deg)}
+    }
+
+    .brandText h1{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.2px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .badge{
+      font-size:11px;
+      color:rgba(255,255,255,.84);
+      border:1px solid rgba(142,162,255,.35);
+      background:rgba(142,162,255,.12);
+      padding:3px 8px;
+      border-radius:999px;
+    }
+    .subline{color:var(--muted); font-size:13px;}
+
+    .actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+
     .btn{
       border:1px solid var(--border);
       background:var(--btn);
@@ -53,102 +145,288 @@
       padding:10px 14px;
       border-radius:12px;
       text-decoration:none;
-      display:inline-block;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
       cursor:pointer;
       transition:0.2s;
+      user-select:none;
     }
-    .btn:hover{background:var(--btn2);}
+    .btn:hover{background:var(--btn2); transform: translateY(-1px);}
+    .btn:active{transform: translateY(0);}
+
     .btn.primary{
       background:rgba(142,162,255,.22);
       border-color:rgba(142,162,255,.45);
+      box-shadow: 0 16px 40px rgba(142,162,255,.10);
     }
+    .btn.primary:hover{
+      background:rgba(142,162,255,.28);
+    }
+
+    /* hero */
     .hero{
       margin-top:22px;
-      padding:20px;
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      background:var(--panel);
+      padding:22px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:22px;
+      background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
       box-shadow:var(--shadow);
+      overflow:hidden;
+      position:relative;
     }
-    .hero h2{margin:0 0 8px; font-size:34px;}
-    .muted{color:var(--muted);}
+    .hero:before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(900px 300px at 18% 0%, rgba(142,162,255,.18), transparent 60%),
+        radial-gradient(800px 260px at 78% 20%, rgba(70,230,179,.12), transparent 60%);
+      opacity:.9;
+      pointer-events:none;
+    }
+    .heroInner{position:relative; z-index:1; display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; align-items:center;}
+    .hero h2{
+      margin:0 0 10px;
+      font-size:42px;
+      line-height:1.08;
+      letter-spacing:-.6px;
+    }
+    .hero p{
+      margin:0;
+      color:var(--muted);
+      font-size:15px;
+      line-height:1.6;
+      max-width:58ch;
+    }
+
+    .ctaRow{margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .tiny{
+      font-size:12px;
+      color:rgba(255,255,255,.62);
+      margin-top:10px;
+    }
+    .checkRow{
+      margin-top:14px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      color:rgba(255,255,255,.74);
+      font-size:13px;
+    }
+    .pill{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      padding:8px 10px;
+      border-radius:999px;
+    }
+
+    /* right hero card */
+    .heroCard{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.12);
+      border-radius:18px;
+      padding:14px;
+      position:relative;
+      overflow:hidden;
+    }
+    .heroCard h3{margin:0 0 8px; font-size:14px; color:rgba(255,255,255,.86);}
+    .stat{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:10px 10px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      border-radius:14px;
+      margin-top:10px;
+      font-size:13px;
+    }
+    .stat strong{font-weight:700;}
+    .stat span{color:rgba(255,255,255,.70);}
+
+    /* feature grid */
     .grid{
       display:grid;
-      grid-template-columns:1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap:14px;
       margin-top:14px;
     }
     .card{
       padding:16px;
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      background:var(--panel);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:18px;
+      background:rgba(255,255,255,.06);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      position:relative;
+      overflow:hidden;
     }
-    footer{margin-top:18px; color:var(--muted); font-size:13px;}
-    @media (max-width: 860px){ .grid{grid-template-columns:1fr} }
+    .card:before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background: radial-gradient(240px 160px at 30% 20%, rgba(142,162,255,.10), transparent 60%);
+      pointer-events:none;
+    }
+    .card > *{position:relative; z-index:1;}
+    .card h3{margin:0 0 8px; font-size:15px;}
+    .card p{margin:0; color:var(--muted); font-size:13px; line-height:1.55;}
+
+    .icon{
+      width:34px; height:34px;
+      display:grid; place-items:center;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.07);
+      margin-bottom:10px;
+      font-size:16px;
+    }
+
+    .split{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+
+    footer{
+      margin-top:18px;
+      color:rgba(255,255,255,.58);
+      font-size:13px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    footer a{color:rgba(255,255,255,.72); text-decoration:none;}
+    footer a:hover{text-decoration:underline;}
+
+    @media (max-width: 980px){
+      .heroInner{grid-template-columns:1fr;}
+      .hero h2{font-size:38px;}
+      .grid{grid-template-columns:1fr;}
+      .split{grid-template-columns:1fr;}
+    }
   </style>
 </head>
 
 <body>
+  <div class="glow"></div>
+
   <div class="wrap">
 
     <div class="top">
-      <div class="brand">
-        <div class="logo"></div>
-        <div>
-          <h1>FocusGCSE</h1>
-          <div class="muted" style="font-size:13px">
-            Tasks • Study Sets • Flashcards • Past Papers • AI
-          </div>
+      <div class="brandRow">
+        <div class="logo" aria-hidden="true"></div>
+        <div class="brandText">
+          <h1>ReviseFlow <span class="badge">GCSE</span></h1>
+          <div class="subline">Tasks • Study Sets • Flashcards • Past Papers • AI</div>
         </div>
       </div>
 
-      <div>
+      <div class="actions">
         <a href="auth.html?mode=login" class="btn">Log in</a>
         <a href="auth.html?mode=signup" class="btn primary">Create account</a>
       </div>
     </div>
 
-    <div class="hero">
-      <h2>Revise like it’s actually 2026</h2>
-      <div class="muted" style="margin-top:8px">
-        Plan smarter. Track progress. Master past papers. Use AI built for GCSE success.
-      </div>
-    </div>
+    <section class="hero" aria-label="ReviseFlow Hero">
+      <div class="heroInner">
+        <div>
+          <h2>Revise like it’s actually 2026</h2>
+          <p>
+            Plan smarter, stay consistent, and smash past papers. ReviseFlow brings tasks,
+            flashcards, study sets, and AI explanations into one clean revision system.
+          </p>
 
-    <div class="grid">
-      <div class="card">
-        <h3>All in one place</h3>
-        <div class="muted">
-          • Study sets & flashcards<br>
-          • Task planner<br>
-          • Revision tracking<br>
-          • Past paper organiser<br>
-          • AI exam explanations
+          <div class="ctaRow">
+            <a href="auth.html?mode=signup" class="btn primary">✨ Start free</a>
+            <a href="auth.html?mode=login" class="btn">I already have an account</a>
+          </div>
+
+          <div class="checkRow" aria-label="Highlights">
+            <div class="pill">✅ Built for GCSE</div>
+            <div class="pill">⚡ Fast & distraction-free</div>
+            <div class="pill">🔒 Secure accounts</div>
+          </div>
+
+          <div class="tiny">No ads. No clutter. Just revision.</div>
+        </div>
+
+        <div class="heroCard" aria-label="Preview Card">
+          <h3>Your revision, organised</h3>
+          <div class="stat">
+            <span>Today’s focus</span>
+            <strong>25 min</strong>
+          </div>
+          <div class="stat">
+            <span>Tasks due</span>
+            <strong>3</strong>
+          </div>
+          <div class="stat">
+            <span>Flashcards</span>
+            <strong>+12</strong>
+          </div>
+          <div class="stat">
+            <span>AI helps</span>
+            <strong>Explain + Quiz</strong>
+          </div>
+          <div class="tiny">Tip: Use “Explain” to break down mark schemes.</div>
         </div>
       </div>
+    </section>
+
+    <section class="grid" aria-label="Features">
+      <div class="card">
+        <div class="icon">🧠</div>
+        <h3>AI explanations that actually help</h3>
+        <p>Ask for step-by-step answers, mark scheme style points, and quick quizzes.</p>
+      </div>
 
       <div class="card">
-        <h3>Get started</h3>
-        <div class="muted">Log in or create your free account.</div>
-        <div style="margin-top:12px;">
-          <a href="auth.html?mode=login" class="btn">Log in</a>
-          <a href="auth.html?mode=signup" class="btn primary">Create account</a>
-        </div>
+        <div class="icon">🗂️</div>
+        <h3>Past paper organiser</h3>
+        <p>Keep papers and topics tidy so you don’t waste time searching before revision.</p>
       </div>
-    </div>
 
-    <footer>© <span id="year"></span> FocusGCSE</footer>
+      <div class="card">
+        <div class="icon">✅</div>
+        <h3>Task planner + tracking</h3>
+        <p>Build a daily plan, stay consistent, and see progress without the stress.</p>
+      </div>
+    </section>
+
+    <section class="split" aria-label="More info">
+      <div class="card">
+        <div class="icon">📚</div>
+        <h3>Study sets + flashcards</h3>
+        <p>Create sets fast, revise them like a game, and keep your weak topics under control.</p>
+      </div>
+
+      <div class="card">
+        <div class="icon">🎯</div>
+        <h3>Designed for focus</h3>
+        <p>Clean layout, soft glow, strong hierarchy — it feels premium and stays readable.</p>
+      </div>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> ReviseFlow</div>
+      <div>
+        <a href="auth.html?mode=login">Log in</a>
+        <span style="opacity:.5">•</span>
+        <a href="auth.html?mode=signup">Create account</a>
+      </div>
+    </footer>
   </div>
 
-<script>
-  document.getElementById("year").textContent = new Date().getFullYear();
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
 
-  // 🚪 Redirect logged-in users away from landing page
-  document.addEventListener("DOMContentLoaded", () => {
-    redirectIfLoggedIn();
-  });
-</script>
-
+    // 🚪 Redirect logged-in users away from landing page
+    document.addEventListener("DOMContentLoaded", () => {
+      redirectIfLoggedIn();
+    });
+  </script>
 </body>
 </html>
