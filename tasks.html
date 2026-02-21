@@ -1,198 +1,554 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ReviseFlow • Tasks</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
-  --bg:#0b1020;
-  --panel:rgba(255,255,255,.06);
-  --border:rgba(255,255,255,.14);
-  --text:rgba(255,255,255,.92);
-  --muted:rgba(255,255,255,.66);
-  --brand:#8ea2ff;
-  --good:#46e6b3;
-  --warn:#ffd36e;
-  --bad:#ff7b8f;
-}
+  :root{
+    --bg:#0b1020;
+    --panel:rgba(255,255,255,.06);
+    --panel2:rgba(255,255,255,.09);
+    --border:rgba(255,255,255,.14);
+    --text:rgba(255,255,255,.92);
+    --muted:rgba(255,255,255,.66);
+    --shadow: 0 18px 60px rgba(0,0,0,.35);
+    --radius:18px;
 
-body{
-  margin:0;
-  font-family:system-ui;
-  background:var(--bg);
-  color:var(--text);
-  padding:30px;
-}
+    --brand:#8ea2ff;
+    --good:#46e6b3;
+    --warn:#ffd36e;
+    --bad:#ff7b8f;
 
-h1{
-  font-size:24px;
-  margin-bottom:20px;
-}
+    --btn:rgba(255,255,255,.10);
+    --btn2:rgba(255,255,255,.14);
+    --focus:rgba(142,162,255,.45);
 
-.card{
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:20px;
-  margin-bottom:20px;
-}
-
-input,select,textarea{
-  width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid var(--border);
-  background:transparent;
-  color:var(--text);
-}
-
-button{
-  padding:10px 14px;
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
-  background:linear-gradient(135deg,var(--brand),var(--good));
-  font-weight:600;
-}
-
-.task{
-  padding:15px;
-  border-radius:14px;
-  border:1px solid var(--border);
-  margin-bottom:10px;
-  transition:0.2s;
-}
-
-.task.overdue{
-  border-color:var(--bad);
-  box-shadow:0 0 12px rgba(255,123,143,.3);
-}
-
-.task.done{
-  opacity:.6;
-  text-decoration:line-through;
-}
-
-.small{font-size:12px;color:var(--muted);}
-.row{display:flex;gap:10px;flex-wrap:wrap;}
-</style>
-</head>
-<body>
-
-<h1>📋 Advanced Task Manager</h1>
-
-<div class="card">
-  <div class="row">
-    <input id="taskTitle" placeholder="Task title">
-    <select id="taskPriority">
-      <option value="low">Low</option>
-      <option value="medium">Medium</option>
-      <option value="high">High</option>
-    </select>
-    <input type="date" id="taskDue">
-  </div>
-  <div style="margin-top:10px;">
-    <textarea id="taskNotes" placeholder="Optional notes"></textarea>
-  </div>
-  <div style="margin-top:10px;">
-    <button onclick="addTask()">Create Task</button>
-  </div>
-</div>
-
-<div id="taskList"></div>
-
-<script>
-const supabase = window.supabase.createClient(
-  "https://mgpwknnbhaljsscsvucm.supabase.co",
-  "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
-);
-
-let tasks = [];
-
-async function loadTasks(){
-  const { data: { session } } = await supabase.auth.getSession();
-  if(!session){
-    window.location.href = "auth.html";
-    return;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
   }
 
-  const { data } = await supabase
-    .from("user_tasks")
-    .select("*")
-    .eq("user_id", session.user.id)
-    .order("created_at", { ascending:false });
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    background:
+      radial-gradient(1200px 700px at 12% 10%, rgba(142,162,255,.25),transparent 60%),
+      radial-gradient(900px 600px at 86% 22%, rgba(70,230,179,.18),transparent 55%),
+      radial-gradient(900px 600px at 75% 95%, rgba(255,211,110,.14),transparent 55%),
+      var(--bg);
+    color:var(--text);
+    line-height:1.35;
+  }
 
-  tasks = data || [];
-  renderTasks();
-}
+  .wrap{max-width:1100px; margin:0 auto; padding:22px 16px 44px;}
+  a{color:inherit}
 
-async function addTask(){
-  const { data: { session } } = await supabase.auth.getSession();
-  const title = document.getElementById("taskTitle").value.trim();
-  if(!title) return;
+  header{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .brand{
+    display:flex; align-items:center; gap:12px;
+  }
+  .logo{
+    width:44px; height:44px; border-radius:14px;
+    background: linear-gradient(135deg, rgba(142,162,255,.9), rgba(70,230,179,.75));
+    box-shadow: 0 14px 35px rgba(0,0,0,.18);
+    position:relative; overflow:hidden;
+  }
+  .logo:after{
+    content:""; position:absolute; inset:-40%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.65), transparent 55%);
+    transform: rotate(12deg);
+  }
+  h1{margin:0; font-size:18px; letter-spacing:.2px;}
+  .subtitle{font-size:13px; color:var(--muted); margin-top:2px;}
 
-  await supabase.from("user_tasks").insert({
-    user_id: session.user.id,
-    title,
-    priority: document.getElementById("taskPriority").value,
-    due_date: document.getElementById("taskDue").value || null,
-    notes: document.getElementById("taskNotes").value
-  });
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+  .pill{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.04);
+    font-size:12px;
+    color:var(--muted);
+  }
 
-  document.getElementById("taskTitle").value="";
-  document.getElementById("taskNotes").value="";
-  loadTasks();
-}
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .panelHeader{
+    padding:14px 14px 10px;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    border-bottom:1px solid var(--border);
+    background: linear-gradient(180deg, var(--panel2), transparent);
+  }
+  .panelHeader h2{
+    margin:0;
+    font-size:14px;
+    letter-spacing:.25px;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:800;
+  }
+  .panelBody{padding:14px;}
 
-async function toggleDone(id, done){
-  await supabase.from("user_tasks")
-    .update({ done: !done })
-    .eq("id", id);
-  loadTasks();
-}
+  .grid{display:grid; grid-template-columns: 1fr 1fr; gap:14px;}
+  @media (max-width: 980px){ .grid{grid-template-columns:1fr;} }
 
-async function deleteTask(id){
-  await supabase.from("user_tasks")
-    .delete()
-    .eq("id", id);
-  loadTasks();
-}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .field{display:flex; flex-direction:column; gap:6px; min-width:160px; flex:1;}
+  .field.small{min-width:140px; flex:0 0 auto;}
+  .field.full{min-width:100%; flex:1 1 100%;}
+  .label{font-size:12px; color:var(--muted);}
 
-function renderTasks(){
-  const list = document.getElementById("taskList");
-  list.innerHTML="";
+  input[type="text"], input[type="date"], select, textarea{
+    width:100%;
+    background: rgba(0,0,0,0);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:10px 12px;
+    outline:none;
+    transition: box-shadow .12s ease, border-color .12s ease, background .12s ease;
+    color:var(--text);
+  }
+  textarea{min-height:92px; resize:vertical;}
+  input:focus, select:focus, textarea:focus{
+    border-color: rgba(142,162,255,.55);
+    box-shadow: 0 0 0 4px var(--focus);
+  }
 
-  const today = new Date().toISOString().split("T")[0];
+  /* IMPORTANT: Make select + options readable */
+  select{
+    background-color: rgba(255,255,255,.06);
+    color: var(--text);
+  }
+  select option{
+    background-color: #0b1020; /* solid background for dropdown list */
+    color: rgba(255,255,255,.92);
+  }
 
-  tasks.forEach(t=>{
-    const div = document.createElement("div");
-    div.className="task";
-    if(t.done) div.classList.add("done");
-    if(t.due_date && t.due_date < today && !t.done) div.classList.add("overdue");
+  .divider{height:1px; background:var(--border); margin:12px 0;}
 
-    div.innerHTML = `
-      <strong>${t.title}</strong>
-      <div class="small">
-        Priority: ${t.priority} 
-        ${t.due_date ? "• Due: "+t.due_date : ""}
+  .btn{
+    border:1px solid var(--border);
+    background:var(--btn);
+    padding:10px 12px;
+    border-radius:12px;
+    cursor:pointer;
+    transition: transform .06s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
+    user-select:none;
+    color:var(--text);
+  }
+  .btn:hover{background:var(--btn2);}
+  .btn:active{transform:translateY(1px);}
+  .btn.primary{
+    background: linear-gradient(135deg, rgba(142,162,255,.85), rgba(70,230,179,.65));
+    border-color:transparent;
+    color: rgba(10,16,32,.95);
+    font-weight:800;
+  }
+  .btn.danger{
+    background:rgba(255,123,143,.14);
+    border-color:rgba(255,123,143,.22);
+  }
+  .btn:disabled{opacity:.55; cursor:not-allowed; transform:none;}
+
+  .list{display:flex; flex-direction:column; gap:10px;}
+  .item{
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px;
+    background: rgba(255,255,255,.04);
+    display:flex; gap:10px;
+    align-items:flex-start;
+    justify-content:space-between;
+  }
+  .item.overdue{
+    border-color: rgba(255,123,143,.35);
+    box-shadow: 0 0 0 4px rgba(255,123,143,.12);
+  }
+  .item.done{opacity:.65;}
+  .itemMain{display:flex; gap:10px; align-items:flex-start; flex:1; min-width:0;}
+  .itemText{min-width:0; display:flex; flex-direction:column; gap:5px;}
+  .name{
+    font-weight:900;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:680px;
+  }
+  .meta{display:flex; gap:8px; flex-wrap:wrap; color:var(--muted); font-size:12px;}
+  .actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+
+  .badge{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    font-size:12px;
+    color:var(--muted);
+    background: rgba(255,255,255,.03);
+  }
+  .badge.high{border-color: rgba(255,123,143,.35); background: rgba(255,123,143,.12); color: rgba(255,255,255,.9);}
+  .badge.medium{border-color: rgba(255,211,110,.35); background: rgba(255,211,110,.12); color: rgba(255,255,255,.9);}
+  .badge.low{border-color: rgba(70,230,179,.30); background: rgba(70,230,179,.10); color: rgba(255,255,255,.9);}
+
+  .check{
+    width:18px; height:18px; margin-top:2px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:transparent;
+    cursor:pointer;
+    flex:0 0 auto;
+    display:grid; place-items:center;
+  }
+  .check[data-done="true"]{
+    background: rgba(70,230,179,.22);
+    border-color: rgba(70,230,179,.35);
+  }
+  .check svg{width:14px; height:14px; opacity:0;}
+  .check[data-done="true"] svg{opacity:1;}
+
+  .toast{
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 50;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(10,16,32,.75);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    min-width: 220px;
+    max-width: 420px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .18s ease, transform .18s ease;
+    pointer-events:none;
+  }
+  .toast.show{opacity:1; transform: translateY(0);}
+  .mono{font-family:var(--mono);}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo" title="ReviseFlow"></div>
+      <div>
+        <h1>Tasks</h1>
+        <div class="subtitle">Plan what to do next — and actually finish it.</div>
       </div>
-      ${t.notes ? `<div class="small">${t.notes}</div>` : ""}
-      <div style="margin-top:8px;">
-        <button onclick="toggleDone('${t.id}', ${t.done})">
-          ${t.done ? "Undo" : "Complete"}
-        </button>
-        <button onclick="deleteTask('${t.id}')">Delete</button>
-      </div>
-    `;
-    list.appendChild(div);
-  });
-}
+    </div>
 
-loadTasks();
+    <div class="toolbar">
+      <span class="pill">👤 <span id="who">Loading…</span></span>
+      <button class="btn" id="backBtn">← Back to Dashboard</button>
+      <button class="btn danger" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- Create -->
+    <section class="panel">
+      <div class="panelHeader">
+        <h2>Create task</h2>
+        <span class="pill">Saved to your account</span>
+      </div>
+      <div class="panelBody">
+        <div class="row">
+          <label class="field">
+            <span class="label">Title</span>
+            <input id="taskTitle" type="text" placeholder="e.g. Maths: simultaneous equations practice" maxlength="120" />
+          </label>
+
+          <label class="field small">
+            <span class="label">Priority</span>
+            <select id="taskPriority">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+
+          <label class="field small">
+            <span class="label">Due date</span>
+            <input type="date" id="taskDue" />
+          </label>
+        </div>
+
+        <label class="field full" style="margin-top:10px;">
+          <span class="label">Notes (optional)</span>
+          <textarea id="taskNotes" placeholder="Add details, steps, or what ‘done’ means…"></textarea>
+        </label>
+
+        <div class="row" style="justify-content:space-between; margin-top:10px;">
+          <span class="pill">Tip: press <span class="mono">Enter</span> in Title to create</span>
+          <button class="btn primary" id="createBtn">Create task</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- List -->
+    <section class="panel">
+      <div class="panelHeader">
+        <h2>Your tasks</h2>
+        <div class="row">
+          <select id="filter" style="min-width:180px;">
+            <option value="open" selected>Open</option>
+            <option value="all">All</option>
+            <option value="done">Completed</option>
+          </select>
+          <select id="sort" style="min-width:180px;">
+            <option value="created" selected>Sort: Newest</option>
+            <option value="due">Sort: Due date</option>
+            <option value="priority">Sort: Priority</option>
+          </select>
+        </div>
+      </div>
+      <div class="panelBody">
+        <div id="taskList" class="list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const sb = window.supabase.createClient(
+    "https://mgpwknnbhaljsscsvucm.supabase.co",
+    "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+  );
+
+  const $ = (s, r=document) => r.querySelector(s);
+
+  const toastEl = $("#toast");
+  const toast = (msg) => {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(()=>toastEl.classList.remove("show"), 2200);
+  };
+
+  let sessionUser = null;
+  let tasks = [];
+
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  const prettyDate = (iso) => {
+    if(!iso) return "";
+    try{
+      return new Date(iso + "T00:00:00").toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"});
+    }catch{ return iso; }
+  };
+
+  const priorityRank = (p) => ({high:3, medium:2, low:1}[p] || 0);
+
+  function esc(s){
+    return String(s ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+  }
+
+  async function requireSession(){
+    const { data: { session } } = await sb.auth.getSession();
+    if(!session){
+      window.location.href = "auth.html";
+      return null;
+    }
+    sessionUser = session.user;
+    return session;
+  }
+
+  async function loadTasks(){
+    const sess = await requireSession();
+    if(!sess) return;
+
+    const { data, error } = await sb
+      .from("user_tasks")
+      .select("*")
+      .eq("user_id", sess.user.id)
+      .order("created_at", { ascending:false });
+
+    if(error){
+      console.error(error);
+      toast("Couldn’t load tasks");
+      tasks = [];
+    }else{
+      tasks = data || [];
+    }
+
+    renderTasks();
+  }
+
+  async function addTask(){
+    const sess = await requireSession();
+    if(!sess) return;
+
+    const title = ($("#taskTitle").value || "").trim();
+    const priority = $("#taskPriority").value;
+    const due_date = $("#taskDue").value || null;
+    const notes = $("#taskNotes").value || "";
+
+    if(!title){
+      toast("Enter a task title");
+      $("#taskTitle").focus();
+      return;
+    }
+
+    const btn = $("#createBtn");
+    btn.disabled = true;
+    btn.textContent = "Creating…";
+
+    const { error } = await sb.from("user_tasks").insert({
+      user_id: sess.user.id,
+      title,
+      priority,
+      due_date,
+      notes,
+      done: false
+    });
+
+    btn.disabled = false;
+    btn.textContent = "Create task";
+
+    if(error){
+      console.error(error);
+      toast("Create failed (check Supabase policy/table)");
+      return;
+    }
+
+    $("#taskTitle").value = "";
+    $("#taskNotes").value = "";
+    $("#taskDue").value = "";
+    $("#taskPriority").value = "medium";
+
+    toast("Task created");
+    await loadTasks();
+  }
+
+  async function toggleDone(id, done){
+    const { error } = await sb.from("user_tasks").update({ done: !done }).eq("id", id);
+    if(error){ console.error(error); toast("Update failed"); return; }
+    await loadTasks();
+  }
+
+  async function deleteTask(id){
+    if(!confirm("Delete this task?")) return;
+    const { error } = await sb.from("user_tasks").delete().eq("id", id);
+    if(error){ console.error(error); toast("Delete failed"); return; }
+    toast("Deleted");
+    await loadTasks();
+  }
+
+  function renderTasks(){
+    const list = $("#taskList");
+    const filter = $("#filter").value;
+    const sort = $("#sort").value;
+
+    let items = [...tasks];
+
+    if(filter === "open") items = items.filter(t => !t.done);
+    if(filter === "done") items = items.filter(t => t.done);
+
+    if(sort === "due"){
+      items.sort((a,b) => (a.due_date || "9999-12-31").localeCompare(b.due_date || "9999-12-31"));
+    }else if(sort === "priority"){
+      items.sort((a,b) => priorityRank(b.priority) - priorityRank(a.priority));
+    } // else newest already from query
+
+    if(items.length === 0){
+      list.innerHTML = `<div class="pill">No tasks here yet.</div>`;
+      return;
+    }
+
+    const today = todayISO();
+
+    list.innerHTML = items.map(t => {
+      const overdue = t.due_date && t.due_date < today && !t.done;
+      const due = t.due_date ? `📅 ${prettyDate(t.due_date)}` : "No due date";
+      const priClass = t.priority === "high" ? "high" : (t.priority === "medium" ? "medium" : "low");
+      return `
+        <div class="item ${t.done ? "done" : ""} ${overdue ? "overdue" : ""}">
+          <div class="itemMain">
+            <div class="check" data-id="${t.id}" data-done="${t.done}" title="Toggle done">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+            </div>
+            <div class="itemText">
+              <div class="name" style="${t.done ? "text-decoration:line-through;" : ""}">
+                ${esc(t.title)}
+              </div>
+              <div class="meta">
+                <span class="badge ${priClass}">⚡ ${esc(t.priority)}</span>
+                <span class="pill">${esc(due)}</span>
+                ${overdue ? `<span class="badge high">Overdue</span>` : ``}
+              </div>
+              ${t.notes ? `<div class="meta"><span class="pill">📝 ${esc(t.notes)}</span></div>` : ``}
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn" data-action="toggle" data-id="${t.id}" data-done="${t.done}">
+              ${t.done ? "Undo" : "Complete"}
+            </button>
+            <button class="btn danger" data-action="delete" data-id="${t.id}">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    list.querySelectorAll(".check").forEach(el => {
+      el.onclick = () => toggleDone(el.dataset.id, el.dataset.done === "true");
+    });
+    list.querySelectorAll("[data-action='toggle']").forEach(btn => {
+      btn.onclick = () => toggleDone(btn.dataset.id, btn.dataset.done === "true");
+    });
+    list.querySelectorAll("[data-action='delete']").forEach(btn => {
+      btn.onclick = () => deleteTask(btn.dataset.id);
+    });
+  }
+
+  async function init(){
+    const sess = await requireSession();
+    if(!sess) return;
+
+    $("#who").textContent = sess.user.email;
+
+    $("#backBtn").addEventListener("click", () => window.location.href = "index.html");
+    $("#logoutBtn").addEventListener("click", async () => {
+      await sb.auth.signOut();
+      window.location.href = "auth.html";
+    });
+
+    $("#createBtn").addEventListener("click", addTask);
+
+    $("#taskTitle").addEventListener("keydown", (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        addTask();
+      }
+    });
+
+    $("#filter").addEventListener("change", renderTasks);
+    $("#sort").addEventListener("change", renderTasks);
+
+    await loadTasks();
+  }
+
+  init();
 </script>
-
 </body>
 </html>
