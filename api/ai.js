@@ -14,6 +14,7 @@ function todayInTimezone(tz) {
   });
   return dtf.format(new Date());
 }
+<!-- redeploy -->
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
