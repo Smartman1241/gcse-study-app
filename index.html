@@ -1,11 +1,10 @@
 <!doctype html>
-<!-- test deploy -->
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>GCSE Focus</title>
-<meta name="description" content="GCSE Focus — tasks, study sets, flashcards, learn, test, revision, past papers, pomodoro, stats, AI. Everything saved locally." />
+<title>ReviseFlow</title>
+<meta name="description" content="ReviseFlow — tasks, study sets, flashcards, learn, test, revision, past papers, pomodoro, stats, AI. Securely saved and synced." />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -39,6 +38,7 @@
     --btn2:rgba(0,0,0,.10);
     --focus:rgba(142,162,255,.55);
   }
+
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
@@ -51,14 +51,21 @@
       var(--bg);
     color:var(--text);
     line-height:1.35;
+    overflow-x:hidden;
   }
   a{color:inherit}
   button, input, select, textarea{font:inherit; color:inherit}
+
+  /* Fix “haze” issue: ensure panels aren’t accidentally inheriting opacity/filters */
+  .panel, .card, .item, .toast { opacity:1; filter:none; }
+
   .wrap{max-width:1180px; margin:0 auto; padding:22px 16px 44px;}
+
   header{
     display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
     margin-bottom:14px;
   }
+
   .brand{
     display:flex; align-items:center; gap:12px; min-width:260px;
   }
@@ -73,10 +80,24 @@
     background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.65), transparent 55%);
     transform: rotate(12deg);
   }
+
   .titleBlock{display:flex; flex-direction:column; gap:2px;}
-  .titleBlock h1{margin:0; font-size:18px; letter-spacing:.2px;}
+  .titleBlock h1{margin:0; font-size:18px; letter-spacing:.2px; display:flex; align-items:center; gap:8px;}
+  .badgeTiny{
+    font-size:11px;
+    padding:3px 8px;
+    border-radius:999px;
+    border:1px solid rgba(142,162,255,.35);
+    background:rgba(142,162,255,.12);
+    color:rgba(255,255,255,.86);
+  }
+  html[data-theme="light"] .badgeTiny{color:rgba(0,0,0,.78);}
   .subtitle{font-size:13px; color:var(--muted);}
-  .toolbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;}
+
+  .toolbar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;
+  }
+
   .chip{
     display:inline-flex; align-items:center; gap:10px;
     padding:10px 12px; border-radius:999px;
@@ -85,6 +106,7 @@
   }
   .chip b{font-weight:750;}
   .chip small{color:var(--muted);}
+
   .btn{
     border:1px solid var(--border);
     background:var(--btn);
@@ -105,9 +127,7 @@
   .btn.danger{background:rgba(255,123,143,.14); border-color:rgba(255,123,143,.22);}
   .btn.ghost{background:transparent;}
   .fileBtn{position:relative; overflow:hidden;}
-  .fileBtn input[type="file"]{
-    position:absolute; inset:0; opacity:0; cursor:pointer;
-  }
+  .fileBtn input[type="file"]{position:absolute; inset:0; opacity:0; cursor:pointer;}
 
   .grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:14px;}
   @media (max-width: 980px){ .grid{grid-template-columns:1fr;} }
@@ -134,30 +154,13 @@
     font-weight:800;
   }
   .panelBody{padding:14px;}
-  .tabs{display:flex; gap:8px; flex-wrap:wrap;}
-  .tab{
-    padding:10px 12px;
-    border-radius:999px;
-    border:1px solid var(--border);
-    background:var(--btn);
-    cursor:pointer;
-    user-select:none;
-    font-size:13px;
-    color:var(--muted);
-    transition: background .12s ease, color .12s ease, border-color .12s ease;
-  }
-  .tab[aria-selected="true"]{
-    background: rgba(142,162,255,.18);
-    border-color: rgba(142,162,255,.35);
-    color: var(--text);
-    font-weight:750;
-  }
 
   .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
   .field{display:flex; flex-direction:column; gap:6px; min-width:160px; flex:1;}
   .field.small{min-width:120px; flex:0 0 auto;}
   .field.full{min-width:100%; flex:1 1 100%;}
   .label{font-size:12px; color:var(--muted);}
+
   input[type="text"], input[type="date"], input[type="number"], select, textarea{
     width:100%;
     background: rgba(0,0,0,0);
@@ -165,7 +168,7 @@
     border-radius:12px;
     padding:10px 12px;
     outline:none;
-    transition: box-shadow .12s ease, border-color .12s ease;
+    transition: box-shadow .12s ease, border-color .12s ease, background .12s ease;
   }
   textarea{min-height:92px; resize:vertical;}
   input:focus, select:focus, textarea:focus{
@@ -173,10 +176,21 @@
     box-shadow: 0 0 0 4px var(--focus);
   }
 
+  /* Make select readable in both themes */
+  select{
+    background-color: var(--panel);
+    color: var(--text);
+  }
+  select option{
+    background-color: var(--bg);
+    color: var(--text);
+  }
+
   .divider{height:1px; background:var(--border); margin:12px 0;}
   .muted{color:var(--muted);}
   .small{font-size:12px;}
   .mono{font-family:var(--mono);}
+
   .pill{
     display:inline-flex; align-items:center; gap:6px;
     padding:6px 10px;
@@ -186,7 +200,7 @@
     font-size:12px;
     color:var(--muted);
   }
-  [data-theme="light"] .pill{background:rgba(0,0,0,.02);}
+  html[data-theme="light"] .pill{background:rgba(0,0,0,.02);}
 
   .list{display:flex; flex-direction:column; gap:10px;}
   .item{
@@ -198,7 +212,8 @@
     align-items:flex-start;
     justify-content:space-between;
   }
-  [data-theme="light"] .item{background: rgba(0,0,0,.02);}
+  html[data-theme="light"] .item{background: rgba(0,0,0,.02);}
+
   .itemMain{display:flex; gap:10px; align-items:flex-start; flex:1; min-width:0;}
   .itemText{min-width:0; display:flex; flex-direction:column; gap:4px;}
   .itemText .topline{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
@@ -211,6 +226,7 @@
   }
   .meta{display:flex; gap:8px; flex-wrap:wrap; color:var(--muted); font-size:12px;}
   .actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+
   .iconBtn{
     border:1px solid var(--border);
     background:var(--btn);
@@ -219,6 +235,7 @@
     cursor:pointer;
   }
   .iconBtn:hover{background:var(--btn2);}
+
   .check{
     width:18px; height:18px; margin-top:2px;
     border-radius:6px;
@@ -234,6 +251,7 @@
   }
   .check svg{width:14px; height:14px; opacity:0;}
   .check[data-done="true"] svg{opacity:1;}
+
   .kpiGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
   @media (max-width: 620px){ .kpiGrid{grid-template-columns:1fr;} }
   .kpi{
@@ -242,7 +260,7 @@
     border:1px solid var(--border);
     background: rgba(255,255,255,.04);
   }
-  [data-theme="light"] .kpi{background:rgba(0,0,0,.02);}
+  html[data-theme="light"] .kpi{background:rgba(0,0,0,.02);}
   .kpi .big{font-size:22px; font-weight:900;}
   .kpi .label{margin-top:4px; font-size:12px; color:var(--muted);}
 
@@ -254,6 +272,7 @@
     text-align:center;
     padding:10px 0 4px;
   }
+
   .progress{
     height:10px;
     border-radius:999px;
@@ -286,7 +305,7 @@
     transition: opacity .18s ease, transform .18s ease;
     pointer-events:none;
   }
-  [data-theme="light"] .toast{ background: rgba(255,255,255,.85); }
+  html[data-theme="light"] .toast{ background: rgba(255,255,255,.85); }
   .toast.show{opacity:1; transform: translateY(0);}
   .dangerText{color: var(--bad);}
   .goodText{color: var(--good);}
@@ -301,7 +320,7 @@
     border:1px solid var(--border);
     background: rgba(255,255,255,.03);
   }
-  [data-theme="light"] .table{background: rgba(0,0,0,.02);}
+  html[data-theme="light"] .table{background: rgba(0,0,0,.02);}
   .table th, .table td{
     padding:10px 10px;
     border-bottom:1px solid var(--border);
@@ -311,6 +330,7 @@
   }
   .table th{color:var(--muted); font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.2px;}
   .table tr:last-child td{border-bottom:none;}
+
   .badge{
     display:inline-flex;
     align-items:center;
@@ -324,123 +344,98 @@
   .badge.warn{background: rgba(255,211,110,.14); border-color: rgba(255,211,110,.25);}
   .badge.bad{background: rgba(255,123,143,.14); border-color: rgba(255,123,143,.25);}
 
-<style>
-  /* existing CSS */
+  /* Continue with dropdown */
+  .navSelect{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-top:6px;
+    flex-wrap:wrap;
+  }
+  .navSelect .labelMini{
+    font-size:12px;
+    color:var(--muted);
+  }
+  .navSelect select{
+    min-width: 240px;
+  }
 
-  .nav-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
+  /* Account dropdown */
+  .account-wrapper{position:relative;}
+  .account-dropdown{
+    position:absolute;
+    right:0;
+    top:48px;
+    width:260px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:16px;
+    display:none;
+    z-index:1000;
+    box-shadow:var(--shadow);
+    backdrop-filter: blur(10px);
+  }
+  html[data-theme="light"] .account-dropdown{
+    background:rgba(255,255,255,.85);
+  }
 
-.nav-buttons button {
-  background: var(--btn);
-  border: 1px solid var(--border);
-  padding: 8px 14px;
-  border-radius: 10px;
-  color: var(--text);
-  cursor: pointer;
-  font-weight: 600;
-  transition: 0.2s;
-}
+  .account-name{font-weight:800;font-size:15px;}
+  .account-email{font-size:12px;color:var(--muted);margin-top:4px;}
+  .btn.full{width:100%;margin-top:8px;}
 
-.nav-buttons button:hover {
-  background: var(--btn2);
-}
-
-/* Light theme enhancement */
-html[data-theme="light"] .nav-buttons button {
-  background: rgba(0,0,0,0.06);
-  color: var(--text);
-}
-/* Theme-aware select styling */
-select {
-  background-color: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-
-select option {
-  background-color: var(--bg);
-  color: var(--text);
-}
-.account-dropdown{
-  position:absolute;
-  right:0;
-  top:48px;
-  width:260px;
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:16px;
-  display:none;
-  z-index:1000;
-  box-shadow:var(--shadow);
-}
-
-.account-header{
-  margin-bottom:8px;
-}
-
-.account-name{
-  font-weight:800;
-  font-size:15px;
-}
-
-.account-email{
-  font-size:12px;
-  color:var(--muted);
-  margin-top:4px;
-}
-
-.btn.full{
-  width:100%;
-  margin-top:8px;
-}
-
+  /* Dashboard welcome block */
+  .dashHero{
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:14px;
+    background: linear-gradient(135deg, rgba(142,162,255,.14), rgba(70,230,179,.08));
+  }
+  .dashHero h3{margin:0 0 6px; font-size:16px;}
+  .dashHero p{margin:0; color:var(--muted); font-size:13px; line-height:1.55;}
 </style>
 </head>
 
 <body>
 <div class="wrap">
-  <header class="topbar">
+  <header>
     <div class="brand">
-      <div class="logo" title="GCSE Focus"></div>
+      <div class="logo" title="ReviseFlow"></div>
       <div class="titleBlock">
-        <h1>GCSE Focus</h1>
-<div class="nav-buttons">
-  <button onclick="setTab('studysets')">Study Sets</button>
-  <button onclick="setTab('flashcards')">Flashcards</button>
-  <button onclick="setTab('learn')">Learn</button>
-  <button onclick="setTab('test')">Test</button>
-  <button onclick="setTab('revision')">Revision</button>
-  <button onclick="window.location.href='pastpapers.html'">
-  Past Papers
-</button>
-  <button onclick="setTab('tasks')">Tasks</button>
-  <button onclick="setTab('stats')">Stats</button>
-  <button onclick="setTab('ai')">AI</button>
-</div>
+        <h1>ReviseFlow <span class="badgeTiny">GCSE</span></h1>
 
-    <div class="toolbar">
-<div class="account-wrapper" style="position:relative;">
-  <button class="btn" id="accountBtn">
-    👤 <span id="navUsername">Loading...</span>
-  </button>
+        <div class="navSelect">
+          <div class="labelMini">Continue with</div>
+          <select id="navContinue">
+            <option value="dashboard">Dashboard</option>
+            <option value="tasks">Tasks</option>
+            <option value="studysets">Study Sets</option>
+            <option value="flashcards">Flashcards</option>
+            <option value="learn">Learn</option>
+            <option value="test">Test</option>
+            <option value="revision">Revision</option>
+            <option value="stats">Stats</option>
+            <option value="ai">AI</option>
+            <option value="pastpapers">Past Papers</option>
+          </select>
+        </div>
 
-  <div id="accountDropdown" class="account-dropdown">
-    <div class="account-header">
-      <div id="dropdownUsername" class="account-name"></div>
-      <div id="accountEmail" class="account-email"></div>
+        <div class="subtitle">Plan • Revise • Track • Focus • Improve</div>
+      </div>
     </div>
 
-    <div class="divider"></div>
+    <div class="toolbar">
+      <div class="account-wrapper">
+        <button class="btn" id="accountBtn">👤 <span id="navUsername">Loading...</span></button>
+        <div id="accountDropdown" class="account-dropdown">
+          <div class="account-name" id="dropdownUsername"></div>
+          <div class="account-email" id="accountEmail"></div>
+          <div class="divider"></div>
+          <button class="btn ghost full" id="btnAccountPage">Account Settings</button>
+          <button class="btn ghost full" id="btnLogout">Logout</button>
+        </div>
+      </div>
 
-    <button class="btn ghost full" id="btnAccountPage">Account Settings</button>
-    <button class="btn ghost full" id="btnLogout">Logout</button>
-  </div>
-</div>
       <div class="chip">
         <div><small>📅 Today</small><div><b id="uiToday">—</b></div></div>
         <div style="width:1px;height:24px;background:var(--border)"></div>
@@ -463,15 +458,46 @@ select option {
     <section class="panel">
       <div class="panelHeader">
         <div>
-          <h2>Dashboard</h2>
+          <h2 id="leftTitle">Dashboard</h2>
           <div class="muted small">Your progress is securely saved and synced to your account.</div>
         </div>
-
-
+      </div>
 
       <div class="panelBody">
+
+        <!-- DASHBOARD -->
+        <section class="tabpanel" data-tabpanel="dashboard">
+          <div class="dashHero">
+            <h3>Welcome back, <span id="dashName">student</span> 👋</h3>
+            <p>
+              Here’s your revision overview. Use “Continue with” to jump into a tool.
+            </p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="kpiGrid">
+            <div class="kpi"><div class="big" id="dashTasksOpen">0</div><div class="label">Open tasks</div></div>
+            <div class="kpi"><div class="big" id="dashMinutesWeek">0</div><div class="label">Minutes this week</div></div>
+            <div class="kpi"><div class="big" id="dashWeakCount">0</div><div class="label">Weak topics</div></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <button class="btn primary" id="dashGoTasks">✅ Plan tasks</button>
+            <button class="btn" id="dashGoTimer">⏱ Start focus session</button>
+            <button class="btn" id="dashGoAI">✨ Ask AI</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="pill">Next up</div>
+          <div class="muted small" id="dashNextUp" style="margin-top:8px; line-height:1.55;">—</div>
+        </section>
+
         <!-- TASKS -->
-        <section class="tabpanel" data-tabpanel="tasks">
+        <section class="tabpanel" data-tabpanel="tasks" hidden>
           <div class="row">
             <div class="field">
               <span class="label">Task</span>
@@ -535,7 +561,6 @@ select option {
           </div>
 
           <div class="divider"></div>
-
           <div class="list" id="tasksList"></div>
         </section>
 
@@ -825,58 +850,18 @@ select option {
           </div>
 
           <div class="divider"></div>
-
           <div class="list" id="revList"></div>
-        </section>
-
-        <!-- PAST PAPERS -->
-        <section class="tabpanel" data-tabpanel="papers" hidden>
-          <div class="row">
-            <div class="field small">
-              <span class="label">Subject</span>
-              <select id="ppSubject"></select>
-            </div>
-            <div class="field">
-              <span class="label">Paper name</span>
-              <input id="ppName" type="text" placeholder="e.g. AQA Biology Paper 1 (2022)" maxlength="80">
-            </div>
-            <div class="field small">
-              <span class="label">Date</span>
-              <input id="ppDate" type="date">
-            </div>
-            <div class="field small">
-              <span class="label">Score (%)</span>
-              <input id="ppScore" type="number" min="0" max="100" value="0">
-            </div>
-            <div class="field">
-              <span class="label">Notes</span>
-              <input id="ppNotes" type="text" placeholder="What went wrong / what to fix" maxlength="120">
-            </div>
-            <div class="field small" style="align-self:flex-end">
-              <button class="btn primary" id="btnPpAdd">Add</button>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Date</th><th>Subject</th><th>Paper</th><th>Score</th><th>Notes</th><th></th>
-              </tr>
-            </thead>
-            <tbody id="ppTable"></tbody>
-          </table>
         </section>
 
         <!-- AI -->
         <section class="tabpanel" data-tabpanel="ai" hidden>
           <div class="card" style="border:1px solid var(--border); border-radius:14px; padding:14px; background:rgba(255,255,255,.03)">
-      <div class="row" style="justify-content:space-between">
-  <div>
-    <h3 style="margin:0">AI GCSE Explainer</h3>
-<div class="muted small">Ask any GCSE topic for clear, exam-focused explanations</div>  </div>
-</div>
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <h3 style="margin:0">ReviseFlow AI Explainer</h3>
+                <div class="muted small">Ask any GCSE topic for clear, exam-focused explanations.</div>
+              </div>
+            </div>
 
             <div class="divider"></div>
 
@@ -884,13 +869,13 @@ select option {
               <span class="label">Your question</span>
               <textarea id="aiInput" placeholder="e.g. Explain photosynthesis step-by-step with an exam-style answer." maxlength="800"></textarea>
             </div>
+
             <div class="row">
               <button class="btn primary" id="btnAskAI">✨ Explain</button>
               <button class="btn" id="btnAiClear">Clear</button>
             </div>
 
             <div class="divider"></div>
-
             <div id="aiOutput" class="muted" style="white-space:pre-wrap; line-height:1.45;">Your explanation will appear here.</div>
           </div>
         </section>
@@ -933,6 +918,7 @@ select option {
           <div class="pill">Past papers average</div>
           <div class="muted small" style="margin-top:8px"><b id="ppAvg">—</b></div>
         </section>
+
       </div>
     </section>
 
@@ -944,9 +930,9 @@ select option {
       </div>
       <div class="panelBody">
         <div class="row" style="justify-content:center">
-          <button class="tab" id="modeFocus" data-mode="focus" aria-selected="true">Focus</button>
-          <button class="tab" id="modeShort" data-mode="short" aria-selected="false">Short break</button>
-          <button class="tab" id="modeLong" data-mode="long" aria-selected="false">Long break</button>
+          <button class="btn" id="modeFocus" data-mode="focus">Focus</button>
+          <button class="btn" id="modeShort" data-mode="short">Short break</button>
+          <button class="btn" id="modeLong" data-mode="long">Long break</button>
         </div>
 
         <div class="timerBig" id="timerDisplay">25:00</div>
@@ -995,6 +981,7 @@ select option {
 </div>
 
 <div class="toast" id="toast"></div>
+
 <script>
 (() => {
   "use strict";
@@ -1029,6 +1016,7 @@ select option {
     d.setDate(d.getDate() + days);
     return d.toISOString().slice(0,10);
   };
+
   const toastEl = $("#toast");
   const toast = (msg) => {
     if(!toastEl) return;
@@ -1037,19 +1025,34 @@ select option {
     clearTimeout(toastEl._t);
     toastEl._t = setTimeout(()=>toastEl.classList.remove("show"), 2200);
   };
-  const downloadJSON = (obj, filename="gcse_focus_export.json") => {
-    const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+
+  // ---------- Storage (migrates old keys so users don’t lose data) ----------
+  const OLD_STORAGE_KEY = "gcse_focus_onefile_v2";
+  const STORAGE_KEY = "reviseflow_onefile_v2";
+  const OLD_THEME_KEY = "gcse_focus_theme_v1";
+  const THEME_KEY = "reviseflow_theme_v1";
+
+  const storageGet = () => {
+    try{
+      const rawNew = localStorage.getItem(STORAGE_KEY);
+      if(rawNew) return JSON.parse(rawNew);
+
+      const rawOld = localStorage.getItem(OLD_STORAGE_KEY);
+      if(rawOld){
+        const obj = JSON.parse(rawOld);
+        // migrate
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+        return obj;
+      }
+      return null;
+    }catch{ return null; }
   };
 
-  // ---------- Storage ----------
-  const STORAGE_KEY = "gcse_focus_onefile_v2";
-  const THEME_KEY = "gcse_focus_theme_v1";
+  const storageSetLocal = (obj) => {
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); }catch(e){ console.warn("Local save failed:", e); }
+  };
 
+  // ---------- Subjects ----------
   const DEFAULT_SUBJECTS = [
     "Maths","English Language","English Literature",
     "Biology","Chemistry","Physics","Combined Science",
@@ -1061,27 +1064,20 @@ select option {
     version: 2,
     subjects: [...DEFAULT_SUBJECTS],
 
-    activeTab: "tasks",
+    activeTab: "dashboard",
     activeSetId: null,
 
-    // Tasks
-    tasks: [], // {id,name,subject,priority,done,dueISO,repeat,createdAt,doneAt}
+    tasks: [],
 
-    // Study sets
-    studySets: [], // {id,name,subject,desc,createdAt,updatedAt}
-    cardsBySet: {}, // setId -> [{id,front,back,createdAt, nextReviewISO}]
-    mcqBySet: {}, // setId -> [{id,q,opts:{A,B,C,D},correct,createdAt}]
+    studySets: [],
+    cardsBySet: {},
+    mcqBySet: {},
 
-    // Revision topics
-    topics: [], // {id,subject,topic,confidence,notes,nextReviewISO,updatedAt}
+    topics: [],
+    pastPapers: [],
 
-    // Past papers
-    pastPapers: [], // {id,subject,name,dateISO,score,notes,createdAt}
+    topicConfidence: {},
 
-    // Confidence quick list used by Learn tab
-    topicConfidence: {}, // key "Subject|Topic" -> 0..10
-
-    // Timer + logs
     timer: {
       config: { focusMin:25, shortMin:5, longMin:15 },
       mode: "focus",
@@ -1091,72 +1087,15 @@ select option {
       lastTickMs:null
     },
 
-    studyLog: [], // {dateISO, minutes}
+    studyLog: [],
     weeklyGoalMin: 600
   });
 
   let state = defaultState();
 
-async function loadUserData() {
-  if (!currentUser) return;
-
-  const { data, error } = await supabaseClient
-    .from("user_data")
-    .select("data")
-    .eq("user_id", currentUser.id)
-    .maybeSingle();
-
-  if (error && error.code !== "PGRST116") {
-    console.error("Load error:", error);
-    return;
-  }
-
-  if (data && data.data) {
-    state = defaultState();
-    mergeIn(data.data);
-  }
-
-  bootUI();
-}
-
-async function saveUserData() {
-  if (!currentUser) return;
-
-  const { error } = await supabaseClient
-    .from("user_data")
-    .upsert({
-      user_id: currentUser.id,
-      data: state
-    });
-
-  if (error) {
-    console.error("Save error:", error);
-  }
-}
-
-  const storageGet = () => {
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return null;
-      const obj = JSON.parse(raw);
-      if(!obj || typeof obj !== "object") return null;
-      return obj;
-    }catch{ return null; }
-  };
-const storageSet = () => {
-  // Save locally as backup
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.warn("Local save failed:", e);
-  }
-
-  // Save to Supabase
-  saveUserData();
-};
-  const mergeIn = (saved) => {
+  function mergeIn(saved){
     if(!saved || typeof saved !== "object") return;
-    // Keep defaults for new fields, but merge known ones
+
     if(Array.isArray(saved.subjects) && saved.subjects.length) state.subjects = saved.subjects;
 
     if(Array.isArray(saved.tasks)) state.tasks = saved.tasks;
@@ -1175,31 +1114,86 @@ const storageSet = () => {
     if(Number.isFinite(Number(saved.weeklyGoalMin))) state.weeklyGoalMin = Number(saved.weeklyGoalMin);
     if(typeof saved.activeTab === "string") state.activeTab = saved.activeTab;
     if(typeof saved.activeSetId === "string") state.activeSetId = saved.activeSetId;
+  }
+
+  async function loadUserData(){
+    if(!currentUser) return;
+
+    const { data, error } = await supabaseClient
+      .from("user_data")
+      .select("data")
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") {
+      console.error("Load error:", error);
+      return;
+    }
+
+    const local = storageGet();
+    state = defaultState();
+
+    if(local) mergeIn(local);
+    if(data && data.data) mergeIn(data.data);
+
+    bootUI();
+  }
+
+  async function saveUserData(){
+    if (!currentUser) return;
+    const { error } = await supabaseClient
+      .from("user_data")
+      .upsert({ user_id: currentUser.id, data: state });
+
+    if (error) console.error("Save error:", error);
+  }
+
+  const persist = () => {
+    storageSetLocal(state);
+    saveUserData();
   };
 
   // ---------- Tabs ----------
+  function setLeftTitle(tab){
+    const map = {
+      dashboard:"Dashboard",
+      tasks:"Tasks",
+      studysets:"Study Sets",
+      flashcards:"Flashcards",
+      learn:"Learn",
+      test:"Test",
+      revision:"Revision",
+      stats:"Stats",
+      ai:"AI"
+    };
+    const t = map[tab] || "Dashboard";
+    $("#leftTitle").textContent = t;
+  }
+
   function setTab(tab){
     state.activeTab = tab;
-    storageSet();
-    $$(".tab[data-tab]").forEach(btn => {
-      btn.setAttribute("aria-selected", String(btn.dataset.tab === tab));
-    });
+    persist();
+
     $$("[data-tabpanel]").forEach(p => {
       p.hidden = (p.dataset.tabpanel !== tab);
     });
-    // Light refresh of some panels when opened
+
+    setLeftTitle(tab);
+
+    // refresh when opened
+    if(tab === "dashboard") renderDashboard();
     if(tab === "flashcards") renderFlashcardsTab();
     if(tab === "learn") renderLearnTab();
     if(tab === "test") renderTestTab();
     if(tab === "studysets") renderStudySetsTab();
     if(tab === "stats") renderStats();
     if(tab === "revision") renderRevision();
-    if(tab === "papers") renderPastPapers();
     if(tab === "tasks") renderTasks();
+    if(tab === "ai") {/* no-op */}
   }
-window.setTab = setTab;
+  window.setTab = setTab;
 
-  // ---------- Subjects dropdown helper ----------
+  // ---------- Subjects helper ----------
   function fillSubjects(selectEl, {includeAll=false, allLabel="All subjects"} = {}){
     if(!selectEl) return;
     const v = selectEl.value;
@@ -1216,8 +1210,28 @@ window.setTab = setTab;
       opt.textContent = s;
       selectEl.appendChild(opt);
     });
-    // restore
     if([...selectEl.options].some(o => o.value === v)) selectEl.value = v;
+  }
+
+  // ---------- Safe escaping ----------
+  function escapeHtml(s){
+    return String(s ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
+  function escapeAttr(s){ return escapeHtml(s).replaceAll(" ","_"); }
+  function cssSafeId(s){ return escapeAttr(s); }
+
+  // ---------- Small helpers ----------
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
   }
 
   // ---------- Tasks ----------
@@ -1243,9 +1257,10 @@ window.setTab = setTab;
       doneAt: null
     });
     $("#taskName").value = "";
-    storageSet();
+    persist();
     renderTasks();
     renderStats();
+    renderDashboard();
   }
 
   function toggleTaskDone(id){
@@ -1254,7 +1269,6 @@ window.setTab = setTab;
     t.done = !t.done;
     t.doneAt = t.done ? Date.now() : null;
 
-    // Handle repeat: if marking done and repeat daily/weekly, create next instance
     if(t.done && t.repeat && t.repeat !== "none"){
       const baseDue = t.dueISO || todayISO();
       const nextDue = addDaysISO(baseDue, t.repeat==="daily" ? 1 : 7);
@@ -1267,23 +1281,26 @@ window.setTab = setTab;
         createdAt: Date.now()
       });
     }
-    storageSet();
+    persist();
     renderTasks();
     renderStats();
+    renderDashboard();
   }
 
   function deleteTask(id){
     state.tasks = state.tasks.filter(x => x.id !== id);
-    storageSet();
+    persist();
     renderTasks();
     renderStats();
+    renderDashboard();
   }
 
   function clearDoneTasks(){
     state.tasks = state.tasks.filter(x => !x.done);
-    storageSet();
+    persist();
     renderTasks();
     renderStats();
+    renderDashboard();
   }
 
   function renderTasks(){
@@ -1343,7 +1360,6 @@ window.setTab = setTab;
       `;
     }).join("");
 
-    // bind actions
     $$("[data-action='toggleTask']").forEach(el => el.onclick = () => toggleTaskDone(el.dataset.id));
     $$("[data-action='deleteTask']").forEach(el => el.onclick = () => deleteTask(el.dataset.id));
   }
@@ -1352,6 +1368,11 @@ window.setTab = setTab;
   function ensureSetStores(setId){
     if(!state.cardsBySet[setId]) state.cardsBySet[setId] = [];
     if(!state.mcqBySet[setId]) state.mcqBySet[setId] = [];
+  }
+
+  function bumpSetUpdated(setId){
+    const s = state.studySets.find(x=>x.id===setId);
+    if(s) s.updatedAt = Date.now();
   }
 
   function createSet(){
@@ -1366,8 +1387,9 @@ window.setTab = setTab;
     state.activeSetId = s.id;
     $("#setName").value = "";
     $("#setDesc").value = "";
-    storageSet();
+    persist();
     renderStudySetsTab();
+    renderDashboard();
     toast("Set created");
   }
 
@@ -1381,14 +1403,15 @@ window.setTab = setTab;
     delete state.cardsBySet[id];
     delete state.mcqBySet[id];
     if(state.activeSetId === id) state.activeSetId = state.studySets[0]?.id || null;
-    storageSet();
+    persist();
     renderStudySetsTab();
+    renderDashboard();
     toast("Set deleted");
   }
 
   function setActiveSet(id){
     state.activeSetId = id || null;
-    storageSet();
+    persist();
     renderStudySetsTab();
   }
 
@@ -1405,8 +1428,9 @@ window.setTab = setTab;
     });
     bumpSetUpdated(setId);
     $("#cardFront").value=""; $("#cardBack").value="";
-    storageSet();
+    persist();
     renderStudySetsTab();
+    renderDashboard();
     toast("Card added");
   }
 
@@ -1414,7 +1438,7 @@ window.setTab = setTab;
     ensureSetStores(setId);
     state.cardsBySet[setId] = state.cardsBySet[setId].filter(c=>c.id!==cardId);
     bumpSetUpdated(setId);
-    storageSet();
+    persist();
     renderStudySetsTab();
   }
 
@@ -1438,7 +1462,7 @@ window.setTab = setTab;
     });
     bumpSetUpdated(setId);
     $("#mcqQ").value=""; $("#mcqA").value=""; $("#mcqB").value=""; $("#mcqC").value=""; $("#mcqD").value="";
-    storageSet();
+    persist();
     renderStudySetsTab();
     toast("MCQ added");
   }
@@ -1447,26 +1471,17 @@ window.setTab = setTab;
     ensureSetStores(setId);
     state.mcqBySet[setId] = state.mcqBySet[setId].filter(m=>m.id!==mcqId);
     bumpSetUpdated(setId);
-    storageSet();
+    persist();
     renderStudySetsTab();
-  }
-
-  function bumpSetUpdated(setId){
-    const s = state.studySets.find(x=>x.id===setId);
-    if(s) s.updatedAt = Date.now();
   }
 
   function renderStudySetsTab(){
     fillSubjects($("#setSubject"));
     fillSubjects($("#taskSubject"));
-    fillSubjects($("#ppSubject"));
     fillSubjects($("#revSubject"));
     fillSubjects($("#taskFilterSubject"), {includeAll:true});
     fillSubjects($("#revFilterSubject"), {includeAll:true});
-    fillSubjects($("#taskFilterSubject"), {includeAll:true});
-    fillSubjects($("#taskFilterSubject"), {includeAll:true});
 
-    // Active set dropdowns
     const sels = [$("#activeSet"), $("#fcSet"), $("#learnSet"), $("#testSet")].filter(Boolean);
     sels.forEach(sel => {
       const prev = sel.value;
@@ -1488,10 +1503,8 @@ window.setTab = setTab;
       if([...sel.options].some(o=>o.value===choose)) sel.value = choose;
     });
 
-    // set activeSetId from selection
     const selected = $("#activeSet")?.value || state.activeSetId || "";
     if(selected && selected !== state.activeSetId) state.activeSetId = selected;
-    storageSet();
 
     const setId = state.activeSetId;
     if(!setId){
@@ -1563,7 +1576,6 @@ window.setTab = setTab;
   }
 
   function renderFlashcardsTab(){
-    // ensure selects
     renderStudySetsTab();
     const setId = $("#fcSet")?.value || state.activeSetId;
     const mode = $("#fcMode")?.value || "all";
@@ -1598,7 +1610,6 @@ window.setTab = setTab;
   function fcNext(){ if(fc.list.length){ fc.idx = (fc.idx + 1) % fc.list.length; fc.flipped=false; renderFcCard(); } }
 
   function fcReview(grade){
-    // grade: "again" or "good"
     if(!fc.list.length) return;
     const card = fc.list[fc.idx];
     const setId = fc.setId;
@@ -1609,12 +1620,13 @@ window.setTab = setTab;
       const base = todayISO();
       real.nextReviewISO = grade==="again" ? addDaysISO(base, 1) : addDaysISO(base, 4);
       bumpSetUpdated(setId);
-      storageSet();
+      persist();
     }
     toast(grade==="again" ? "Marked: Again" : "Marked: Good");
     fcNext();
     renderStudySetsTab();
     renderStats();
+    renderDashboard();
   }
 
   // ---------- Learn Drill + Topic Confidence ----------
@@ -1678,7 +1690,6 @@ window.setTab = setTab;
     const box = $("#topicConfidenceList");
     if(!box) return;
 
-    // derive some topics from revision list + study sets names (basic)
     const topics = new Map();
     state.topics.forEach(t => topics.set(topicKey(t.subject,t.topic), {subject:t.subject, topic:t.topic}));
     state.studySets.forEach(s => topics.set(topicKey(s.subject, s.name), {subject:s.subject, topic:s.name}));
@@ -1717,8 +1728,9 @@ window.setTab = setTab;
         state.topicConfidence[key] = v;
         const el = $(`#confVal_${cssSafeId(key)}`);
         if(el) el.textContent = String(v);
-        storageSet();
+        persist();
         renderStats();
+        renderDashboard();
       };
     });
   }
@@ -1726,9 +1738,7 @@ window.setTab = setTab;
   // ---------- Test (MCQ) ----------
   let test = { list:[], idx:0, answers:{}, started:false, endsAt:null, timerInterval:null };
 
-  function renderTestTab(){
-    renderStudySetsTab();
-  }
+  function renderTestTab(){ renderStudySetsTab(); }
 
   function testStart(){
     const setId = $("#testSet")?.value || "";
@@ -1864,6 +1874,15 @@ window.setTab = setTab;
   }
 
   // ---------- Revision topics ----------
+  function autoNextReviewISO(conf){
+    const base = todayISO();
+    if(conf <= 2) return addDaysISO(base, 1);
+    if(conf <= 4) return addDaysISO(base, 2);
+    if(conf <= 6) return addDaysISO(base, 4);
+    if(conf <= 8) return addDaysISO(base, 7);
+    return addDaysISO(base, 14);
+  }
+
   function addRevisionTopic(){
     const subject = $("#revSubject")?.value || "Other";
     const topic = ($("#revTopic")?.value || "").trim();
@@ -1882,33 +1901,24 @@ window.setTab = setTab;
       nextReviewISO: next,
       updatedAt: now
     });
-    // seed into confidence map too
     state.topicConfidence[topicKey(subject,topic)] = confidence;
 
     $("#revTopic").value = "";
     $("#revNotes").value = "";
-    storageSet();
+    persist();
     renderRevision();
     renderTopicConfidenceList();
     renderStats();
+    renderDashboard();
     toast("Topic added");
-  }
-
-  function autoNextReviewISO(conf){
-    // Simple spaced schedule: lower confidence => sooner
-    const base = todayISO();
-    if(conf <= 2) return addDaysISO(base, 1);
-    if(conf <= 4) return addDaysISO(base, 2);
-    if(conf <= 6) return addDaysISO(base, 4);
-    if(conf <= 8) return addDaysISO(base, 7);
-    return addDaysISO(base, 14);
   }
 
   function rescheduleAllTopics(){
     state.topics.forEach(t => t.nextReviewISO = autoNextReviewISO(t.confidence));
-    storageSet();
+    persist();
     renderRevision();
     renderStats();
+    renderDashboard();
     toast("Auto-scheduled");
   }
 
@@ -1919,17 +1929,19 @@ window.setTab = setTab;
     t.updatedAt = Date.now();
     t.nextReviewISO = autoNextReviewISO(t.confidence);
     state.topicConfidence[topicKey(t.subject,t.topic)] = t.confidence;
-    storageSet();
+    persist();
     renderRevision();
     renderTopicConfidenceList();
     renderStats();
+    renderDashboard();
   }
 
   function deleteTopic(id){
     state.topics = state.topics.filter(t=>t.id!==id);
-    storageSet();
+    persist();
     renderRevision();
     renderStats();
+    renderDashboard();
   }
 
   function renderRevision(){
@@ -1947,7 +1959,6 @@ window.setTab = setTab;
     if(fDue === "due") items = items.filter(t => (t.nextReviewISO || nowISO) <= nowISO);
     if(fDue === "weak") items = items.filter(t => Number(t.confidence) <= 4);
 
-    // sort: due soon, low confidence
     items.sort((a,b) => (a.nextReviewISO||"9999-12-31").localeCompare(b.nextReviewISO||"9999-12-31") || (a.confidence-b.confidence));
 
     if(items.length===0){
@@ -1988,61 +1999,6 @@ window.setTab = setTab;
     $$("button[data-action='delTopic']").forEach(b => b.onclick = () => deleteTopic(b.dataset.id));
   }
 
-  // ---------- Past papers ----------
-  function addPastPaper(){
-    const subject = $("#ppSubject")?.value || "Other";
-    const name = ($("#ppName")?.value || "").trim();
-    const dateISO = $("#ppDate")?.value || todayISO();
-    const score = clamp(Number($("#ppScore")?.value || 0), 0, 100);
-    const notes = ($("#ppNotes")?.value || "").trim();
-    if(!name){ toast("Enter a paper name"); return; }
-    state.pastPapers.unshift({
-      id: uid(),
-      subject,
-      name,
-      dateISO,
-      score,
-      notes,
-      createdAt: Date.now()
-    });
-    $("#ppName").value = "";
-    $("#ppNotes").value = "";
-    $("#ppScore").value = "0";
-    storageSet();
-    renderPastPapers();
-    renderStats();
-    toast("Past paper added");
-  }
-
-  function deletePastPaper(id){
-    state.pastPapers = state.pastPapers.filter(p => p.id!==id);
-    storageSet();
-    renderPastPapers();
-    renderStats();
-  }
-
-  function renderPastPapers(){
-    fillSubjects($("#ppSubject"));
-    const body = $("#ppTable");
-    if(!body) return;
-    const rows = [...state.pastPapers].sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||"") || (b.createdAt-a.createdAt));
-    body.innerHTML = rows.length ? rows.map(p => {
-      const badge = p.score>=80 ? "good" : (p.score>=50 ? "warn" : "bad");
-      return `
-        <tr>
-          <td>${escapeHtml(prettyDate(p.dateISO))}</td>
-          <td><span class="pill">${escapeHtml(p.subject)}</span></td>
-          <td>${escapeHtml(p.name)}</td>
-          <td><span class="badge ${badge}"><b>${p.score}%</b></span></td>
-          <td class="muted">${escapeHtml(p.notes || "")}</td>
-          <td><button class="iconBtn" data-action="delPP" data-id="${p.id}">🗑</button></td>
-        </tr>
-      `;
-    }).join("") : `<tr><td colspan="6" class="muted">No past papers yet.</td></tr>`;
-
-    $$("button[data-action='delPP']").forEach(b => b.onclick = () => deletePastPaper(b.dataset.id));
-  }
-
   // ---------- Timer ----------
   let timerInterval = null;
 
@@ -2062,14 +2018,15 @@ window.setTab = setTab;
     stopTimer();
     syncModeButtons();
     renderTimer();
-    storageSet();
+    persist();
   }
 
   function syncModeButtons(){
-    const map = {focus:"#modeFocus", short:"#modeShort", long:"#modeLong"};
-    Object.entries(map).forEach(([m, sel]) => {
-      const el = $(sel);
-      if(el) el.setAttribute("aria-selected", String(state.timer.mode === m));
+    const cur = state.timer.mode;
+    ["focus","short","long"].forEach(m => {
+      const el = $(`#mode${m[0].toUpperCase()}${m.slice(1)}`);
+      if(!el) return;
+      el.classList.toggle("primary", cur===m);
     });
   }
 
@@ -2080,7 +2037,7 @@ window.setTab = setTab;
     if(timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(tickTimer, 250);
     renderTimer();
-    storageSet();
+    persist();
   }
 
   function pauseTimer(){
@@ -2088,7 +2045,7 @@ window.setTab = setTab;
     state.timer.lastTickMs = null;
     stopTimer();
     renderTimer();
-    storageSet();
+    persist();
   }
 
   function resetTimer(){
@@ -2098,7 +2055,7 @@ window.setTab = setTab;
     const mins = state.timer.config[state.timer.mode+"Min"] || 25;
     state.timer.remainingSec = mins*60;
     renderTimer();
-    storageSet();
+    persist();
   }
 
   function stopTimer(){
@@ -2112,18 +2069,14 @@ window.setTab = setTab;
     const elapsed = (now - (state.timer.lastTickMs || now)) / 1000;
     state.timer.lastTickMs = now;
 
-    // subtract elapsed but keep integer seconds display stable
     const before = state.timer.remainingSec;
     state.timer.remainingSec = Math.max(0, state.timer.remainingSec - elapsed);
 
     const prevFloor = Math.floor(before);
     const newFloor = Math.floor(state.timer.remainingSec);
 
-    // Log minutes only during focus and per full minute boundary crossed
     if(state.timer.mode === "focus" && newFloor < prevFloor){
-      // if we crossed one or more whole seconds; we only log at minute boundaries:
-      // easiest: when remainingSec hits x*60 exactly (integer)
-      if(newFloor % 60 === 59){ // crossed a minute boundary
+      if(newFloor % 60 === 59){
         addStudyMinutes(1);
       }
     }
@@ -2137,22 +2090,20 @@ window.setTab = setTab;
     }
 
     renderTimer();
-    storageSet();
+    persist();
   }
 
   function onTimerComplete(){
     toast("Timer complete!");
-    // Advance session if focus completed
     if(state.timer.mode === "focus"){
       state.timer.session += 1;
-      // Every 4th focus -> long break
       const next = (state.timer.session % 4 === 0) ? "long" : "short";
       setTimerMode(next);
     }else{
-      // after break -> focus
       setTimerMode("focus");
     }
     renderStats();
+    renderDashboard();
   }
 
   function fmtMMSS(sec){
@@ -2162,30 +2113,6 @@ window.setTab = setTab;
     return `${m}:${String(s).padStart(2,"0")}`;
   }
 
-  function renderTimer(){
-    $("#timerDisplay").textContent = fmtMMSS(state.timer.remainingSec);
-    const runningText = state.timer.running ? "Running" : "Not running";
-    $("#timerSub").textContent = `Session ${state.timer.session} • ${runningText}`;
-    syncModeButtons();
-
-    // side stats
-    $("#todayMins").textContent = String(getMinutesForDate(todayISO()));
-    $("#weekMins").textContent = String(getMinutesThisWeek());
-    $("#sessionsDone").textContent = String(getFocusSessionsDone());
-
-    $("#studyLogMini").innerHTML = renderMiniLog();
-    $("#uiStreak").textContent = String(calcStreak());
-    $("#uiToday").textContent = new Date().toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"});
-  }
-
-  function getFocusSessionsDone(){
-    // estimate: total focus minutes / focusMin
-    const focusMin = state.timer.config.focusMin || 25;
-    const totalFocus = state.studyLog.reduce((a,x)=>a+Number(x.minutes||0),0);
-    return Math.floor(totalFocus / focusMin);
-  }
-
-  // ---------- Study log / streak / weekly ----------
   function getMinutesForDate(dateISO){
     const row = state.studyLog.find(x=>x.dateISO===dateISO);
     return row ? Number(row.minutes||0) : 0;
@@ -2200,17 +2127,16 @@ window.setTab = setTab;
     }
     row.minutes = Number(row.minutes||0) + min;
 
-    // Keep logs trimmed (90 days)
     state.studyLog.sort((a,b)=>a.dateISO.localeCompare(b.dateISO));
     if(state.studyLog.length > 120) state.studyLog = state.studyLog.slice(-120);
 
-    storageSet();
+    persist();
     renderTimer();
     renderStats();
+    renderDashboard();
   }
 
   function calcStreak(){
-    // streak = consecutive days with minutes > 0 ending today
     const map = new Map(state.studyLog.map(x=>[x.dateISO, Number(x.minutes||0)]));
     let streak = 0;
     let d = todayISO();
@@ -2243,6 +2169,28 @@ window.setTab = setTab;
     return days.map(x => `${x.label}: <b>${x.mins}</b> min`).join("<br>");
   }
 
+  function renderTimer(){
+    $("#timerDisplay").textContent = fmtMMSS(state.timer.remainingSec);
+    const runningText = state.timer.running ? "Running" : "Not running";
+    $("#timerSub").textContent = `Session ${state.timer.session} • ${runningText}`;
+
+    syncModeButtons();
+
+    $("#todayMins").textContent = String(getMinutesForDate(todayISO()));
+    $("#weekMins").textContent = String(getMinutesThisWeek());
+    $("#sessionsDone").textContent = String(getFocusSessionsDone());
+
+    $("#studyLogMini").innerHTML = renderMiniLog();
+    $("#uiStreak").textContent = String(calcStreak());
+    $("#uiToday").textContent = new Date().toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"});
+  }
+
+  function getFocusSessionsDone(){
+    const focusMin = state.timer.config.focusMin || 25;
+    const totalFocus = state.studyLog.reduce((a,x)=>a+Number(x.minutes||0),0);
+    return Math.floor(totalFocus / focusMin);
+  }
+
   // ---------- Stats ----------
   function renderStats(){
     const total = state.studyLog.reduce((a,x)=>a+Number(x.minutes||0),0);
@@ -2253,18 +2201,14 @@ window.setTab = setTab;
     $("#statWeek").textContent = String(week);
     $("#statTasksDone").textContent = String(done);
 
-    // Weekly goal
     const goal = Number(state.weeklyGoalMin || 600);
     $("#weeklyGoalMin").value = String(goal);
     const pct = goal>0 ? clamp(Math.round((week/goal)*100),0,100) : 0;
     $("#weekProg").style.width = `${pct}%`;
     $("#weekProgText").textContent = `${week}/${goal} (${pct}%)`;
 
-    // Weak topics
     const weak = [];
-    // include revision topics & confidence map
     state.topics.forEach(t => { if(Number(t.confidence)<=4) weak.push(`${t.subject}: ${t.topic} (${t.confidence}/10)`); });
-    // if no topics, use topicConfidence map
     if(weak.length===0){
       Object.entries(state.topicConfidence).forEach(([k,v]) => {
         if(Number(v)<=4){
@@ -2275,94 +2219,132 @@ window.setTab = setTab;
     }
     $("#weakTopics").innerHTML = weak.length ? weak.slice(0,12).map(x=>`• ${escapeHtml(x)}`).join("<br>") : `<span class="muted">No weak topics yet 🎉</span>`;
 
-    // Past papers avg
-    if(state.pastPapers.length){
-      const avg = Math.round(state.pastPapers.reduce((a,p)=>a+Number(p.score||0),0)/state.pastPapers.length);
-      $("#ppAvg").textContent = `${avg}%`;
-    }else{
-      $("#ppAvg").textContent = "—";
-    }
+    // Past papers avg removed from this one-file (you use a separate pastpapers.html)
+    $("#ppAvg").textContent = "—";
 
-    // header
     $("#uiStreak").textContent = String(calcStreak());
   }
 
- // ---------- AI ----------
-async function askAI() {
-  const input = ($("#aiInput")?.value || "").trim();
-  const out = $("#aiOutput");
+  // ---------- Dashboard ----------
+  function renderDashboard(){
+    const username = $("#navUsername")?.textContent || "student";
+    $("#dashName").textContent = username;
 
-  if (!out) return;
-  if (!input) {
-    out.textContent = "Please enter a question first.";
-    return;
-  }
+    const openTasks = state.tasks.filter(t => !t.done).length;
+    $("#dashTasksOpen").textContent = String(openTasks);
+    $("#dashMinutesWeek").textContent = String(getMinutesThisWeek());
 
-  out.textContent = "Thinking...";
+    const weakCount = state.topics.filter(t => Number(t.confidence)<=4).length;
+    $("#dashWeakCount").textContent = String(weakCount);
 
-  try {
-    // Get current logged-in session
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const nowISO = todayISO();
+    const nextTasks = state.tasks
+      .filter(t => !t.done)
+      .sort((a,b) => (a.dueISO||"9999-12-31").localeCompare(b.dueISO||"9999-12-31") || priorityRank(b.priority)-priorityRank(a.priority))
+      .slice(0, 5);
 
-    if (!session) {
-      out.textContent = "You must be logged in to use AI.";
-      return;
-    }
+    const dueTopics = state.topics
+      .filter(t => (t.nextReviewISO || nowISO) <= nowISO)
+      .sort((a,b)=> (a.confidence-b.confidence))
+      .slice(0, 4);
 
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    const res = await fetch("/api/ai", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({
-        question: input,
-        timezone
-      })
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (res.status === 429) {
-      out.textContent = data?.error || "Daily AI limit reached.";
-      return;
-    }
-
-    if (res.status === 401) {
-      out.textContent = "Session expired. Please log in again.";
-      window.location.href = "auth.html";
-      return;
-    }
-
-    if (res.ok && data?.reply) {
-      out.textContent = data.reply;
+    const parts = [];
+    if(nextTasks.length){
+      parts.push(`<b>Tasks</b><br>` + nextTasks.map(t => `• ${escapeHtml(t.name)}${t.dueISO ? ` <span class="muted">(${prettyDate(t.dueISO)})</span>` : ""}`).join("<br>"));
     } else {
-      out.textContent = data?.error || "Something went wrong.";
+      parts.push(`<b>Tasks</b><br><span class="muted">No open tasks — nice.</span>`);
     }
 
-  } catch (e) {
-    console.error("AI request error:", e);
-    out.textContent = "Error contacting AI service.";
+    if(dueTopics.length){
+      parts.push(`<br><br><b>Due topics</b><br>` + dueTopics.map(t => `• ${escapeHtml(t.subject)} — ${escapeHtml(t.topic)} <span class="muted">(conf ${t.confidence}/10)</span>`).join("<br>"));
+    } else {
+      parts.push(`<br><br><b>Due topics</b><br><span class="muted">Nothing due right now.</span>`);
+    }
+
+    $("#dashNextUp").innerHTML = parts.join("");
   }
-}
+
+  // ---------- AI ----------
+  async function askAI() {
+    const input = ($("#aiInput")?.value || "").trim();
+    const out = $("#aiOutput");
+    if (!out) return;
+
+    if (!input) {
+      out.textContent = "Please enter a question first.";
+      return;
+    }
+
+    out.textContent = "Thinking...";
+
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+
+      if (!session) {
+        out.textContent = "You must be logged in to use AI.";
+        return;
+      }
+
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ question: input, timezone })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 429) {
+        out.textContent = data?.error || "Daily AI limit reached.";
+        return;
+      }
+
+      if (res.status === 401) {
+        out.textContent = "Session expired. Please log in again.";
+        window.location.href = "auth.html";
+        return;
+      }
+
+      if (res.ok && data?.reply) {
+        out.textContent = data.reply;
+      } else {
+        out.textContent = data?.error || "Something went wrong.";
+      }
+
+    } catch (e) {
+      console.error("AI request error:", e);
+      out.textContent = "Error contacting AI service.";
+    }
+  }
 
   // ---------- Export / Import / Reset / Theme ----------
+  function downloadJSON(obj, filename="reviseflow_export.json") {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   function exportAll(){
-    downloadJSON(state, `gcse_focus_export_${todayISO()}.json`);
+    downloadJSON(state, `reviseflow_export_${todayISO()}.json`);
     toast("Exported");
   }
+
   function importAll(file){
     const reader = new FileReader();
     reader.onload = () => {
       try{
         const obj = JSON.parse(String(reader.result || ""));
-        // Very defensive: require object
         if(!obj || typeof obj !== "object") throw new Error("Invalid JSON");
         state = defaultState();
         mergeIn(obj);
-        storageSet();
+        persist();
         bootUI();
         toast("Imported");
       }catch{
@@ -2371,14 +2353,17 @@ async function askAI() {
     };
     reader.readAsText(file);
   }
+
   function hardReset(){
     if(!confirm("Reset everything on this device? This cannot be undone.")) return;
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(OLD_STORAGE_KEY);
     state = defaultState();
-    storageSet();
+    persist();
     bootUI();
     toast("Reset complete");
   }
+
   function toggleTheme(){
     const html = document.documentElement;
     const cur = html.getAttribute("data-theme") || "dark";
@@ -2387,69 +2372,17 @@ async function askAI() {
     localStorage.setItem(THEME_KEY, next);
   }
 
-  // ---------- Safe escaping ----------
-  function escapeHtml(s){
-    return String(s ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#39;");
-  }
-  function escapeAttr(s){ return escapeHtml(s).replaceAll(" ","_"); }
-  function cssSafeId(s){ return escapeAttr(s); }
-
-  // ---------- Small helpers ----------
-  function shuffle(arr){
-    for(let i=arr.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [arr[i],arr[j]]=[arr[j],arr[i]];
-    }
-    return arr;
-  }
-
   // ---------- Wiring ----------
-  function bootUI(){
-    // Theme
-    const savedTheme = localStorage.getItem(THEME_KEY);
-    if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
-
-    // Fill subject dropdowns
-    fillSubjects($("#taskSubject"));
-    fillSubjects($("#setSubject"));
-    fillSubjects($("#ppSubject"));
-    fillSubjects($("#revSubject"));
-    fillSubjects($("#taskFilterSubject"), {includeAll:true});
-    fillSubjects($("#revFilterSubject"), {includeAll:true});
-
-    // Defaults on filters
-    if($("#taskFilterSubject")) $("#taskFilterSubject").value = "__all__";
-    if($("#revFilterSubject")) $("#revFilterSubject").value = "__all__";
-
-    // Timer config inputs
-    $("#focusMin").value = String(state.timer.config.focusMin ?? 25);
-    $("#shortMin").value = String(state.timer.config.shortMin ?? 5);
-    $("#longMin").value = String(state.timer.config.longMin ?? 15);
-
-    // Weekly goal
-    $("#weeklyGoalMin").value = String(state.weeklyGoalMin ?? 600);
-
-    // Active tab
-    setTab(state.activeTab || "tasks");
-
-    // Render all (safe)
-    renderStudySetsTab();
-    renderTasks();
-    renderRevision();
-    renderPastPapers();
-    renderTopicConfidenceList();
-    renderTimer();
-    renderStats();
-  }
-
   function bindEvents(){
-    // Tabs
-    $$(".tab[data-tab]").forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+    // Continue dropdown
+    $("#navContinue")?.addEventListener("change", (e) => {
+      const v = e.target.value;
+      if(v === "pastpapers"){
+        window.location.href = "pastpapers.html";
+        return;
+      }
+      setTab(v);
+    });
 
     // Tasks
     $("#btnAddTask")?.addEventListener("click", addTask);
@@ -2490,9 +2423,6 @@ async function askAI() {
     $("#revFilterDue")?.addEventListener("change", renderRevision);
     $("#btnRevReschedule")?.addEventListener("click", rescheduleAllTopics);
 
-    // Past papers
-    $("#btnPpAdd")?.addEventListener("click", addPastPaper);
-
     // Timer
     $("#modeFocus")?.addEventListener("click", () => setTimerMode("focus"));
     $("#modeShort")?.addEventListener("click", () => setTimerMode("short"));
@@ -2502,16 +2432,17 @@ async function askAI() {
     $("#timerResetBtn")?.addEventListener("click", resetTimer);
     $("#btnSaveTimerCfg")?.addEventListener("click", () => {
       cfgFromInputs();
-      storageSet();
-      setTimerMode(state.timer.mode); // recalibrate remaining time
+      persist();
+      setTimerMode(state.timer.mode);
       toast("Timer settings saved");
     });
 
     // Stats
     $("#btnSaveGoal")?.addEventListener("click", () => {
       state.weeklyGoalMin = clamp(Number($("#weeklyGoalMin").value || 600), 0, 20000);
-      storageSet();
+      persist();
       renderStats();
+      renderDashboard();
       toast("Goal saved");
     });
 
@@ -2531,110 +2462,108 @@ async function askAI() {
       e.target.value = "";
     });
     $("#btnReset")?.addEventListener("click", hardReset);
+
+    // Dashboard quick buttons
+    $("#dashGoTasks")?.addEventListener("click", () => setTab("tasks"));
+    $("#dashGoAI")?.addEventListener("click", () => setTab("ai"));
+    $("#dashGoTimer")?.addEventListener("click", () => toast("Timer is on the right →"));
+
+    // Account dropdown
+    const dropdown = $("#accountDropdown");
+    const btn = $("#accountBtn");
+
+    btn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdown.style.display = (dropdown.style.display === "block") ? "none" : "block";
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".account-wrapper")) dropdown.style.display = "none";
+    });
+
+    $("#btnAccountPage")?.addEventListener("click", () => { window.location.href = "account.html"; });
+    $("#btnLogout")?.addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      window.location.href = "auth.html";
+    });
   }
 
-  // ---------- Boot ----------
-  function boot(){
-    // load
+  function bootUI(){
+    const savedTheme = localStorage.getItem(THEME_KEY) || localStorage.getItem(OLD_THEME_KEY);
+    if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
 
-    // ensure some invariants
-    if(!Array.isArray(state.subjects) || !state.subjects.length) state.subjects = [...DEFAULT_SUBJECTS];
+    // subjects
+    fillSubjects($("#taskSubject"));
+    fillSubjects($("#setSubject"));
+    fillSubjects($("#revSubject"));
+    fillSubjects($("#taskFilterSubject"), {includeAll:true});
+    fillSubjects($("#revFilterSubject"), {includeAll:true});
 
-    // Ensure set stores exist
+    if($("#taskFilterSubject")) $("#taskFilterSubject").value = "__all__";
+    if($("#revFilterSubject")) $("#revFilterSubject").value = "__all__";
+
+    $("#focusMin").value = String(state.timer.config.focusMin ?? 25);
+    $("#shortMin").value = String(state.timer.config.shortMin ?? 5);
+    $("#longMin").value = String(state.timer.config.longMin ?? 15);
+
+    $("#weeklyGoalMin").value = String(state.weeklyGoalMin ?? 600);
+
+    // make sure set stores exist
     state.studySets.forEach(s => ensureSetStores(s.id));
     if(!state.activeSetId && state.studySets.length) state.activeSetId = state.studySets[0].id;
 
-    // apply theme
-    const savedTheme = localStorage.getItem(THEME_KEY);
-    if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+    // set dropdown selection to current tab
+    $("#navContinue").value = state.activeTab || "dashboard";
+
+    // render all core
+    renderStudySetsTab();
+    renderTasks();
+    renderRevision();
+    renderTopicConfidenceList();
+    renderTimer();
+    renderStats();
+    renderDashboard();
+
+    // show current tab
+    setTab(state.activeTab || "dashboard");
+  }
+
+  async function init(){
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+      window.location.href = "start.html";
+      return;
+    }
+
+    currentUser = session.user;
+
+    await loadUserData();
+
+    // Fetch username
+    const { data: settings } = await supabaseClient
+      .from("user_settings")
+      .select("username")
+      .eq("user_id", currentUser.id)
+      .single();
+
+    const username = settings?.username || currentUser.email;
+
+    $("#navUsername").textContent = username;
+    $("#dropdownUsername").textContent = username;
+    $("#accountEmail").textContent = currentUser.email;
 
     bindEvents();
     bootUI();
   }
 
-async function init() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-
-  if (!session) {
-  window.location.href = "start.html";
-  return;
-}
-
-  currentUser = session.user;
-
-  await loadUserData();  // this loads state and runs bootUI()
-bindEvents();
-// Fetch username
-const { data: settings } = await supabaseClient
-  .from("user_settings")
-  .select("username")
-  .eq("user_id", currentUser.id)
-  .single();
-
-const username = settings?.username || currentUser.email;
-
-document.getElementById("navUsername").textContent = username;
-document.getElementById("dropdownUsername").textContent = username;
-document.getElementById("accountEmail").textContent = currentUser.email;
-
-// Dropdown toggle
-const dropdown = document.getElementById("accountDropdown");
-const btn = document.getElementById("accountBtn");
-
-btn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  dropdown.style.display =
-    dropdown.style.display === "block" ? "none" : "block";
-});
-
-// Click outside closes dropdown
-document.addEventListener("click", (e) => {
-  if (!e.target.closest(".account-wrapper")) {
-    dropdown.style.display = "none";
-  }
-});
-
-// Account page button
-document.getElementById("btnAccountPage")
-  ?.addEventListener("click", () => {
-    window.location.href = "account.html";
-  });
-
-// Logout
-document.getElementById("btnLogout")
-  ?.addEventListener("click", async () => {
-    await supabaseClient.auth.signOut();
-    window.location.href = "auth.html";
-  });
-
-  // Account UI wiring
-  
- 
-
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".account-wrapper")) {
-      dropdown.style.display = "none";
-    }
-  });
-
-  document.getElementById("btnLogout")?.addEventListener("click", async () => {
-    await supabaseClient.auth.signOut();
-    window.location.href = "auth.html";
-  });
-}
-
-init();})();
+  init();
+})();
 </script>
-<footer style="
-  margin-top:40px;
-  padding:20px;
-  text-align:center;
-  font-size:14px;
-  opacity:.6;
-">
+
+<footer style="margin-top:40px; padding:20px; text-align:center; font-size:14px; opacity:.6;">
   <a href="privacy.html">Privacy Policy</a> |
   <a href="terms.html">Terms of Service</a>
-<!-- redepaloy trigger -->
 </footer>
+
 </body>
 </html>
