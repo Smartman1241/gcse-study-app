@@ -4,7 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ReviseFlow • Tasks</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Drag & drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 <style>
   :root{
@@ -132,7 +135,7 @@
     color: var(--text);
   }
   select option{
-    background-color: #0b1020; /* solid background for dropdown list */
+    background-color: #0b1020;
     color: rgba(255,255,255,.92);
   }
 
@@ -163,6 +166,8 @@
   .btn:disabled{opacity:.55; cursor:not-allowed; transform:none;}
 
   .list{display:flex; flex-direction:column; gap:10px;}
+
+  /* Each task row */
   .item{
     border:1px solid var(--border);
     border-radius:14px;
@@ -172,10 +177,15 @@
     align-items:flex-start;
     justify-content:space-between;
   }
+
+  /* Stronger overdue glow (still tasteful) */
   .item.overdue{
-    border-color: rgba(255,123,143,.35);
-    box-shadow: 0 0 0 4px rgba(255,123,143,.12);
+    border-color: rgba(255,123,143,.45);
+    box-shadow:
+      0 0 0 4px rgba(255,123,143,.12),
+      0 20px 50px rgba(255,123,143,.08);
   }
+
   .item.done{opacity:.65;}
   .itemMain{display:flex; gap:10px; align-items:flex-start; flex:1; min-width:0;}
   .itemText{min-width:0; display:flex; flex-direction:column; gap:5px;}
@@ -217,6 +227,25 @@
   }
   .check svg{width:14px; height:14px; opacity:0;}
   .check[data-done="true"] svg{opacity:1;}
+
+  /* Drag handle + dragging states */
+  .handle{
+    cursor: grab;
+    user-select:none;
+    width:18px; height:18px;
+    margin-top:2px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background: rgba(255,255,255,.03);
+    display:grid; place-items:center;
+    color: rgba(255,255,255,.65);
+  }
+  .handle:active{cursor:grabbing;}
+  .dragging{
+    opacity:.92;
+    transform: scale(1.01);
+    box-shadow: 0 18px 60px rgba(0,0,0,.35);
+  }
 
   .toast{
     position: fixed;
@@ -311,10 +340,12 @@
             <option value="all">All</option>
             <option value="done">Completed</option>
           </select>
+
           <select id="sort" style="min-width:180px;">
             <option value="created" selected>Sort: Newest</option>
             <option value="due">Sort: Due date</option>
             <option value="priority">Sort: Priority</option>
+            <option value="manual">Sort: Manual (drag)</option>
           </select>
         </div>
       </div>
@@ -345,6 +376,7 @@
 
   let sessionUser = null;
   let tasks = [];
+  let sortable = null;
 
   const todayISO = () => new Date().toISOString().slice(0,10);
   const prettyDate = (iso) => {
@@ -372,15 +404,62 @@
     return session;
   }
 
+  function getSortMode(){ return $("#sort").value; }
+  function manualMode(){ return getSortMode() === "manual"; }
+
+  function enableDnD(){
+    const list = $("#taskList");
+    if(sortable) return;
+
+    sortable = new Sortable(list, {
+      animation: 160,
+      handle: ".handle",
+      ghostClass: "dragging",
+      onEnd: async () => {
+        // Save current DOM order to DB as position (manual sort)
+        const ids = [...list.querySelectorAll(".item")]
+          .map(el => el.dataset.id);
+
+        // Optimistic toast + batch updates
+        toast("Saving order…");
+
+        const updates = ids.map((id, idx) =>
+          sb.from("user_tasks").update({ position: idx }).eq("id", id)
+        );
+
+        const results = await Promise.all(updates);
+        const anyError = results.some(r => r.error);
+        if(anyError){
+          console.error(results.filter(r => r.error).map(r => r.error));
+          toast("Couldn’t save order (policy/column?)");
+          return;
+        }
+
+        // Update local cache positions too so it stays stable without reload
+        const posMap = new Map(ids.map((id,i)=>[id,i]));
+        tasks = tasks.map(t => ({...t, position: posMap.has(String(t.id)) ? posMap.get(String(t.id)) : (t.position ?? 0)}));
+
+        toast("Order saved ✅");
+      }
+    });
+  }
+
+  function disableDnD(){
+    if(!sortable) return;
+    sortable.destroy();
+    sortable = null;
+  }
+
   async function loadTasks(){
     const sess = await requireSession();
     if(!sess) return;
 
+    // Always fetch enough data; we’ll sort client-side for consistent UI.
+    // For manual sort, position matters — so we include it.
     const { data, error } = await sb
       .from("user_tasks")
       .select("*")
-      .eq("user_id", sess.user.id)
-      .order("created_at", { ascending:false });
+      .eq("user_id", sess.user.id);
 
     if(error){
       console.error(error);
@@ -412,13 +491,17 @@
     btn.disabled = true;
     btn.textContent = "Creating…";
 
+    // Pick a position that pushes it to the end of manual list
+    const maxPos = tasks.reduce((m,t)=> Math.max(m, Number(t.position ?? 0)), 0);
+
     const { error } = await sb.from("user_tasks").insert({
       user_id: sess.user.id,
       title,
       priority,
       due_date,
       notes,
-      done: false
+      done: false,
+      position: maxPos + 1
     });
 
     btn.disabled = false;
@@ -436,6 +519,7 @@
     $("#taskPriority").value = "medium";
 
     toast("Task created");
+    // Realtime will refresh, but we refresh immediately too (feels instant)
     await loadTasks();
   }
 
@@ -453,8 +537,7 @@
     await loadTasks();
   }
 
-  function renderTasks(){
-    const list = $("#taskList");
+  function getFilteredSortedItems(){
     const filter = $("#filter").value;
     const sort = $("#sort").value;
 
@@ -463,11 +546,37 @@
     if(filter === "open") items = items.filter(t => !t.done);
     if(filter === "done") items = items.filter(t => t.done);
 
-    if(sort === "due"){
+    if(sort === "manual"){
+      // position ascending (fallback to created_at)
+      items.sort((a,b) => {
+        const ap = Number(a.position ?? 0);
+        const bp = Number(b.position ?? 0);
+        if(ap !== bp) return ap - bp;
+        return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+      });
+    }else if(sort === "due"){
+      // due asc; no due goes last
       items.sort((a,b) => (a.due_date || "9999-12-31").localeCompare(b.due_date || "9999-12-31"));
     }else if(sort === "priority"){
       items.sort((a,b) => priorityRank(b.priority) - priorityRank(a.priority));
-    } // else newest already from query
+    }else{
+      // newest
+      items.sort((a,b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+    }
+
+    return items;
+  }
+
+  function renderTasks(){
+    const list = $("#taskList");
+    const items = getFilteredSortedItems();
+
+    // Enable/disable drag based on sort mode
+    if(manualMode()){
+      enableDnD();
+    }else{
+      disableDnD();
+    }
 
     if(items.length === 0){
       list.innerHTML = `<div class="pill">No tasks here yet.</div>`;
@@ -480,36 +589,44 @@
       const overdue = t.due_date && t.due_date < today && !t.done;
       const due = t.due_date ? `📅 ${prettyDate(t.due_date)}` : "No due date";
       const priClass = t.priority === "high" ? "high" : (t.priority === "medium" ? "medium" : "low");
+
       return `
-        <div class="item ${t.done ? "done" : ""} ${overdue ? "overdue" : ""}">
+        <div class="item ${t.done ? "done" : ""} ${overdue ? "overdue" : ""}" data-id="${esc(t.id)}">
           <div class="itemMain">
-            <div class="check" data-id="${t.id}" data-done="${t.done}" title="Toggle done">
+            ${manualMode() ? `<div class="handle" title="Drag to reorder">≡</div>` : ``}
+
+            <div class="check" data-id="${esc(t.id)}" data-done="${t.done}" title="Toggle done">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 6L9 17l-5-5"></path>
               </svg>
             </div>
+
             <div class="itemText">
               <div class="name" style="${t.done ? "text-decoration:line-through;" : ""}">
                 ${esc(t.title)}
               </div>
+
               <div class="meta">
                 <span class="badge ${priClass}">⚡ ${esc(t.priority)}</span>
                 <span class="pill">${esc(due)}</span>
                 ${overdue ? `<span class="badge high">Overdue</span>` : ``}
               </div>
+
               ${t.notes ? `<div class="meta"><span class="pill">📝 ${esc(t.notes)}</span></div>` : ``}
             </div>
           </div>
+
           <div class="actions">
-            <button class="btn" data-action="toggle" data-id="${t.id}" data-done="${t.done}">
+            <button class="btn" data-action="toggle" data-id="${esc(t.id)}" data-done="${t.done}">
               ${t.done ? "Undo" : "Complete"}
             </button>
-            <button class="btn danger" data-action="delete" data-id="${t.id}">Delete</button>
+            <button class="btn danger" data-action="delete" data-id="${esc(t.id)}">Delete</button>
           </div>
         </div>
       `;
     }).join("");
 
+    // Wire events
     list.querySelectorAll(".check").forEach(el => {
       el.onclick = () => toggleDone(el.dataset.id, el.dataset.done === "true");
     });
@@ -519,6 +636,21 @@
     list.querySelectorAll("[data-action='delete']").forEach(btn => {
       btn.onclick = () => deleteTask(btn.dataset.id);
     });
+  }
+
+  function setupRealtime(){
+    // Only listen to this user’s rows (keeps it fast + correct)
+    sb.channel("user_tasks_changes")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "user_tasks",
+        filter: `user_id=eq.${sessionUser.id}`
+      }, () => {
+        // Refresh from DB so ordering/filters never drift
+        loadTasks();
+      })
+      .subscribe();
   }
 
   async function init(){
@@ -543,9 +675,15 @@
     });
 
     $("#filter").addEventListener("change", renderTasks);
-    $("#sort").addEventListener("change", renderTasks);
+    $("#sort").addEventListener("change", () => {
+      renderTasks();
+      if(manualMode()){
+        toast("Drag tasks to reorder ✨");
+      }
+    });
 
     await loadTasks();
+    setupRealtime();
   }
 
   init();
