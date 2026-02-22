@@ -307,6 +307,22 @@
       .grid{grid-template-columns:1fr;}
       .split{grid-template-columns:1fr;}
     }
+.footer-links {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.footer-links a {
+  color:rgba(255,255,255,.72);
+  text-decoration:none;
+  font-size:13px;
+}
+
+.footer-links a:hover {
+  text-decoration:underline;
+}
   </style>
 </head>
 
@@ -410,14 +426,19 @@
       </div>
     </section>
 
-    <footer>
-      <div>© <span id="year"></span> ReviseFlow</div>
-      <div>
-        <a href="auth.html?mode=login">Log in</a>
-        <span style="opacity:.5">•</span>
-        <a href="auth.html?mode=signup">Create account</a>
-      </div>
-    </footer>
+  <footer>
+  <div>© <span id="year"></span> ReviseFlow</div>
+
+  <div class="footer-links">
+    <a href="about.html" target="_blank" rel="noopener">About</a>
+    <span style="opacity:.4">•</span>
+    <a href="contact.html" target="_blank" rel="noopener">Contact</a>
+    <span style="opacity:.4">•</span>
+    <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
+    <span style="opacity:.4">•</span>
+    <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>
+  </div>
+</footer>
   </div>
 
   <script>
