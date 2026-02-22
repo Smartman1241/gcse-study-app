@@ -1,41 +1,101 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Contact ReviseFlow</title>
-  <meta name="description" content="Contact the ReviseFlow team for support, feedback, or enquiries." />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Contact ReviseFlow</title>
+
+<style>
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
+  background:#0b1020;
+  color:rgba(255,255,255,.92);
+  line-height:1.7;
+}
+
+.wrap{
+  max-width:800px;
+  margin:80px auto;
+  padding:0 20px;
+}
+
+.card{
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;
+  padding:40px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);
+}
+
+h1{
+  margin-top:0;
+  font-size:32px;
+  letter-spacing:-.5px;
+}
+
+p{
+  color:rgba(255,255,255,.75);
+  font-size:15px;
+}
+
+.email-box{
+  margin:25px 0;
+  padding:18px;
+  background:rgba(142,162,255,.15);
+  border:1px solid rgba(142,162,255,.35);
+  border-radius:14px;
+  font-size:15px;
+}
+
+.email-box a{
+  color:white;
+  text-decoration:none;
+  font-weight:600;
+}
+
+.btn{
+  display:inline-block;
+  margin-top:20px;
+  padding:10px 16px;
+  border-radius:12px;
+  background:rgba(142,162,255,.2);
+  border:1px solid rgba(142,162,255,.4);
+  color:white;
+  text-decoration:none;
+  transition:.2s;
+}
+
+.btn:hover{
+  background:rgba(142,162,255,.3);
+}
+</style>
 </head>
+
 <body>
 
-  <main class="legal-page">
+<div class="wrap">
+  <div class="card">
     <h1>Contact ReviseFlow</h1>
 
     <p>
-      We’d love to hear from you. Whether you have feedback, a bug report,
-      feature suggestions, or partnership enquiries — get in touch.
+      Have feedback, feature suggestions, partnership enquiries, or found a bug?
+      We’d love to hear from you.
     </p>
 
-    <p>
-      <strong>Email:</strong> 
+    <div class="email-box">
+      Email us at:
+      <br>
       <a href="mailto:reviseflow1@gmail.com">reviseflow1@gmail.com</a>
-    </p>
+    </div>
 
     <p>
       We aim to respond within 48 hours.
     </p>
 
-    <hr style="margin:40px 0; opacity:0.2;">
-
-    <p>
-      © 2026 ReviseFlow
-    </p>
-
-    <p>
-      <a href="/">Back to home</a>
-    </p>
-  </main>
+    <a href="/" class="btn">Back to Home</a>
+  </div>
+</div>
 
 </body>
 </html>

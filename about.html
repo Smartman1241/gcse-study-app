@@ -1,44 +1,94 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>About ReviseFlow</title>
-  <meta name="description" content="Learn more about ReviseFlow — the all-in-one GCSE revision system." />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>About ReviseFlow</title>
+
+<style>
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
+  background:#0b1020;
+  color:rgba(255,255,255,.92);
+  line-height:1.7;
+}
+
+.wrap{
+  max-width:900px;
+  margin:80px auto;
+  padding:0 20px;
+}
+
+.card{
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;
+  padding:40px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);
+}
+
+h1{
+  margin-top:0;
+  font-size:34px;
+  letter-spacing:-.5px;
+}
+
+p{
+  color:rgba(255,255,255,.75);
+  font-size:15px;
+}
+
+.highlight{
+  color:#8ea2ff;
+  font-weight:600;
+}
+
+.btn{
+  display:inline-block;
+  margin-top:30px;
+  padding:10px 16px;
+  border-radius:12px;
+  background:rgba(142,162,255,.2);
+  border:1px solid rgba(142,162,255,.4);
+  color:white;
+  text-decoration:none;
+  transition:.2s;
+}
+
+.btn:hover{
+  background:rgba(142,162,255,.3);
+}
+</style>
 </head>
+
 <body>
 
-  <main class="legal-page">
+<div class="wrap">
+  <div class="card">
     <h1>About ReviseFlow</h1>
 
     <p>
-      ReviseFlow is a modern GCSE revision platform designed to help students
-      stay organised, focused, and consistent.
+      <span class="highlight">ReviseFlow</span> is a modern GCSE revision platform built to
+      make studying structured, distraction-free, and genuinely effective.
     </p>
 
     <p>
-      It combines task planning, flashcards, study sets, past paper organisation,
-      and AI-powered explanations into one clean system.
+      We combine task planning, flashcards, study sets, past paper organisation,
+      and AI-powered explanations into one clean system designed for serious progress.
     </p>
 
     <p>
-      Our goal is simple: make revision structured, distraction-free, and effective.
+      Our mission is simple: help students revise smarter — not longer.
     </p>
 
     <p>
-      ReviseFlow is built specifically for GCSE students, with plans to expand
-      into A-Level and beyond.
+      Built for GCSE students today, expanding to A-Level and beyond tomorrow.
     </p>
 
-    <p>
-      © 2026 ReviseFlow
-    </p>
-
-    <p>
-      <a href="/">Back to home</a>
-    </p>
-  </main>
+    <a href="/" class="btn">Back to Home</a>
+  </div>
+</div>
 
 </body>
 </html>
