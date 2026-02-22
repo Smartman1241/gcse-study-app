@@ -2164,8 +2164,6 @@
     const username = $("#navUsername")?.textContent || "student";
     $("#dashName").textContent = username;
 
-    const openTasks = state.tasks.filter(t => !t.done).length;
-    $("#dashTasksOpen").textContent = String(openTasks);
     $("#dashMinutesWeek").textContent = String(getMinutesThisWeek());
 
     const weakCount = state.topics.filter(t => Number(t.confidence)<=4).length;
@@ -2183,11 +2181,7 @@
       .slice(0, 4);
 
     const parts = [];
-    if(nextTasks.length){
-      parts.push(`<b>Tasks</b><br>` + nextTasks.map(t => `• ${escapeHtml(t.name)}${t.dueISO ? ` <span class="muted">(${prettyDate(t.dueISO)})</span>` : ""}`).join("<br>"));
-    } else {
-      parts.push(`<b>Tasks</b><br><span class="muted">No open tasks — nice.</span>`);
-    }
+  
 
     if(dueTopics.length){
       parts.push(`<br><br><b>Due topics</b><br>` + dueTopics.map(t => `• ${escapeHtml(t.subject)} — ${escapeHtml(t.topic)} <span class="muted">(conf ${t.confidence}/10)</span>`).join("<br>"));
