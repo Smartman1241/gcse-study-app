@@ -505,16 +505,16 @@
         <div class="navSelect">
           <div class="labelMini">Continue with</div>
           <select id="navContinue">
-            <option value="dashboard">Dashboard</option>
-            <option value="tasks">Tasks</option>
-            <option value="studysets">Study Sets</option>
-            <option value="flashcards">Flashcards</option>
-            <option value="learn">Learn</option>
-            <option value="test">Test</option>
-            <option value="revision">Revision</option>
-            <option value="stats">Stats</option>
-            <option value="pastpapers">Past Papers</option>
-          </select>
+  <option value="dashboard">Dashboard</option>
+  <option value="tasks.html">Tasks</option>
+  <option value="studysets.html">Study Sets</option>
+  <option value="flashcards.html">Flashcards</option>
+  <option value="learn">Learn</option>
+  <option value="test">Test</option>
+  <option value="revision">Revision</option>
+  <option value="stats">Stats</option>
+  <option value="pastpapers.html">Past Papers</option>
+</select>
         </div>
 
         <div class="subtitle">Plan • Revise • Track • Focus • Improve</div>
@@ -2416,24 +2416,16 @@
   // ---------- Wiring ----------
   function bindEvents(){
     // Continue dropdown
-    $("#navContinue")?.addEventListener("change", (e) => {
+$("#navContinue")?.addEventListener("change", (e) => {
   const v = e.target.value;
 
-  if(v === "pastpapers"){
-    window.location.href = "pastpapers.html";
+  // external pages
+  if (v.endsWith(".html")) {
+    window.location.href = v;
     return;
   }
 
-  if(v === "tasks"){
-    window.location.href = "tasks.html";
-    return;
-  }
-
-  if(v === "studysets"){
-    window.location.href = "studysets.html";
-    return;
-  }
-
+  // in-page tabs
   setTab(v);
 });
 
@@ -2597,7 +2589,8 @@ if (aiPanel && aiToggle && aiClose) {
     if(!state.activeSetId && state.studySets.length) state.activeSetId = state.studySets[0].id;
 
     // set dropdown selection to current tab
-    $("#navContinue").value = state.activeTab || "dashboard";
+    // set dropdown default
+$("#navContinue").value = "dashboard";
 
     // render all core
     renderStudySetsTab();
