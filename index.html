@@ -456,6 +456,41 @@
   overflow-y: auto;
   flex: 1;
 }
+/* ===== Footer ===== */
+
+.main-footer{
+  margin-top:60px;
+  padding:30px 20px;
+  text-align:center;
+  font-size:14px;
+  border-top:1px solid var(--border);
+  background:rgba(255,255,255,.02);
+}
+
+.footer-links{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+
+.footer-links a{
+  color:var(--muted);
+  text-decoration:none;
+  transition:.2s;
+}
+
+.footer-links a:hover{
+  color:var(--text);
+  text-decoration:underline;
+}
+
+.footer-copy{
+  color:var(--muted);
+  font-size:12px;
+}
 </style>
 </head>
 
@@ -2675,9 +2710,20 @@ setupDashboardTasksRealtime();
 })();
 </script>
 
-<footer style="margin-top:40px; padding:20px; text-align:center; font-size:14px; opacity:.6;">
-  <a href="privacy.html">Privacy Policy</a> |
-  <a href="terms.html">Terms of Service</a>
+<footer class="main-footer">
+  <div class="footer-links">
+    <a href="about.html" target="_blank" rel="noopener">About</a>
+    <span>•</span>
+    <a href="contact.html" target="_blank" rel="noopener">Contact</a>
+    <span>•</span>
+    <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
+    <span>•</span>
+    <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>
+  </div>
+
+  <div class="footer-copy">
+    © 2026 ReviseFlow. All rights reserved.
+  </div>
 </footer>
 
 </body>
