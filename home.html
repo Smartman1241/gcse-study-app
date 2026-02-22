@@ -113,6 +113,53 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const user = session.user;
+// ✅ Ensure user_settings row exists
+async function ensureUserSettings(user) {
+
+  const { data: existing } = await supabase
+    .from("user_settings")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existing) return; // already exists
+
+  // Generate username from email
+  let baseUsername = (user.email || "user")
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 16);
+
+  if (!baseUsername) baseUsername = "user";
+
+  // Ensure uniqueness
+  let finalUsername = baseUsername;
+  let attempt = 0;
+
+  while (true) {
+    const { data: taken } = await supabase
+      .from("user_settings")
+      .select("id")
+      .eq("username", finalUsername)
+      .maybeSingle();
+
+    if (!taken) break;
+
+    attempt++;
+    finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
+  }
+
+  await supabase.from("user_settings").insert({
+    user_id: user.id,
+    username: finalUsername,
+    tier: "free",
+    role: "user"
+  });
+
+}
+
+await ensureUserSettings(user);
   document.getElementById("hello").textContent =
     `Welcome back, ${user.user_metadata?.full_name || user.email}`;
 
