@@ -194,10 +194,13 @@
   </div>
 
 <script>
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-  window.supabaseClient = window.supabaseClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const supabase = window.supabaseClient;
+  // Create Supabase client safely ONCE
+  if (!window.supabaseClient) {
+    window.supabaseClient = window.supabase.createClient(
+      "https://mgpwknnbhaljsscsvucm.supabase.co",
+      "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+    );
+  }
 
   let currentUser = null;
   let allSets = [];
@@ -209,8 +212,6 @@ const supabase = window.supabaseClient;
     box.textContent = text;
     box.classList.add("show");
     box.style.color = isError ? "#ffd2d8" : "rgba(255,255,255,.75)";
-    box.style.borderColor = isError ? "rgba(255,91,110,.35)" : "var(--border)";
-    box.style.background = isError ? "rgba(255,91,110,.10)" : "rgba(255,255,255,.04)";
   }
 
   function clearMsg(){
@@ -220,7 +221,7 @@ const supabase = window.supabaseClient;
   }
 
   async function requireSession(){
-    const { data:{ session }, error } = await supabase.auth.getSession();
+    const { data:{ session }, error } = await window.supabaseClient.auth.getSession();
     if(error) console.error(error);
     if(!session){
       window.location.href = "auth.html";
@@ -232,15 +233,15 @@ const supabase = window.supabaseClient;
   async function init(){
     const session = await requireSession();
     if(!session) return;
+
     currentUser = session.user;
 
-    // if auth changes (logout/login), react
-    supabase.auth.onAuthStateChange((_event, sess) => {
+    window.supabaseClient.auth.onAuthStateChange((_event, sess) => {
       if(!sess) window.location.href = "auth.html";
     });
 
-    await loadSets();
     wireUI();
+    await loadSets();
   }
 
   function wireUI(){
@@ -255,15 +256,14 @@ const supabase = window.supabaseClient;
     $("setSubject").value = "";
     $("setDesc").value = "";
     clearMsg();
-    $("setName").focus();
   }
 
   async function loadSets(){
     $("btnRefresh").disabled = true;
 
-    const { data, error } = await supabase
+    const { data, error } = await window.supabaseClient
       .from("study_sets")
-      .select("id,user_id,name,subject,description,created_at,updated_at")
+      .select("*")
       .eq("user_id", currentUser.id)
       .order("updated_at", { ascending:false });
 
@@ -271,8 +271,6 @@ const supabase = window.supabaseClient;
 
     if(error){
       console.error(error);
-      $("setsList").innerHTML = "";
-      $("emptyHint").style.display = "block";
       return;
     }
 
@@ -287,9 +285,8 @@ const supabase = window.supabaseClient;
 
     const filtered = q
       ? allSets.filter(s =>
-          (s.name || "").toLowerCase().includes(q) ||
-          (s.subject || "").toLowerCase().includes(q) ||
-          (s.description || "").toLowerCase().includes(q)
+          s.name.toLowerCase().includes(q) ||
+          (s.subject || "").toLowerCase().includes(q)
         )
       : allSets;
 
@@ -299,29 +296,27 @@ const supabase = window.supabaseClient;
       const card = document.createElement("div");
       card.className = "set-card";
 
-      const safeSubject = (set.subject || "").trim() || "General";
-      const safeDesc = (set.description || "").trim();
-
       card.innerHTML = `
         <div class="set-top">
           <div>
-            <div style="font-weight:800; font-size:16px;">${escapeHtml(set.name)}</div>
-            ${safeDesc ? `<div class="desc">${escapeHtml(safeDesc)}</div>` : ""}
+            <div style="font-weight:800;">${set.name}</div>
           </div>
-          <span class="badge">${escapeHtml(safeSubject)}</span>
+          <span class="badge">${set.subject || "General"}</span>
         </div>
 
         <div class="actions">
-          <button class="btn-ghost small" data-edit="${set.id}">Edit this set</button>
+          <button class="btn-ghost small" data-edit="${set.id}">Edit</button>
           <button class="btn-danger small" data-del="${set.id}">Delete</button>
         </div>
       `;
 
-      card.querySelector("[data-edit]").addEventListener("click", () => {
-        window.location.href = `editset.html?id=${encodeURIComponent(set.id)}`;
-      });
+      card.querySelector("[data-edit]").onclick = () => {
+        window.location.href = `editset.html?id=${set.id}`;
+      };
 
-      card.querySelector("[data-del]").addEventListener("click", () => deleteSet(set.id));
+      card.querySelector("[data-del]").onclick = () => {
+        deleteSet(set.id);
+      };
 
       list.appendChild(card);
     }
@@ -336,70 +331,55 @@ const supabase = window.supabaseClient;
 
     if(!name){
       showMsg("Enter a set name.", true);
-      $("setName").focus();
       return;
     }
 
     $("btnCreate").disabled = true;
 
-    const payload = {
-      user_id: currentUser.id,
-      name,
-      subject: subject || "General",
-      description: desc || ""
-    };
-
-    const { data, error } = await supabase
+    const { data, error } = await window.supabaseClient
       .from("study_sets")
-      .insert(payload)
-      .select("id")
+      .insert({
+        user_id: currentUser.id,
+        name,
+        subject: subject || "General",
+        description: desc || ""
+      })
+      .select()
       .single();
 
     $("btnCreate").disabled = false;
 
     if(error){
       console.error(error);
-      showMsg("Could not create set. Check console / Supabase policies.", true);
+      showMsg("Error creating set. Check console.", true);
       return;
     }
 
-    showMsg("Set created ✅");
     clearForm();
     await loadSets();
 
-    // Optional: jump straight into editing the new set
     if(data?.id){
-      window.location.href = `editset.html?id=${encodeURIComponent(data.id)}`;
+      window.location.href = `editset.html?id=${data.id}`;
     }
   }
 
   async function deleteSet(id){
-    if(!confirm("Delete this set? This also deletes all cards inside it.")) return;
+    if(!confirm("Delete this set?")) return;
 
-    const { error } = await supabase
+    const { error } = await window.supabaseClient
       .from("study_sets")
       .delete()
       .eq("id", id);
 
     if(error){
       console.error(error);
-      alert("Could not delete set.");
+      alert("Delete failed.");
       return;
     }
 
     await loadSets();
   }
 
-  function escapeHtml(str){
-    return String(str ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
   init();
-</script>
-</body>
+</script></body>
 </html>
