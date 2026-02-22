@@ -225,8 +225,6 @@
 }
 
 //
-
-//
   const supabase = window.supabaseClient;
 
   const $ = (id) => document.getElementById(id);
@@ -315,6 +313,7 @@
       .from("study_terms")
       .select("id,set_id,term,definition,created_at,updated_at")
       .eq("set_id", setId)
+.eq("user_id", currentUser.id)
       .order("created_at", { ascending:true });
 
     if(error){
@@ -405,7 +404,12 @@
 
     const { error } = await supabase
       .from("study_terms")
-      .insert({ set_id: setId, term, definition });
+      .insert({
+  set_id: setId,
+  user_id: currentUser.id,
+  term,
+  definition
+});
 
     $("btnAdd").disabled = false;
 
@@ -444,7 +448,8 @@
     const { error } = await supabase
       .from("study_terms")
       .update(updates)
-      .eq("id", id);
+      .eq("id", id)
+.eq("user_id", currentUser.id);
 
     if(error){
       console.error(error);
