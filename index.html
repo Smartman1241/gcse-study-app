@@ -393,6 +393,13 @@
   }
   .dashHero h3{margin:0 0 6px; font-size:16px;}
   .dashHero p{margin:0; color:var(--muted); font-size:13px; line-height:1.55;}
+#focusPanel {
+  transition: transform .3s ease;
+}
+
+#focusPanel.hidden {
+  transform: translateX(110%);
+}
 </style>
 </head>
 
@@ -858,7 +865,7 @@
     </section>
 
     <!-- RIGHT -->
-    <aside class="panel">
+    <aside class="panel" id="focusPanel">
       <div class="panelHeader">
         <h2>Focus timer</h2>
         <div class="pill">Pomodoro</div>
@@ -912,6 +919,15 @@
         <div id="studyLogMini" class="muted small" style="margin-top:8px; line-height:1.55"></div>
       </div>
     </aside>
+<button id="toggleFocusPanel" class="btn" style="
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  z-index:1000;
+  border-radius:50px;
+">
+  ⏱ Focus
+</button>
   </main>
 </div>
 
@@ -2316,6 +2332,11 @@
     return;
   }
 
+  if(v === "studysets"){
+    window.location.href = "studysets.html";
+    return;
+  }
+
   setTab(v);
 });
 
@@ -2420,7 +2441,17 @@
       window.location.href = "auth.html";
     });
   }
+// Focus panel toggle
+const focusPanel = document.getElementById("focusPanel");
+const toggleBtn = document.getElementById("toggleFocusPanel");
 
+if(focusPanel && toggleBtn){
+  focusPanel.classList.add("hidden"); // start hidden
+
+  toggleBtn.addEventListener("click", () => {
+    focusPanel.classList.toggle("hidden");
+  });
+}
   function bootUI(){
     const savedTheme = localStorage.getItem(THEME_KEY) || localStorage.getItem(OLD_THEME_KEY);
     if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
