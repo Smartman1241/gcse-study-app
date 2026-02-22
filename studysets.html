@@ -196,7 +196,8 @@
 <script>
   const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
   const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  window.supabaseClient = window.supabaseClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabaseClient;
 
   let currentUser = null;
   let allSets = [];
