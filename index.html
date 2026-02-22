@@ -819,32 +819,7 @@
           <div class="list" id="revList"></div>
         </section>
 
-        <!-- AI -->
-        <section class="tabpanel" data-tabpanel="ai" hidden>
-          <div class="card" style="border:1px solid var(--border); border-radius:14px; padding:14px; background:rgba(255,255,255,.03)">
-            <div class="row" style="justify-content:space-between">
-              <div>
-                <h3 style="margin:0">ReviseFlow AI Explainer</h3>
-                <div class="muted small">Ask any GCSE topic for clear, exam-focused explanations.</div>
-              </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <div class="field full">
-              <span class="label">Your question</span>
-              <textarea id="aiInput" placeholder="e.g. Explain photosynthesis step-by-step with an exam-style answer." maxlength="800"></textarea>
-            </div>
-
-            <div class="row">
-              <button class="btn primary" id="btnAskAI">✨ Explain</button>
-              <button class="btn" id="btnAiClear">Clear</button>
-            </div>
-
-            <div class="divider"></div>
-            <div id="aiOutput" class="muted" style="white-space:pre-wrap; line-height:1.45;">Your explanation will appear here.</div>
-          </div>
-        </section>
+      
 
         <!-- STATS -->
         <section class="tabpanel" data-tabpanel="stats" hidden>
@@ -951,6 +926,38 @@
   border-radius:50px;
 ">
   ⏱ Focus
+</button>
+<aside id="aiSidePanel" class="panel" style="display:none; position:fixed; right:20px; top:120px; width:400px; z-index:999;">
+  <div class="panelHeader">
+    <h2>ReviseFlow AI</h2>
+    <button class="btn" id="closeAiPanel">✕</button>
+  </div>
+  <div class="panelBody">
+    <div class="field full">
+      <span class="label">Your question</span>
+      <textarea id="aiInput" placeholder="Ask any GCSE topic..." maxlength="800"></textarea>
+    </div>
+
+    <div class="row">
+      <button class="btn primary" id="btnAskAI">✨ Explain</button>
+      <button class="btn" id="btnAiClear">Clear</button>
+    </div>
+
+    <div class="divider"></div>
+    <div id="aiOutput" class="muted" style="white-space:pre-wrap;">
+      Your explanation will appear here.
+    </div>
+  </div>
+</aside>
+
+<button id="toggleAiPanel" class="btn" style="
+  position:fixed;
+  right:20px;
+  bottom:80px;
+  z-index:1000;
+  border-radius:50px;
+">
+  🤖 AI
 </button>
   </main>
 </div>
@@ -2443,7 +2450,9 @@
     $("#dashGoTasks")?.addEventListener("click", () => {
   window.location.href = "tasks.html";
 });
-    $("#dashGoAI")?.addEventListener("click", () => setTab("ai"));
+    $("#dashGoAI")?.addEventListener("click", () => {
+  document.getElementById("aiSidePanel").style.display = "block";
+});
     $("#dashGoTimer")?.addEventListener("click", () => toast("Timer is on the right →"));
 
     // Account dropdown
@@ -2483,6 +2492,20 @@ function bindEvents(){
        focusPanel.classList.toggle("active");
        mainGrid.classList.toggle("with-focus");
      });
+   // AI side panel toggle
+   const aiPanel = document.getElementById("aiSidePanel");
+   const aiToggle = document.getElementById("toggleAiPanel");
+   const aiClose = document.getElementById("closeAiPanel");
+
+   if(aiPanel && aiToggle && aiClose){
+     aiToggle.addEventListener("click", () => {
+       aiPanel.style.display = "block";
+     });
+
+     aiClose.addEventListener("click", () => {
+       aiPanel.style.display = "none";
+     });
+   }
    }
 }
   }
