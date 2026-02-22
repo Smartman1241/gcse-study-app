@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GCSE Focus — Sign In</title>
+<title>ReviseFlow — Sign In</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -116,8 +116,8 @@ footer a{
 
 <div class="auth-box">
 
-<h1>GCSE Focus</h1>
-<div class="subtitle">Study smarter. Focus better.</div>
+<h1>ReviseFlow</h1>
+<div class="subtitle">Smarter revision. Real progress.</div>
 
 <div id="signin">
   <input id="email" type="email" placeholder="Email">
@@ -157,7 +157,6 @@ const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// If already logged in → go to HOME
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
@@ -254,7 +253,7 @@ async function resetPassword(){
   const { error } = await supabaseClient.auth.resetPasswordForEmail(
     resetEmail.value.trim(),
     {
-      redirectTo: window.location.origin + "/auth.html"
+      redirectTo: window.location.origin + "/index.html"
     }
   );
 
