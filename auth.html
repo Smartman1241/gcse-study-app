@@ -89,6 +89,33 @@ button:hover{
   transform:translateY(-2px);
 }
 
+/* ===== Premium Google Button ===== */
+
+.google-btn{
+  background:#ffffff;
+  color:#1f1f1f;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  font-weight:600;
+  box-shadow:0 4px 14px rgba(0,0,0,.15);
+}
+
+.google-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
+
+.google-icon{
+  width:18px;
+  height:18px;
+  background:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg") no-repeat center;
+  background-size:contain;
+}
+
+/* =============================== */
+
 .link{
   margin-top:14px;
   text-align:center;
@@ -156,8 +183,8 @@ footer span{
 
 <div id="signin">
 
-  <button onclick="signInWithGoogle()" 
-          style="background:white; color:#111; margin-top:0;">
+  <button class="google-btn" onclick="signInWithGoogle()">
+    <span class="google-icon"></span>
     Continue with Google
   </button>
 
@@ -302,8 +329,9 @@ async function resetPassword(){
     resetMsg.textContent="Reset email sent.";
   }
 }
+
 async function signInWithGoogle(){
-  const { data, error } = await supabaseClient.auth.signInWithOAuth({
+  const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: window.location.origin
