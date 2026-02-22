@@ -155,6 +155,16 @@ footer span{
 <div class="subtitle">Smarter revision. Real progress.</div>
 
 <div id="signin">
+
+  <button onclick="signInWithGoogle()" 
+          style="background:white; color:#111; margin-top:0;">
+    Continue with Google
+  </button>
+
+  <div style="margin:16px 0; text-align:center; opacity:.6; font-size:13px;">
+    ─── or ───
+  </div>
+
   <input id="email" type="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
   <button onclick="signIn()">Sign In</button>
@@ -290,6 +300,19 @@ async function resetPassword(){
   } else {
     resetMsg.classList.add("success");
     resetMsg.textContent="Reset email sent.";
+  }
+}
+async function signInWithGoogle(){
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: window.location.origin
+    }
+  });
+
+  if(error){
+    alert("Google sign in failed.");
+    console.error(error);
   }
 }
 </script>
