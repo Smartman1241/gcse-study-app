@@ -424,6 +424,37 @@
   width: 380px;
   z-index: 999;
 }
+/* ===== AI FULL RIGHT PANEL ===== */
+
+.ai-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 42%;
+  min-width: 420px;
+  max-width: 650px;
+
+  background: var(--bg); /* solid background */
+  border-left: 1px solid var(--border);
+
+  box-shadow: -20px 0 60px rgba(0,0,0,.35);
+
+  display: none;
+  flex-direction: column;
+  z-index: 2000;
+}
+
+.ai-panel .panelHeader {
+  border-bottom: 1px solid var(--border);
+  padding: 18px;
+}
+
+.ai-panel .panelBody {
+  padding: 18px;
+  overflow-y: auto;
+  flex: 1;
+}
 </style>
 </head>
 
@@ -927,7 +958,7 @@
 ">
   ⏱ Focus
 </button>
-<aside id="aiSidePanel" class="panel" style="display:none; position:fixed; right:20px; top:120px; width:400px; z-index:999;">
+<aside id="aiSidePanel" class="ai-panel">
   <div class="panelHeader">
     <h2>ReviseFlow AI</h2>
     <button class="btn" id="closeAiPanel">✕</button>
@@ -2451,7 +2482,7 @@
   window.location.href = "tasks.html";
 });
     $("#dashGoAI")?.addEventListener("click", () => {
-  document.getElementById("aiSidePanel").style.display = "block";
+  document.getElementById("aiSidePanel").style.display = "flex";
 });
     $("#dashGoTimer")?.addEventListener("click", () => toast("Timer is on the right →"));
 
@@ -2497,8 +2528,8 @@ const aiClose = document.getElementById("closeAiPanel");
 
 if (aiPanel && aiToggle && aiClose) {
   aiToggle.addEventListener("click", () => {
-    aiPanel.style.display = "block";
-  });
+  aiPanel.style.display = "flex";
+});
 
   aiClose.addEventListener("click", () => {
     aiPanel.style.display = "none";
