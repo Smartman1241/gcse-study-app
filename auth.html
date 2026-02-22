@@ -10,7 +10,6 @@
 <style>
 :root{
   --bg:#0b1020;
-  --panel:rgba(255,255,255,.06);
   --text:rgba(255,255,255,.92);
   --muted:rgba(255,255,255,.6);
   --border:rgba(255,255,255,.15);
@@ -30,49 +29,64 @@ body{
   display:flex;
   justify-content:center;
   align-items:center;
+  overflow:hidden;
 }
 
-.auth-box{
+.auth-container{
   width:420px;
-  padding:40px;
-  background:var(--panel);
+  padding:42px;
+  background:rgba(255,255,255,.06);
   backdrop-filter:blur(20px);
   border:1px solid var(--border);
-  border-radius:20px;
+  border-radius:22px;
+  box-shadow:0 25px 80px rgba(0,0,0,.5);
+  position:relative;
 }
 
 h1{
-  margin:0 0 8px 0;
-  font-size:28px;
+  margin:0;
+  font-size:30px;
   text-align:center;
 }
 
 .subtitle{
   text-align:center;
   color:var(--muted);
-  margin-bottom:25px;
+  margin:8px 0 28px;
   font-size:14px;
 }
 
 input{
   width:100%;
-  padding:12px;
+  padding:13px;
   margin-top:12px;
-  border-radius:10px;
+  border-radius:12px;
   border:1px solid var(--border);
-  background:transparent;
+  background:rgba(255,255,255,.05);
   color:var(--text);
+  font-size:14px;
+  transition:.2s;
+}
+
+input:focus{
+  outline:none;
+  border-color:#8ea2ff;
 }
 
 button{
   width:100%;
-  padding:12px;
-  margin-top:16px;
+  padding:13px;
+  margin-top:18px;
   border:none;
-  border-radius:10px;
+  border-radius:12px;
   background:linear-gradient(135deg,#8ea2ff,#46e6b3);
-  font-weight:bold;
+  font-weight:600;
   cursor:pointer;
+  transition:.2s;
+}
+
+button:hover{
+  transform:translateY(-2px);
 }
 
 .link{
@@ -81,14 +95,17 @@ button{
   font-size:14px;
   color:var(--muted);
   cursor:pointer;
+  transition:.2s;
 }
 
-.link:hover{color:white;}
+.link:hover{
+  color:white;
+}
 
 .hidden{display:none;}
 
 .message{
-  margin-top:12px;
+  margin-top:14px;
   font-size:14px;
   text-align:center;
   color:#ff7b8f;
@@ -98,23 +115,41 @@ button{
 
 footer{
   position:absolute;
-  bottom:20px;
+  bottom:25px;
   width:100%;
   text-align:center;
   font-size:13px;
+  color:rgba(255,255,255,.6);
+}
+
+.footer-links{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
 }
 
 footer a{
-  color:white;
+  color:rgba(255,255,255,.8);
   text-decoration:none;
-  margin:0 6px;
+  transition:.2s;
+}
+
+footer a:hover{
+  color:white;
+  text-decoration:underline;
+}
+
+footer span{
+  opacity:.4;
 }
 </style>
 </head>
 
 <body>
 
-<div class="auth-box">
+<div class="auth-container">
 
 <h1>ReviseFlow</h1>
 <div class="subtitle">Smarter revision. Real progress.</div>
@@ -147,21 +182,25 @@ footer a{
 </div>
 
 <footer>
-  <a href="privacy.html">Privacy Policy</a> |
-  <a href="terms.html">Terms of Service</a>
+  <div class="footer-links">
+    <a href="about.html" target="_blank" rel="noopener">About</a>
+    <span>•</span>
+    <a href="contact.html" target="_blank" rel="noopener">Contact</a>
+    <span>•</span>
+    <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
+    <span>•</span>
+    <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>
+  </div>
 </footer>
 
 <script>
 const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) {
-    window.location.href = "home.html";
-  }
+  if (session) window.location.href = "home.html";
 });
 
 function showSignup(){
@@ -183,29 +222,26 @@ function showReset(){
 }
 
 async function signIn(){
-  signinMsg.textContent = "";
-
+  signinMsg.textContent="";
   const { error } = await supabaseClient.auth.signInWithPassword({
     email: email.value.trim(),
     password: password.value
   });
-
   if(error){
-    signinMsg.textContent = error.message;
+    signinMsg.textContent=error.message;
   } else {
-    window.location.href = "home.html";
+    window.location.href="home.html";
   }
 }
 
 async function signUp(){
-  signupMsg.textContent = "";
-
-  const username = signupUsername.value.trim();
-  const emailVal = signupEmail.value.trim();
-  const passwordVal = signupPassword.value;
+  signupMsg.textContent="";
+  const username=signupUsername.value.trim();
+  const emailVal=signupEmail.value.trim();
+  const passwordVal=signupPassword.value;
 
   if(!username){
-    signupMsg.textContent = "Please choose a username.";
+    signupMsg.textContent="Please choose a username.";
     return;
   }
 
@@ -216,7 +252,7 @@ async function signUp(){
     .maybeSingle();
 
   if(existing){
-    signupMsg.textContent = "Username already taken.";
+    signupMsg.textContent="Username already taken.";
     return;
   }
 
@@ -226,42 +262,34 @@ async function signUp(){
   });
 
   if(error){
-    signupMsg.textContent = error.message;
+    signupMsg.textContent=error.message;
     return;
   }
 
   if(data.user){
     await supabaseClient.from("user_settings").insert({
-      user_id: data.user.id,
-      username: username,
-      tier: "free",
-      role: "user",
-      preferred_theme: "auto",
-      reminder_time: "08:00",
-      notify_updates: true,
-      notify_promos: false
+      user_id:data.user.id,
+      username:username,
+      tier:"free",
+      role:"user"
     });
   }
 
   signupMsg.classList.add("success");
-  signupMsg.textContent = "Account created. You can now sign in.";
+  signupMsg.textContent="Account created. You can now sign in.";
 }
 
 async function resetPassword(){
-  resetMsg.textContent = "";
-
+  resetMsg.textContent="";
   const { error } = await supabaseClient.auth.resetPasswordForEmail(
     resetEmail.value.trim(),
-    {
-      redirectTo: window.location.origin + "/index.html"
-    }
+    { redirectTo: window.location.origin + "/index.html" }
   );
-
   if(error){
-    resetMsg.textContent = error.message;
+    resetMsg.textContent=error.message;
   } else {
     resetMsg.classList.add("success");
-    resetMsg.textContent = "Reset email sent.";
+    resetMsg.textContent="Reset email sent.";
   }
 }
 </script>
