@@ -2490,9 +2490,19 @@ async function loadDashboardTaskStats(){
         box.innerHTML =
           `<b>Tasks</b><br>` +
           next.map(t => {
-            const due = t.due_date ? ` <span class="muted">(${prettyDate(t.due_date)})</span>` : "";
-            return `• ${escapeHtml(t.title)}${due}`;
-          }).join("<br>");
+
+  const priorityText =
+    t.priority === "high" ? "High priority" :
+    t.priority === "med" ? "Medium priority" :
+    "Low priority";
+
+  const dueText = t.due_date
+    ? `Due ${prettyDate(t.due_date)}`
+    : "No due date";
+
+  return `• ${escapeHtml(t.title)}, ${priorityText}, ${dueText}`;
+
+}).join("<br>");
       }
     }
   }
