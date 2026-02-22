@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ReviseFlow — Edit Set</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.12);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.65);
+      --brand:#8ea2ff;
+      --good:#46e6b3;
+      --danger:#ff5b6e;
+      --radius:18px;
+    }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:26px 20px 60px;
+    }
+    .topbar{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:18px;
+    }
+    .leftTop{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:18px;
+      backdrop-filter: blur(10px);
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap:18px;
+      align-items:start;
+    }
+    @media(max-width:960px){ .grid{ grid-template-columns:1fr; } }
+    .btn{
+      padding:10px 14px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      font-weight:700;
+      cursor:pointer;
+    }
+    .btn-primary{
+      border:none;
+      background:linear-gradient(135deg,var(--brand),var(--good));
+      color:#111;
+    }
+    .btn-danger{
+      background:rgba(255,91,110,.14);
+      border:1px solid rgba(255,91,110,.28);
+      color:#ffd2d8;
+    }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+    input, textarea{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:transparent;
+      color:var(--text);
+      outline:none;
+      margin-top:10px;
+    }
+    textarea{ min-height:120px; resize:vertical; }
+    .muted{ color:var(--muted); }
+    .badge{
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      background:rgba(142,162,255,.18);
+      border:1px solid rgba(142,162,255,.25);
+      color:rgba(255,255,255,.88);
+    }
+
+    .cards{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin-top:14px;
+    }
+    .card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      background:rgba(255,255,255,.04);
+    }
+    .cardTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .tiny{
+      padding:7px 10px;
+      font-size:13px;
+    }
+    .two{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    .fieldLabel{
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+    .inlineEdit{
+      width:100%;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.0);
+      color:var(--text);
+      padding:10px 12px;
+      outline:none;
+    }
+    .inlineEdit:focus{
+      border-color: rgba(142,162,255,.45);
+    }
+    .status{
+      margin-top:10px;
+      font-size:13px;
+      color:var(--muted);
+      min-height:18px;
+    }
+    .hr{
+      height:1px;
+      background:rgba(255,255,255,.10);
+      margin:12px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="topbar">
+      <div class="leftTop">
+        <button class="btn" id="btnBack">← Back to sets</button>
+        <div>
+          <div style="font-size:20px;font-weight:900;" id="setTitle">Edit Set</div>
+          <div class="muted" id="setMeta"></div>
+        </div>
+      </div>
+
+      <div class="leftTop">
+        <button class="btn" id="btnExport">Export CSV</button>
+        <button class="btn" id="btnImport">Import CSV</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Left: Add new term -->
+      <div class="panel">
+        <div style="font-size:16px;font-weight:900;">Add card</div>
+        <div class="muted" style="margin-top:6px;">Add a term + definition. Saves to your set instantly.</div>
+
+        <input id="newTerm" placeholder="Term (e.g. Mitosis)" maxlength="200" />
+        <textarea id="newDef" placeholder="Definition (e.g. Cell division that produces two identical cells…)" maxlength="4000"></textarea>
+
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn-primary btn" id="btnAdd">Add card</button>
+          <button class="btn btn-danger" id="btnDeleteSet">Delete set</button>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="hr"></div>
+
+        <div class="muted" style="font-size:13px;">
+          Tip: You can edit cards on the right. Changes save when you leave the box.
+        </div>
+
+        <input type="file" id="fileInput" accept=".csv,text/csv" style="display:none;" />
+      </div>
+
+      <!-- Right: Cards list -->
+      <div class="panel">
+        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
+          <div style="font-size:16px;font-weight:900;">Cards</div>
+          <div class="badge" id="countBadge">0</div>
+        </div>
+
+        <input id="search" placeholder="Search cards…" />
+
+        <div class="cards" id="cards"></div>
+        <div class="muted" id="empty" style="display:none; margin-top:14px;">
+          No cards yet — add your first one on the left.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const $ = (id) => document.getElementById(id);
+
+  let currentUser = null;
+  let setId = null;
+  let setRow = null;
+  let allTerms = [];
+
+  function setStatus(msg, isError=false){
+    $("status").textContent = msg || "";
+    $("status").style.color = isError ? "#ffd2d8" : "rgba(255,255,255,.65)";
+  }
+
+  function getParam(name){
+    const u = new URL(window.location.href);
+    return u.searchParams.get(name);
+  }
+
+  async function requireSession(){
+    const { data:{ session } } = await supabase.auth.getSession();
+    if(!session){
+      window.location.href = "auth.html";
+      return null;
+    }
+    return session;
+  }
+
+  async function init(){
+    setId = getParam("id");
+    if(!setId){
+      alert("Missing set id.");
+      window.location.href = "studysets.html";
+      return;
+    }
+
+    const session = await requireSession();
+    if(!session) return;
+    currentUser = session.user;
+
+    $("btnBack").onclick = () => window.location.href = "studysets.html";
+    $("btnAdd").onclick = addCard;
+    $("btnDeleteSet").onclick = deleteSet;
+    $("search").addEventListener("input", renderCards);
+    $("btnExport").onclick = exportCSV;
+    $("btnImport").onclick = () => $("fileInput").click();
+    $("fileInput").addEventListener("change", importCSV);
+
+    await loadSet();
+    await loadCards();
+  }
+
+  async function loadSet(){
+    const { data, error } = await supabase
+      .from("study_sets")
+      .select("id,name,subject,description,created_at,updated_at")
+      .eq("id", setId)
+      .single();
+
+    if(error || !data){
+      console.error(error);
+      alert("Could not load set (or you don’t have access).");
+      window.location.href = "studysets.html";
+      return;
+    }
+
+    setRow = data;
+    $("setTitle").textContent = data.name;
+    const subject = (data.subject || "General").trim();
+    $("setMeta").textContent = `${subject}${data.description ? " • " + data.description : ""}`;
+    document.title = `ReviseFlow — ${data.name}`;
+  }
+
+  async function loadCards(){
+    const { data, error } = await supabase
+      .from("study_terms")
+      .select("id,set_id,term,definition,created_at,updated_at")
+      .eq("set_id", setId)
+      .order("created_at", { ascending:true });
+
+    if(error){
+      console.error(error);
+      setStatus("Could not load cards.", true);
+      return;
+    }
+
+    allTerms = data || [];
+    renderCards();
+  }
+
+  function renderCards(){
+    const q = $("search").value.trim().toLowerCase();
+    const filtered = q
+      ? allTerms.filter(t =>
+          (t.term || "").toLowerCase().includes(q) ||
+          (t.definition || "").toLowerCase().includes(q)
+        )
+      : allTerms;
+
+    $("countBadge").textContent = filtered.length;
+    $("cards").innerHTML = "";
+    $("empty").style.display = filtered.length ? "none" : "block";
+
+    for(const row of filtered){
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <div class="cardTop">
+          <div class="muted" style="font-size:13px;">Card</div>
+          <button class="btn btn-danger tiny" data-del="${row.id}">Delete</button>
+        </div>
+
+        <div class="two">
+          <div>
+            <div class="fieldLabel">Term</div>
+            <input class="inlineEdit" data-term="${row.id}" value="${escapeHtmlAttr(row.term)}" />
+          </div>
+
+          <div>
+            <div class="fieldLabel">Definition</div>
+            <textarea class="inlineEdit" data-def="${row.id}" rows="4">${escapeHtml(row.definition)}</textarea>
+          </div>
+        </div>
+      `;
+
+      div.querySelector("[data-del]").addEventListener("click", () => deleteCard(row.id));
+
+      const termInput = div.querySelector("[data-term]");
+      const defArea = div.querySelector("[data-def]");
+
+      // Save on blur (and also on Ctrl+Enter for textarea)
+      termInput.addEventListener("blur", () => saveCard(row.id, termInput.value, null));
+      defArea.addEventListener("blur", () => saveCard(row.id, null, defArea.value));
+      defArea.addEventListener("keydown", (e) => {
+        if((e.ctrlKey || e.metaKey) && e.key === "Enter"){
+          defArea.blur();
+        }
+      });
+
+      $("cards").appendChild(div);
+    }
+  }
+
+  async function addCard(){
+    setStatus("");
+
+    const term = $("newTerm").value.trim();
+    const definition = $("newDef").value.trim();
+
+    if(!term){
+      setStatus("Enter a term.", true);
+      $("newTerm").focus();
+      return;
+    }
+
+    $("btnAdd").disabled = true;
+
+    const { error } = await supabase
+      .from("study_terms")
+      .insert({ set_id: setId, term, definition });
+
+    $("btnAdd").disabled = false;
+
+    if(error){
+      console.error(error);
+      setStatus("Could not add card (check policies / table).", true);
+      return;
+    }
+
+    $("newTerm").value = "";
+    $("newDef").value = "";
+    setStatus("Card added ✅");
+    await loadCards();
+  }
+
+  async function saveCard(id, maybeTerm, maybeDef){
+    const updates = {};
+    if(maybeTerm !== null){
+      const t = String(maybeTerm).trim();
+      if(!t){
+        setStatus("Term can’t be empty.", true);
+        await loadCards();
+        return;
+      }
+      updates.term = t;
+    }
+    if(maybeDef !== null){
+      updates.definition = String(maybeDef).trim();
+    }
+
+    // Nothing to update
+    if(Object.keys(updates).length === 0) return;
+
+    const { error } = await supabase
+      .from("study_terms")
+      .update(updates)
+      .eq("id", id);
+
+    if(error){
+      console.error(error);
+      setStatus("Could not save changes.", true);
+      return;
+    }
+
+    setStatus("Saved.");
+    // Update local cache to keep search accurate
+    const idx = allTerms.findIndex(x => x.id === id);
+    if(idx !== -1){
+      allTerms[idx] = { ...allTerms[idx], ...updates };
+    }
+  }
+
+  async function deleteCard(id){
+    if(!confirm("Delete this card?")) return;
+
+    const { error } = await supabase
+      .from("study_terms")
+      .delete()
+      .eq("id", id);
+
+    if(error){
+      console.error(error);
+      setStatus("Could not delete card.", true);
+      return;
+    }
+
+    setStatus("Card deleted.");
+    await loadCards();
+  }
+
+  async function deleteSet(){
+    if(!confirm("Delete this entire set? This deletes all cards inside it.")) return;
+
+    const { error } = await supabase
+      .from("study_sets")
+      .delete()
+      .eq("id", setId);
+
+    if(error){
+      console.error(error);
+      alert("Could not delete set.");
+      return;
+    }
+
+    window.location.href = "studysets.html";
+  }
+
+  function exportCSV(){
+    // CSV: term,definition
+    const rows = [["term","definition"]];
+    for(const t of allTerms){
+      rows.push([t.term || "", t.definition || ""]);
+    }
+    const csv = rows.map(r => r.map(csvCell).join(",")).join("\n");
+    const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(setRow?.name || "study-set").replaceAll(/[^\w\- ]/g,"").slice(0,60)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function csvCell(v){
+    const s = String(v ?? "");
+    if(s.includes('"') || s.includes(",") || s.includes("\n")){
+      return `"${s.replaceAll('"','""')}"`;
+    }
+    return s;
+  }
+
+  async function importCSV(e){
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if(!file) return;
+
+    const text = await file.text();
+    const parsed = parseCSV(text);
+    if(!parsed.length){
+      setStatus("CSV looks empty.", true);
+      return;
+    }
+
+    // Expect header term,definition
+    const header = parsed[0].map(x => String(x).trim().toLowerCase());
+    const termIdx = header.indexOf("term");
+    const defIdx = header.indexOf("definition");
+
+    if(termIdx === -1){
+      setStatus("CSV must have a 'term' column.", true);
+      return;
+    }
+
+    const rows = parsed.slice(1)
+      .map(r => ({
+        set_id: setId,
+        term: String(r[termIdx] ?? "").trim(),
+        definition: defIdx === -1 ? "" : String(r[defIdx] ?? "").trim()
+      }))
+      .filter(r => r.term.length > 0);
+
+    if(!rows.length){
+      setStatus("No valid rows found (missing terms).", true);
+      return;
+    }
+
+    setStatus(`Importing ${rows.length} cards…`);
+
+    // Insert in chunks to avoid request limits
+    const chunkSize = 200;
+    for(let i=0;i<rows.length;i+=chunkSize){
+      const chunk = rows.slice(i, i+chunkSize);
+      const { error } = await supabase.from("study_terms").insert(chunk);
+      if(error){
+        console.error(error);
+        setStatus("Import failed part-way. Check console.", true);
+        return;
+      }
+    }
+
+    setStatus("Import complete ✅");
+    await loadCards();
+  }
+
+  // Simple CSV parser (handles quoted cells)
+  function parseCSV(text){
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let inQuotes = false;
+
+    for(let i=0;i<text.length;i++){
+      const ch = text[i];
+      const next = text[i+1];
+
+      if(inQuotes){
+        if(ch === '"' && next === '"'){
+          cell += '"';
+          i++;
+        } else if(ch === '"'){
+          inQuotes = false;
+        } else {
+          cell += ch;
+        }
+      } else {
+        if(ch === '"'){
+          inQuotes = true;
+        } else if(ch === ","){
+          row.push(cell);
+          cell = "";
+        } else if(ch === "\n"){
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = "";
+        } else if(ch === "\r"){
+          // ignore
+        } else {
+          cell += ch;
+        }
+      }
+    }
+    // flush last cell
+    if(cell.length || row.length){
+      row.push(cell);
+      rows.push(row);
+    }
+    return rows.filter(r => r.some(x => String(x).trim().length > 0));
+  }
+
+  function escapeHtml(str){
+    return String(str ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+  function escapeHtmlAttr(str){
+    // for input value=""
+    return escapeHtml(str).replaceAll("\n"," ");
+  }
+
+  init();
+</script>
+</body>
+</html>

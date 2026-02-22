@@ -1,243 +1,404 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ReviseFlow — Study Sets</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ReviseFlow — Study Sets</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<style>
-:root{
-  --bg:#0b1020;
-  --panel:rgba(255,255,255,.06);
-  --border:rgba(255,255,255,.12);
-  --text:rgba(255,255,255,.92);
-  --muted:rgba(255,255,255,.65);
-  --brand:#8ea2ff;
-  --good:#46e6b3;
-  --radius:18px;
-}
-
-body{
-  margin:0;
-  font-family: system-ui,-apple-system,Segoe UI,Roboto;
-  background:var(--bg);
-  color:var(--text);
-}
-
-.wrap{
-  max-width:1100px;
-  margin:0 auto;
-  padding:30px 20px 60px;
-}
-
-h1{margin:0 0 8px;}
-.subtitle{color:var(--muted); margin-bottom:30px;}
-
-.grid{
-  display:grid;
-  grid-template-columns: 1fr 2fr;
-  gap:24px;
-}
-
-@media(max-width:900px){
-  .grid{grid-template-columns:1fr;}
-}
-
-.panel{
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:20px;
-}
-
-input, select, textarea{
-  width:100%;
-  padding:10px 12px;
-  margin-bottom:14px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:transparent;
-  color:var(--text);
-}
-
-button{
-  padding:10px 14px;
-  border-radius:12px;
-  border:none;
-  cursor:pointer;
-}
-
-.btn-primary{
-  background:linear-gradient(135deg,var(--brand),var(--good));
-  color:#111;
-  font-weight:600;
-}
-
-.set-card{
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:16px;
-  margin-bottom:14px;
-  background:rgba(255,255,255,.04);
-  transition:.15s;
-}
-
-.set-card:hover{
-  transform:translateY(-2px);
-}
-
-.set-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.badge{
-  font-size:12px;
-  padding:4px 8px;
-  border-radius:999px;
-  background:rgba(142,162,255,.2);
-}
-
-.actions{
-  margin-top:12px;
-  display:flex;
-  gap:10px;
-}
-
-.btn-small{
-  padding:6px 10px;
-  font-size:13px;
-}
-</style>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.12);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.65);
+      --brand:#8ea2ff;
+      --good:#46e6b3;
+      --danger:#ff5b6e;
+      --radius:18px;
+    }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:30px 20px 60px;
+    }
+    h1{margin:0 0 6px;}
+    .subtitle{color:var(--muted); margin-bottom:22px;}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 2fr;
+      gap:24px;
+      align-items:start;
+    }
+    @media(max-width:900px){ .grid{grid-template-columns:1fr;} }
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:20px;
+      backdrop-filter: blur(10px);
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .row > *{ flex:1; }
+    input, textarea{
+      width:100%;
+      padding:10px 12px;
+      margin:10px 0 0;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:transparent;
+      color:var(--text);
+      outline:none;
+    }
+    textarea{ min-height:90px; resize:vertical; }
+    button{
+      padding:10px 14px;
+      border-radius:12px;
+      border:none;
+      cursor:pointer;
+      font-weight:600;
+    }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+    .btn-primary{
+      background:linear-gradient(135deg,var(--brand),var(--good));
+      color:#111;
+    }
+    .btn-ghost{
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      border:1px solid var(--border);
+    }
+    .btn-danger{
+      background:rgba(255,91,110,.14);
+      color:#ffd2d8;
+      border:1px solid rgba(255,91,110,.28);
+    }
+    .toolbar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-top:12px;
+    }
+    .toolbar input{ margin:0; }
+    .hint{ color:var(--muted); font-size:13px; margin-top:10px; }
+    .msg{
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      color:var(--muted);
+      display:none;
+    }
+    .msg.show{ display:block; }
+    .sets{
+      margin-top:12px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .set-card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      background:rgba(255,255,255,.04);
+      transition:transform .12s ease;
+    }
+    .set-card:hover{ transform:translateY(-2px); }
+    .set-top{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+    }
+    .badge{
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      background:rgba(142,162,255,.18);
+      border:1px solid rgba(142,162,255,.25);
+      color:rgba(255,255,255,.88);
+      white-space:nowrap;
+    }
+    .desc{
+      margin-top:6px;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.35;
+      white-space:pre-wrap;
+    }
+    .actions{
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .small{
+      padding:7px 10px;
+      font-size:13px;
+      font-weight:600;
+    }
+  </style>
 </head>
 
 <body>
-<div class="wrap">
-  <h1>Study Sets</h1>
-  <div class="subtitle">Create and manage your revision sets.</div>
+  <div class="wrap">
+    <h1>Study Sets</h1>
+    <div class="subtitle">Create and manage your revision sets.</div>
 
-  <div class="grid">
+    <div class="grid">
+      <div class="panel">
+        <h3 style="margin:0 0 6px;">Create New Set</h3>
+        <div class="hint">Tip: keep set names short, like “Biology — Cells”.</div>
 
-    <!-- CREATE PANEL -->
-    <div class="panel">
-      <h3>Create New Set</h3>
-      <input id="setName" placeholder="Set name (e.g. Biology – Cells)" />
-      <input id="setSubject" placeholder="Subject (e.g. Biology)" />
-      <textarea id="setDesc" placeholder="Description (optional)"></textarea>
-      <button class="btn-primary" id="btnCreate">Create Set</button>
+        <input id="setName" placeholder="Set name" maxlength="120" />
+        <input id="setSubject" placeholder="Subject (e.g. Biology)" maxlength="80" />
+        <textarea id="setDesc" placeholder="Description (optional)" maxlength="500"></textarea>
+
+        <div class="toolbar">
+          <button class="btn-primary" id="btnCreate">Create Set</button>
+          <button class="btn-ghost" id="btnClear" type="button">Clear</button>
+        </div>
+
+        <div class="msg" id="createMsg"></div>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="margin-bottom:6px;">
+          <h3 style="margin:0;">Your Sets</h3>
+          <div style="flex:1"></div>
+        </div>
+
+        <div class="toolbar">
+          <input id="search" placeholder="Search sets…" />
+          <button class="btn-ghost" id="btnRefresh" type="button">Refresh</button>
+        </div>
+
+        <div class="sets" id="setsList"></div>
+        <div class="hint" id="emptyHint" style="display:none; margin-top:14px;">
+          No study sets yet — create your first one on the left.
+        </div>
+      </div>
     </div>
-
-    <!-- LIST PANEL -->
-    <div class="panel">
-      <h3>Your Sets</h3>
-      <div id="setsList"></div>
-    </div>
-
   </div>
-</div>
 
 <script>
-const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let currentUser = null;
+  let currentUser = null;
+  let allSets = [];
 
-async function init(){
-  const { data:{ session } } = await supabase.auth.getSession();
-  if(!session){
-    window.location.href = "auth.html";
-    return;
-  }
-  currentUser = session.user;
-  loadSets();
-}
+  const $ = (id) => document.getElementById(id);
 
-async function loadSets(){
-  const { data, error } = await supabase
-    .from("study_sets")
-    .select("*")
-    .eq("user_id", currentUser.id)
-    .order("updated_at",{ascending:false});
-
-  if(error){
-    console.error(error);
-    return;
+  function showMsg(text, isError=false){
+    const box = $("createMsg");
+    box.textContent = text;
+    box.classList.add("show");
+    box.style.color = isError ? "#ffd2d8" : "rgba(255,255,255,.75)";
+    box.style.borderColor = isError ? "rgba(255,91,110,.35)" : "var(--border)";
+    box.style.background = isError ? "rgba(255,91,110,.10)" : "rgba(255,255,255,.04)";
   }
 
-  const list = document.getElementById("setsList");
-  list.innerHTML = "";
-
-  if(!data.length){
-    list.innerHTML = "<p>No study sets yet.</p>";
-    return;
+  function clearMsg(){
+    const box = $("createMsg");
+    box.classList.remove("show");
+    box.textContent = "";
   }
 
-  data.forEach(set=>{
-    const div = document.createElement("div");
-    div.className="set-card";
-    div.innerHTML=`
-      <div class="set-top">
-        <strong>${set.name}</strong>
-        <span class="badge">${set.subject}</span>
-      </div>
-      <div style="margin-top:6px;color:var(--muted)">
-        ${set.description || ""}
-      </div>
-      <div class="actions">
-        <button class="btn-small" onclick="deleteSet('${set.id}')">Delete</button>
-      </div>
-    `;
-    list.appendChild(div);
-  });
-}
+  async function requireSession(){
+    const { data:{ session }, error } = await supabase.auth.getSession();
+    if(error) console.error(error);
+    if(!session){
+      window.location.href = "auth.html";
+      return null;
+    }
+    return session;
+  }
 
-async function createSet(){
-  const name = document.getElementById("setName").value.trim();
-  const subject = document.getElementById("setSubject").value.trim();
-  const desc = document.getElementById("setDesc").value.trim();
+  async function init(){
+    const session = await requireSession();
+    if(!session) return;
+    currentUser = session.user;
 
-  if(!name) return alert("Enter a name");
-
-  const { error } = await supabase
-    .from("study_sets")
-    .insert({
-      user_id: currentUser.id,
-      name,
-      subject,
-      description: desc,
-      created_at:new Date(),
-      updated_at:new Date()
+    // if auth changes (logout/login), react
+    supabase.auth.onAuthStateChange((_event, sess) => {
+      if(!sess) window.location.href = "auth.html";
     });
 
-  if(error){
-    console.error(error);
-    return;
+    await loadSets();
+    wireUI();
   }
 
-  document.getElementById("setName").value="";
-  document.getElementById("setSubject").value="";
-  document.getElementById("setDesc").value="";
+  function wireUI(){
+    $("btnCreate").addEventListener("click", createSet);
+    $("btnClear").addEventListener("click", clearForm);
+    $("btnRefresh").addEventListener("click", loadSets);
+    $("search").addEventListener("input", renderSets);
+  }
 
-  loadSets();
-}
+  function clearForm(){
+    $("setName").value = "";
+    $("setSubject").value = "";
+    $("setDesc").value = "";
+    clearMsg();
+    $("setName").focus();
+  }
 
-async function deleteSet(id){
-  if(!confirm("Delete this set?")) return;
+  async function loadSets(){
+    $("btnRefresh").disabled = true;
 
-  await supabase
-    .from("study_sets")
-    .delete()
-    .eq("id",id);
+    const { data, error } = await supabase
+      .from("study_sets")
+      .select("id,user_id,name,subject,description,created_at,updated_at")
+      .eq("user_id", currentUser.id)
+      .order("updated_at", { ascending:false });
 
-  loadSets();
-}
+    $("btnRefresh").disabled = false;
 
-document.getElementById("btnCreate").addEventListener("click",createSet);
+    if(error){
+      console.error(error);
+      $("setsList").innerHTML = "";
+      $("emptyHint").style.display = "block";
+      return;
+    }
 
-init();
+    allSets = data || [];
+    renderSets();
+  }
+
+  function renderSets(){
+    const q = $("search").value.trim().toLowerCase();
+    const list = $("setsList");
+    list.innerHTML = "";
+
+    const filtered = q
+      ? allSets.filter(s =>
+          (s.name || "").toLowerCase().includes(q) ||
+          (s.subject || "").toLowerCase().includes(q) ||
+          (s.description || "").toLowerCase().includes(q)
+        )
+      : allSets;
+
+    $("emptyHint").style.display = filtered.length ? "none" : "block";
+
+    for(const set of filtered){
+      const card = document.createElement("div");
+      card.className = "set-card";
+
+      const safeSubject = (set.subject || "").trim() || "General";
+      const safeDesc = (set.description || "").trim();
+
+      card.innerHTML = `
+        <div class="set-top">
+          <div>
+            <div style="font-weight:800; font-size:16px;">${escapeHtml(set.name)}</div>
+            ${safeDesc ? `<div class="desc">${escapeHtml(safeDesc)}</div>` : ""}
+          </div>
+          <span class="badge">${escapeHtml(safeSubject)}</span>
+        </div>
+
+        <div class="actions">
+          <button class="btn-ghost small" data-edit="${set.id}">Edit this set</button>
+          <button class="btn-danger small" data-del="${set.id}">Delete</button>
+        </div>
+      `;
+
+      card.querySelector("[data-edit]").addEventListener("click", () => {
+        window.location.href = `editset.html?id=${encodeURIComponent(set.id)}`;
+      });
+
+      card.querySelector("[data-del]").addEventListener("click", () => deleteSet(set.id));
+
+      list.appendChild(card);
+    }
+  }
+
+  async function createSet(){
+    clearMsg();
+
+    const name = $("setName").value.trim();
+    const subject = $("setSubject").value.trim();
+    const desc = $("setDesc").value.trim();
+
+    if(!name){
+      showMsg("Enter a set name.", true);
+      $("setName").focus();
+      return;
+    }
+
+    $("btnCreate").disabled = true;
+
+    const payload = {
+      user_id: currentUser.id,
+      name,
+      subject: subject || "General",
+      description: desc || ""
+    };
+
+    const { data, error } = await supabase
+      .from("study_sets")
+      .insert(payload)
+      .select("id")
+      .single();
+
+    $("btnCreate").disabled = false;
+
+    if(error){
+      console.error(error);
+      showMsg("Could not create set. Check console / Supabase policies.", true);
+      return;
+    }
+
+    showMsg("Set created ✅");
+    clearForm();
+    await loadSets();
+
+    // Optional: jump straight into editing the new set
+    if(data?.id){
+      window.location.href = `editset.html?id=${encodeURIComponent(data.id)}`;
+    }
+  }
+
+  async function deleteSet(id){
+    if(!confirm("Delete this set? This also deletes all cards inside it.")) return;
+
+    const { error } = await supabase
+      .from("study_sets")
+      .delete()
+      .eq("id", id);
+
+    if(error){
+      console.error(error);
+      alert("Could not delete set.");
+      return;
+    }
+
+    await loadSets();
+  }
+
+  function escapeHtml(str){
+    return String(str ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  init();
 </script>
 </body>
 </html>
