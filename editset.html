@@ -214,6 +214,8 @@
   </div>
 
 <script>
+(()=>{  /* ✅ FIX: keep your const supabase out of global scope */
+
   /* =========================
      SAFE SUPABASE INIT
   ========================== */
@@ -516,5 +518,7 @@
   }
 
   init();
+
+})();  /* ✅ FIX: close the wrapper */
 </script></body>
 </html>
