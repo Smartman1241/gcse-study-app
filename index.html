@@ -2465,7 +2465,60 @@
     // show current tab
     setTab(state.activeTab || "dashboard");
   }
+async function loadDashboardTaskStats(){
+  if(!currentUser) return;
 
+  const { count: openCount, error: openErr } = await supabaseClient
+    .from("user_tasks")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", currentUser.id)
+    .eq("done", false);
+
+  if(!openErr){
+    const el = document.getElementById("dashTasksOpen");
+    if(el) el.textContent = String(openCount ?? 0);
+  }
+
+  const { data: next, error: nextErr } = await supabaseClient
+    .from("user_tasks")
+    .select("title,due_date,priority")
+    .eq("user_id", currentUser.id)
+    .eq("done", false)
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .limit(5);
+
+  if(!nextErr){
+    const box = document.getElementById("dashNextUp");
+    if(box){
+      if(!next || next.length === 0){
+        box.innerHTML = `<b>Tasks</b><br><span class="muted">No open tasks — nice.</span>`;
+      } else {
+        box.innerHTML =
+          `<b>Tasks</b><br>` +
+          next.map(t => {
+            const due = t.due_date ? ` <span class="muted">(${prettyDate(t.due_date)})</span>` : "";
+            return `• ${escapeHtml(t.title)}${due}`;
+          }).join("<br>");
+      }
+    }
+  }
+}
+
+function setupDashboardTasksRealtime(){
+  if(!currentUser) return;
+
+  supabaseClient
+    .channel("dash_user_tasks")
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "user_tasks",
+      filter: `user_id=eq.${currentUser.id}`
+    }, () => {
+      loadDashboardTaskStats();
+    })
+    .subscribe();
+}
   async function init(){
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
@@ -2474,7 +2527,8 @@
     }
 
     currentUser = session.user;
-
+await loadDashboardTaskStats();
+setupDashboardTasksRealtime();
     await loadUserData();
 
     // Fetch username
