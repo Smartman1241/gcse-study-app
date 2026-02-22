@@ -2473,40 +2473,36 @@
       await supabaseClient.auth.signOut();
       window.location.href = "auth.html";
     });
-function bindEvents(){
 
-   // all your other event listeners above
 
-   $("#btnLogout")?.addEventListener("click", async () => {
-     await supabaseClient.auth.signOut();
-     window.location.href = "auth.html";
-   });
+  
 
    // 👇 AD THIS HERE
-   const focusPanel = document.getElementById("focusPanel");
-   const toggleBtn = document.getElementById("toggleFocusPanel");
-   const mainGrid = document.getElementById("mainGrid");
+   // Focus panel toggle
+const focusPanel = document.getElementById("focusPanel");
+const toggleBtn = document.getElementById("toggleFocusPanel");
+const mainGrid = document.getElementById("mainGrid");
 
-   if (focusPanel && toggleBtn && mainGrid) {
-     toggleBtn.addEventListener("click", () => {
-       focusPanel.classList.toggle("active");
-       mainGrid.classList.toggle("with-focus");
-     });
-   // AI side panel toggle
-   const aiPanel = document.getElementById("aiSidePanel");
-   const aiToggle = document.getElementById("toggleAiPanel");
-   const aiClose = document.getElementById("closeAiPanel");
+if (focusPanel && toggleBtn && mainGrid) {
+  toggleBtn.addEventListener("click", () => {
+    focusPanel.classList.toggle("active");
+    mainGrid.classList.toggle("with-focus");
+  });
+}
 
-   if(aiPanel && aiToggle && aiClose){
-     aiToggle.addEventListener("click", () => {
-       aiPanel.style.display = "block";
-     });
+// AI side panel toggle
+const aiPanel = document.getElementById("aiSidePanel");
+const aiToggle = document.getElementById("toggleAiPanel");
+const aiClose = document.getElementById("closeAiPanel");
 
-     aiClose.addEventListener("click", () => {
-       aiPanel.style.display = "none";
-     });
-   }
-   }
+if (aiPanel && aiToggle && aiClose) {
+  aiToggle.addEventListener("click", () => {
+    aiPanel.style.display = "block";
+  });
+
+  aiClose.addEventListener("click", () => {
+    aiPanel.style.display = "none";
+  });
 }
   }
 
