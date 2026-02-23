@@ -10,6 +10,7 @@
     :root{
       --bg:#0b1020;
       --panel:rgba(255,255,255,.06);
+      --panel2:rgba(255,255,255,.09);
       --border:rgba(255,255,255,.12);
       --text:rgba(255,255,255,.92);
       --muted:rgba(255,255,255,.65);
@@ -17,49 +18,103 @@
       --good:#46e6b3;
       --danger:#ff5b6e;
       --radius:18px;
+      --shadow: 0 18px 60px rgba(0,0,0,.35);
+      --focus: rgba(142,162,255,.45);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      --aiW: 520px;
     }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
     body{
       margin:0;
-      font-family: system-ui,-apple-system,Segoe UI,Roboto;
-      background:var(--bg);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:
+        radial-gradient(1200px 700px at 12% 10%, rgba(142,162,255,.22),transparent 60%),
+        radial-gradient(900px 600px at 86% 22%, rgba(70,230,179,.14),transparent 55%),
+        var(--bg);
       color:var(--text);
+      overflow-x:hidden;
+      transition: padding-right .22s ease;
     }
+
+    /* When AI opens, we push content left (no overlap) */
+    body.ai-open{
+      padding-right: var(--aiW);
+    }
+
+    a{ color:inherit; text-decoration:none; }
+    button, input, textarea{ font:inherit; color:inherit; }
+
     .wrap{
       max-width:1100px;
       margin:0 auto;
       padding:26px 20px 60px;
     }
+
     .topbar{
       display:flex;
       gap:12px;
       align-items:center;
       justify-content:space-between;
       margin-bottom:18px;
+      flex-wrap:wrap;
     }
+
     .leftTop{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .rightTop{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+
+    .brandMini{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      border-radius:999px;
+      background:var(--panel);
+      border:1px solid var(--border);
+      box-shadow: 0 10px 26px rgba(0,0,0,.08);
+    }
+    .dot{
+      width:10px; height:10px; border-radius:99px;
+      background:linear-gradient(135deg,var(--brand),var(--good));
+      box-shadow: 0 10px 25px rgba(0,0,0,.18);
+    }
+    .brandMini b{ font-weight:900; }
+    .brandMini small{ color:var(--muted); display:block; font-size:12px; margin-top:2px; }
+
     .panel{
       background:var(--panel);
       border:1px solid var(--border);
       border-radius:var(--radius);
       padding:18px;
       backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
     }
+
     .grid{
       display:grid;
       grid-template-columns: 1fr 1.6fr;
       gap:18px;
       align-items:start;
     }
-    @media(max-width:960px){ .grid{ grid-template-columns:1fr; } }
+    @media(max-width:960px){
+      body.ai-open{ padding-right: 0; } /* On small screens, AI overlays (better UX) */
+      .grid{ grid-template-columns:1fr; }
+    }
+
     .btn{
       padding:10px 14px;
       border-radius:12px;
       border:1px solid var(--border);
       background:rgba(255,255,255,.06);
       color:var(--text);
-      font-weight:700;
+      font-weight:800;
       cursor:pointer;
+      transition: transform .06s ease, background .12s ease, border-color .12s ease;
+      user-select:none;
     }
+    .btn:hover{ background:rgba(255,255,255,.10); }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+
     .btn-primary{
       border:none;
       background:linear-gradient(135deg,var(--brand),var(--good));
@@ -70,7 +125,14 @@
       border:1px solid rgba(255,91,110,.28);
       color:#ffd2d8;
     }
-    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+    .btn-ghost{
+      background:transparent;
+    }
+    .btn-tiny{
+      padding:7px 10px;
+      font-size:13px;
+      border-radius:12px;
+    }
 
     input, textarea{
       width:100%;
@@ -78,11 +140,15 @@
       border-radius:12px;
       border:1px solid var(--border);
       background:transparent;
-      color:var(--text);
       outline:none;
       margin-top:10px;
     }
+    input:focus, textarea:focus{
+      border-color: rgba(142,162,255,.55);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
     textarea{ min-height:120px; resize:vertical; }
+
     .muted{ color:var(--muted); }
     .badge{
       font-size:12px;
@@ -111,10 +177,6 @@
       align-items:center;
       gap:10px;
     }
-    .tiny{
-      padding:7px 10px;
-      font-size:13px;
-    }
     .two{
       display:grid;
       grid-template-columns: 1fr;
@@ -130,14 +192,16 @@
       width:100%;
       border-radius:12px;
       border:1px solid var(--border);
-      background:rgba(0,0,0,.0);
+      background:rgba(0,0,0,0);
       color:var(--text);
       padding:10px 12px;
       outline:none;
     }
     .inlineEdit:focus{
       border-color: rgba(142,162,255,.45);
+      box-shadow: 0 0 0 4px var(--focus);
     }
+
     .status{
       margin-top:10px;
       font-size:13px;
@@ -149,6 +213,75 @@
       background:rgba(255,255,255,.10);
       margin:12px 0;
     }
+
+    /* ===== AI SIDE PANEL (pushes content) ===== */
+    .aiPanel{
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: var(--aiW);
+      max-width: 92vw;
+      height: 100vh;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border-left: 1px solid var(--border);
+      box-shadow: -20px 0 60px rgba(0,0,0,.35);
+      display: none;
+      flex-direction: column;
+      z-index: 3000;
+      backdrop-filter: blur(14px);
+    }
+
+    .aiHeader{
+      padding:16px 16px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), transparent);
+    }
+    .aiHeader .title{
+      display:flex; flex-direction:column; gap:2px;
+    }
+    .aiHeader .title b{ font-size:14px; letter-spacing:.2px; }
+    .aiHeader .title small{ color:var(--muted); font-size:12px; }
+
+    .aiBody{
+      padding:16px;
+      overflow:auto;
+      flex:1;
+    }
+
+    .quickRow{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin:10px 0 12px;
+    }
+
+    .aiOut{
+      margin-top:12px;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      white-space:pre-wrap;
+      min-height:140px;
+    }
+
+    .fabAi{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 3500;
+      border-radius: 999px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+
+    @media(max-width:960px){
+      .aiPanel{ width: 100vw; }
+    }
   </style>
 </head>
 
@@ -157,16 +290,28 @@
 
     <div class="topbar">
       <div class="leftTop">
+        <div class="brandMini" aria-label="ReviseFlow">
+          <div class="dot"></div>
+          <div>
+            <b>ReviseFlow</b>
+            <small>Edit set</small>
+          </div>
+        </div>
+
         <button class="btn" id="btnBack">← Back to sets</button>
+
         <div>
-          <div style="font-size:20px;font-weight:900;" id="setTitle">Edit Set</div>
+          <div style="font-size:18px;font-weight:900;" id="setTitle">Edit Set</div>
           <div class="muted" id="setMeta"></div>
         </div>
       </div>
 
-      <div class="leftTop">
+      <div class="rightTop">
+        <a class="btn btn-ghost" href="index.html" id="btnDashboard">Dashboard</a>
+        <a class="btn btn-ghost" href="account.html" id="btnSettings">Settings</a>
         <button class="btn" id="btnExport">Export CSV</button>
         <button class="btn" id="btnImport">Import CSV</button>
+        <button class="btn btn-danger" id="btnLogout">Logout</button>
       </div>
     </div>
 
@@ -174,30 +319,24 @@
       <!-- Left: Add new term -->
       <div class="panel">
         <div style="font-size:16px;font-weight:900;">Add card</div>
-        <div class="muted" style="margin-top:6px;">Add a term + definition. Saves to your set instantly.</div>
+        <div class="muted" style="margin-top:6px;">Add a term + definition. It saves instantly.</div>
 
         <input id="newTerm" placeholder="Term (e.g. Mitosis)" maxlength="200" />
         <textarea id="newDef" placeholder="Definition (e.g. Cell division that produces two identical cells…)" maxlength="4000"></textarea>
 
-        <div style="display:flex; gap:10px; margin-top:12px;">
-          <button class="btn-primary btn" id="btnAdd">Add card</button>
+        <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="btnAdd">Add card</button>
           <button class="btn btn-danger" id="btnDeleteSet">Delete set</button>
         </div>
 
         <div class="status" id="status"></div>
-
-        <div class="hr"></div>
-
-        <div class="muted" style="font-size:13px;">
-          Tip: You can edit cards on the right. Changes save when you leave the box.
-        </div>
 
         <input type="file" id="fileInput" accept=".csv,text/csv" style="display:none;" />
       </div>
 
       <!-- Right: Cards list -->
       <div class="panel">
-        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
+        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
           <div style="font-size:16px;font-weight:900;">Cards</div>
           <div class="badge" id="countBadge">0</div>
         </div>
@@ -213,8 +352,43 @@
 
   </div>
 
+  <!-- AI Floating Button -->
+  <button class="btn fabAi" id="btnOpenAi">🤖 AI</button>
+
+  <!-- AI Panel -->
+  <aside class="aiPanel" id="aiPanel" aria-hidden="true">
+    <div class="aiHeader">
+      <div class="title">
+        <b>ReviseFlow AI</b>
+        <small>Quick questions while you edit</small>
+      </div>
+      <button class="btn btn-tiny" id="btnCloseAi">✕</button>
+    </div>
+
+    <div class="aiBody">
+      <div class="muted" style="font-size:12px;">Quick prompts</div>
+      <div class="quickRow">
+        <button class="btn btn-tiny" data-q="Explain this simply: ">Explain simply</button>
+        <button class="btn btn-tiny" data-q="Explain step-by-step in detail: ">Explain in detail</button>
+        <button class="btn btn-tiny" data-q="Give me a GCSE exam-style question on: ">Exam question</button>
+        <button class="btn btn-tiny" data-q="Make 5 flashcards (front/back) for: ">Make flashcards</button>
+        <button class="btn btn-tiny" data-q="Give me 6 multiple choice questions on: ">MCQs</button>
+      </div>
+
+      <div class="fieldLabel">Your question</div>
+      <textarea id="aiInput" placeholder="Ask anything about your topic…" maxlength="800"></textarea>
+
+      <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btnAskAi">✨ Ask</button>
+        <button class="btn" id="btnAiClear">Clear</button>
+      </div>
+
+      <div class="aiOut" id="aiOutput">Your answer will appear here.</div>
+    </div>
+  </aside>
+
 <script>
-(()=>{  /* ✅ FIX: keep your const supabase out of global scope */
+(()=>{
 
   /* =========================
      SAFE SUPABASE INIT
@@ -223,11 +397,9 @@
   const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
   if (!window.supabaseClient) {
-  window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-}
-
-//
-  const supabase = window.supabaseClient;
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  const supabaseClient = window.supabaseClient;
 
   const $ = (id) => document.getElementById(id);
 
@@ -247,7 +419,7 @@
   }
 
   async function requireSession(){
-    const { data:{ session }, error } = await supabase.auth.getSession();
+    const { data:{ session }, error } = await supabaseClient.auth.getSession();
     if(error) console.error(error);
 
     if(!session){
@@ -257,6 +429,77 @@
     return session;
   }
 
+  /* =========================
+     AI PANEL (push content)
+  ========================== */
+  function openAi(){
+    $("aiPanel").style.display = "flex";
+    $("aiPanel").setAttribute("aria-hidden", "false");
+    document.body.classList.add("ai-open");
+  }
+  function closeAi(){
+    $("aiPanel").style.display = "none";
+    $("aiPanel").setAttribute("aria-hidden", "true");
+    document.body.classList.remove("ai-open");
+  }
+
+  async function askAI(){
+    const input = ($("aiInput").value || "").trim();
+    const out = $("aiOutput");
+
+    if(!input){
+      out.textContent = "Type a question first.";
+      return;
+    }
+
+    out.textContent = "Thinking...";
+
+    try{
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if(!session){
+        out.textContent = "Please log in again.";
+        window.location.href = "auth.html";
+        return;
+      }
+
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ question: input, timezone })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if(res.status === 429){
+        out.textContent = data?.error || "Daily AI limit reached.";
+        return;
+      }
+
+      if(res.status === 401){
+        out.textContent = "Session expired. Please log in again.";
+        window.location.href = "auth.html";
+        return;
+      }
+
+      if(res.ok && data?.reply){
+        out.textContent = data.reply;
+      }else{
+        out.textContent = data?.error || "Something went wrong.";
+      }
+    }catch(e){
+      console.error("AI error:", e);
+      out.textContent = "Error contacting AI service.";
+    }
+  }
+
+  /* =========================
+     SET + CARDS
+  ========================== */
   async function init(){
     setId = getParam("id");
 
@@ -269,25 +512,58 @@
     if(!session) return;
     currentUser = session.user;
 
-    /* FIXED BACK BUTTON */
-    $("btnBack").addEventListener("click", function(e){
+    // Nav
+    $("btnBack").addEventListener("click", (e)=>{
       e.preventDefault();
       window.location.href = "studysets.html";
     });
 
+    $("btnLogout").addEventListener("click", async ()=>{
+      await supabaseClient.auth.signOut();
+      window.location.href = "auth.html";
+    });
+
+    // Cards
     $("btnAdd").addEventListener("click", addCard);
     $("btnDeleteSet").addEventListener("click", deleteSet);
     $("search").addEventListener("input", renderCards);
+
+    // CSV
     $("btnExport").addEventListener("click", exportCSV);
     $("btnImport").addEventListener("click", () => $("fileInput").click());
     $("fileInput").addEventListener("change", importCSV);
+
+    // AI wiring
+    $("btnOpenAi").addEventListener("click", openAi);
+    $("btnCloseAi").addEventListener("click", closeAi);
+    $("btnAskAi").addEventListener("click", askAI);
+    $("btnAiClear").addEventListener("click", ()=>{
+      $("aiInput").value = "";
+      $("aiOutput").textContent = "Your answer will appear here.";
+    });
+
+    document.querySelectorAll("[data-q]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const prefix = btn.getAttribute("data-q") || "";
+        const current = ($("aiInput").value || "").trim();
+        $("aiInput").value = current ? (prefix + current) : prefix;
+        $("aiInput").focus();
+      });
+    });
+
+    // ESC to close AI
+    document.addEventListener("keydown", (e)=>{
+      if(e.key === "Escape" && document.body.classList.contains("ai-open")){
+        closeAi();
+      }
+    });
 
     await loadSet();
     await loadCards();
   }
 
   async function loadSet(){
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("study_sets")
       .select("id,name,subject,description,created_at,updated_at,user_id")
       .eq("id", setId)
@@ -304,18 +580,17 @@
     $("setTitle").textContent = data.name;
 
     const subject = (data.subject || "General").trim();
-    $("setMeta").textContent =
-      `${subject}${data.description ? " • " + data.description : ""}`;
+    $("setMeta").textContent = `${subject}${data.description ? " • " + data.description : ""}`;
 
     document.title = `ReviseFlow — ${data.name}`;
   }
 
   async function loadCards(){
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("study_terms")
-      .select("id,set_id,term,definition,created_at,updated_at")
+      .select("id,set_id,term,definition,created_at,updated_at,user_id")
       .eq("set_id", setId)
-.eq("user_id", currentUser.id)
+      .eq("user_id", currentUser.id)
       .order("created_at", { ascending:true });
 
     if(error){
@@ -329,7 +604,7 @@
   }
 
   function renderCards(){
-    const q = $("search").value.trim().toLowerCase();
+    const q = ($("search").value || "").trim().toLowerCase();
 
     const filtered = q
       ? allTerms.filter(t =>
@@ -338,7 +613,7 @@
         )
       : allTerms;
 
-    $("countBadge").textContent = filtered.length;
+    $("countBadge").textContent = String(filtered.length);
     $("cards").innerHTML = "";
     $("empty").style.display = filtered.length ? "none" : "block";
 
@@ -349,37 +624,29 @@
       div.innerHTML = `
         <div class="cardTop">
           <div class="muted" style="font-size:13px;">Card</div>
-          <button class="btn btn-danger tiny" data-del="${row.id}">Delete</button>
+          <button class="btn btn-danger btn-tiny" data-del="${row.id}">Delete</button>
         </div>
 
         <div class="two">
           <div>
             <div class="fieldLabel">Term</div>
-            <input class="inlineEdit"
-              data-term="${row.id}"
-              value="${escapeHtmlAttr(row.term)}" />
+            <input class="inlineEdit" data-term="${row.id}" value="${escapeHtmlAttr(row.term)}" />
           </div>
 
           <div>
             <div class="fieldLabel">Definition</div>
-            <textarea class="inlineEdit"
-              data-def="${row.id}"
-              rows="4">${escapeHtml(row.definition)}</textarea>
+            <textarea class="inlineEdit" data-def="${row.id}" rows="4">${escapeHtml(row.definition)}</textarea>
           </div>
         </div>
       `;
 
-      div.querySelector("[data-del]")
-        .addEventListener("click", () => deleteCard(row.id));
+      div.querySelector("[data-del]").addEventListener("click", ()=> deleteCard(row.id));
 
       const termInput = div.querySelector("[data-term]");
       const defArea = div.querySelector("[data-def]");
 
-      termInput.addEventListener("blur",
-        () => saveCard(row.id, termInput.value, null));
-
-      defArea.addEventListener("blur",
-        () => saveCard(row.id, null, defArea.value));
+      termInput.addEventListener("blur", ()=> saveCard(row.id, termInput.value, null));
+      defArea.addEventListener("blur", ()=> saveCard(row.id, null, defArea.value));
 
       defArea.addEventListener("keydown", (e)=>{
         if((e.ctrlKey || e.metaKey) && e.key === "Enter"){
@@ -394,8 +661,8 @@
   async function addCard(){
     setStatus("");
 
-    const term = $("newTerm").value.trim();
-    const definition = $("newDef").value.trim();
+    const term = ($("newTerm").value || "").trim();
+    const definition = ($("newDef").value || "").trim();
 
     if(!term){
       setStatus("Enter a term.", true);
@@ -404,14 +671,14 @@
 
     $("btnAdd").disabled = true;
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("study_terms")
       .insert({
-  set_id: setId,
-  user_id: currentUser.id,
-  term,
-  definition
-});
+        set_id: setId,
+        user_id: currentUser.id,
+        term,
+        definition
+      });
 
     $("btnAdd").disabled = false;
 
@@ -447,11 +714,11 @@
 
     if(Object.keys(updates).length === 0) return;
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("study_terms")
       .update(updates)
       .eq("id", id)
-.eq("user_id", currentUser.id);
+      .eq("user_id", currentUser.id);
 
     if(error){
       console.error(error);
@@ -470,10 +737,11 @@
   async function deleteCard(id){
     if(!confirm("Delete this card?")) return;
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("study_terms")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", currentUser.id);
 
     if(error){
       console.error(error);
@@ -488,7 +756,8 @@
   async function deleteSet(){
     if(!confirm("Delete this entire set?")) return;
 
-    const { error } = await supabase
+    // Delete set (terms should be cascade or separate cleanup; keep simple)
+    const { error } = await supabaseClient
       .from("study_sets")
       .delete()
       .eq("id", setId)
@@ -496,14 +765,153 @@
 
     if(error){
       console.error(error);
+      setStatus("Could not delete set.", true);
       return;
     }
 
     window.location.href = "studysets.html";
   }
 
-  /* CSV + ESCAPE FUNCTIONS UNCHANGED */
+  /* =========================
+     CSV EXPORT/IMPORT
+  ========================== */
+  function exportCSV(){
+    if(!setRow){
+      setStatus("Set not loaded.", true);
+      return;
+    }
+    const rows = [["term","definition"]];
+    for(const t of allTerms){
+      rows.push([t.term || "", t.definition || ""]);
+    }
+    const csv = rows.map(r => r.map(csvCell).join(",")).join("\n");
+    downloadText(csv, `${safeFileName(setRow.name || "set")}.csv`, "text/csv");
+    setStatus("Exported CSV ✅");
+  }
 
+  async function importCSV(){
+    const file = $("fileInput").files && $("fileInput").files[0];
+    if(!file) return;
+
+    try{
+      const text = await file.text();
+      const parsed = parseCSV(text);
+      if(parsed.length <= 1){
+        setStatus("CSV looks empty.", true);
+        $("fileInput").value = "";
+        return;
+      }
+
+      // header row assumed: term,definition
+      const rows = parsed.slice(1)
+        .map(r => ({ term:(r[0]||"").trim(), definition:(r[1]||"").trim() }))
+        .filter(r => r.term);
+
+      if(rows.length === 0){
+        setStatus("No valid rows found.", true);
+        $("fileInput").value = "";
+        return;
+      }
+
+      // Insert in chunks
+      const chunkSize = 200;
+      for(let i=0;i<rows.length;i+=chunkSize){
+        const chunk = rows.slice(i,i+chunkSize).map(r => ({
+          set_id: setId,
+          user_id: currentUser.id,
+          term: r.term,
+          definition: r.definition
+        }));
+
+        const { error } = await supabaseClient.from("study_terms").insert(chunk);
+        if(error){
+          console.error(error);
+          setStatus("Import failed.", true);
+          $("fileInput").value = "";
+          return;
+        }
+      }
+
+      setStatus(`Imported ${rows.length} cards ✅`);
+      $("fileInput").value = "";
+      await loadCards();
+    }catch(e){
+      console.error(e);
+      setStatus("Import failed.", true);
+      $("fileInput").value = "";
+    }
+  }
+
+  function downloadText(text, filename, mime){
+    const blob = new Blob([text], { type: mime || "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function csvCell(v){
+    const s = String(v ?? "");
+    if(/[",\n]/.test(s)){
+      return `"${s.replaceAll('"','""')}"`;
+    }
+    return s;
+  }
+
+  function parseCSV(text){
+    // Simple CSV parser: supports quoted fields
+    const rows = [];
+    let row = [];
+    let cur = "";
+    let inQuotes = false;
+
+    for(let i=0;i<text.length;i++){
+      const ch = text[i];
+      const next = text[i+1];
+
+      if(inQuotes){
+        if(ch === '"' && next === '"'){
+          cur += '"';
+          i++;
+        }else if(ch === '"'){
+          inQuotes = false;
+        }else{
+          cur += ch;
+        }
+      }else{
+        if(ch === '"'){
+          inQuotes = true;
+        }else if(ch === ","){
+          row.push(cur);
+          cur = "";
+        }else if(ch === "\n"){
+          row.push(cur);
+          rows.push(row);
+          row = [];
+          cur = "";
+        }else if(ch === "\r"){
+          // ignore
+        }else{
+          cur += ch;
+        }
+      }
+    }
+    row.push(cur);
+    rows.push(row);
+    return rows;
+  }
+
+  function safeFileName(name){
+    return String(name || "set").replace(/[^\w\-]+/g, "_").slice(0,60);
+  }
+
+  /* =========================
+     ESCAPE
+  ========================== */
   function escapeHtml(str){
     return String(str ?? "")
       .replaceAll("&","&amp;")
@@ -512,13 +920,13 @@
       .replaceAll('"',"&quot;")
       .replaceAll("'","&#039;");
   }
-
   function escapeHtmlAttr(str){
     return escapeHtml(str).replaceAll("\n"," ");
   }
 
   init();
 
-})();  /* ✅ FIX: close the wrapper */
-</script></body>
+})();
+</script>
+</body>
 </html>
