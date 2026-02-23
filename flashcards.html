@@ -319,20 +319,19 @@
       </div>
 
       <div class="nav">
-        <a class="btn ghost" href="dashboard.html">Dashboard</a>
-        <a class="btn ghost" href="studysets.html">Sets</a>
-        <a class="btn ghost" href="tasks.html">Tasks</a>
-        <a class="btn ghost" href="focus.html">Focus</a>
-        <a class="btn ghost" href="settings.html">Settings</a>
-        <button class="btn danger" id="logoutBtn">Logout</button>
-      </div>
-    </div>
+  <a class="btn ghost" href="index.html">Dashboard</a>
+  <a class="btn ghost" href="studysets.html">Sets</a>
+  <a class="btn ghost" href="tasks.html">Tasks</a>
+  <a class="btn ghost" href="focus.html">Focus</a>
+  <a class="btn ghost" href="account.html">Settings</a>
+  <button class="btn danger" id="logoutBtn">Logout</button>
+</div>
 
     <div class="panel statusPanel">
       <div class="panelHead">
         <div>
           <div class="hTitle">What would you like to revise?</div>
-          <div class="tiny">Pick a set, then run flashcards. Progress saves to Supabase (if enabled).</div>
+          <div class="tiny">Pick a set, then run flashcards.</div>
         </div>
         <div class="tiny" id="whoBox"></div>
       </div>
@@ -714,19 +713,17 @@
   function current(){ return state.deck[state.index] || null; }
 
   function updateNotes(){
-    const lines = [];
-    if(!state.progressEnabled){
-      lines.push("Progress saving: OFF (flashcard_progress table missing or blocked by RLS).");
-      lines.push("Revision still works — it just won’t remember due dates/stars.");
-    }else{
-      lines.push("Progress saving: ON (Supabase).");
-      lines.push("Tip: use Only due to focus what’s scheduled.");
-    }
-    lines.push("");
-    lines.push("Open a set directly:");
-    lines.push("flashcards.html?set=<setId>");
-    $("notesBox").textContent = lines.join("\n");
+  const lines = [];
+  if(!state.progressEnabled){
+    lines.push("Progress saving is currently unavailable.");
+  }else{
+    lines.push("Progress saving is active.");
   }
+  lines.push("");
+  lines.push("Open a set directly:");
+  lines.push("flashcards.html?set=<setId>");
+  $("notesBox").textContent = lines.join("\n");
+}
 
   function updateStats(){
     const c = current();
