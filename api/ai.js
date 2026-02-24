@@ -89,7 +89,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // ---------- OUTPUT TOKEN LOGIC ----------
+    // ---------- OUTPUT TOKEN LaOGIC ----------
     let maxOutputTokens = 250;
 
     const isDetailed = /detailed/i.test(userQuestion);
