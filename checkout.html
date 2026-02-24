@@ -245,10 +245,19 @@ btn.addEventListener("click", async () => {
   loading.hidden = false;
 
   try {
-    const res = await fetch("/api/create-checkout-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
-    });
+    const { data: { session } } = await supabaseClient.auth.getSession();
+const userId = session?.user?.id;
+
+if (!userId) {
+  alert("You must be logged in.");
+  return;
+}
+
+const res = await fetch("/api/create-checkout-session", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ userId })
+});
 
     const data = await res.json();
 
