@@ -1,335 +1,1606 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Account • GCSE Focus</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Account • ReviseFlow</title>
 
-<style>
-:root{
-  --bg:#0b1020;
-  --panel:rgba(255,255,255,.06);
-  --panel-strong:rgba(255,255,255,.09);
-  --text:rgba(255,255,255,.92);
-  --muted:rgba(255,255,255,.66);
-  --border:rgba(255,255,255,.14);
-  --accent:#8ea2ff;
-  --danger:#ff4d4d;
-  --radius:18px;
-}
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-html[data-theme="light"]{
-  --bg:#f5f7ff;
-  --panel:rgba(0,0,0,.05);
-  --panel-strong:rgba(0,0,0,.08);
-  --text:rgba(0,0,0,.9);
-  --muted:rgba(0,0,0,.6);
-  --border:rgba(0,0,0,.12);
-  --accent:#5b6cff;
-  --danger:#d60000;
-}
+  <style>
+    /* ============================================================
+      ReviseFlow — Account Settings (Advanced Single-File)
+      - Works with Supabase Auth session
+      - Auto-creates user_settings row (prevents 406 from .single())
+      - Username uniqueness check uses user_id (prevents 400 select=id)
+      - Manage button links to subscriptions.html
+    ============================================================ */
 
-*{box-sizing:border-box}
+    :root{
+      --bg:#0b1020;
+      --bg2:#070a14;
 
-body{
-  margin:0;
-  font-family:system-ui,sans-serif;
-  background:var(--bg);
-  color:var(--text);
-}
+      --panel:rgba(255,255,255,.06);
+      --panel2:rgba(255,255,255,.09);
+      --panel3:rgba(255,255,255,.12);
 
-.wrap{
-  max-width:900px;
-  margin:40px auto;
-  padding:20px;
-}
+      --border:rgba(255,255,255,.14);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.65);
 
-.panel{
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:22px;
-  margin-bottom:22px;
-}
+      --brand:#8ea2ff;
+      --good:#46e6b3;
+      --warn:#ffd36e;
+      --bad:#ff7b8f;
 
-h1{margin:0;}
-h2{margin-top:0;font-size:18px;}
+      --shadow: 0 18px 60px rgba(0,0,0,.35);
+      --radius:18px;
 
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:30px;
-}
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
 
-.row{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin:14px 0;
-  gap:20px;
-  flex-wrap:wrap;
-}
+      --focus:rgba(142,162,255,.45);
+    }
 
-.label{
-  color:var(--muted);
-  min-width:160px;
-}
+    html[data-theme="light"]{
+      --bg:#f5f7ff;
+      --bg2:#eef2ff;
 
-input[type="text"],
-input[type="time"],
-select{
-  background:var(--panel-strong);
-  color:var(--text);
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:8px 12px;
-  outline:none;
-}
+      --panel:rgba(0,0,0,.04);
+      --panel2:rgba(0,0,0,.06);
+      --panel3:rgba(0,0,0,.09);
 
-select option{
-  background:var(--bg);
-  color:var(--text);
-}
+      --border:rgba(0,0,0,.12);
+      --text:rgba(0,0,0,.88);
+      --muted:rgba(0,0,0,.60);
 
-input:focus,
-select:focus{
-  border-color:var(--accent);
-}
+      --shadow: 0 18px 60px rgba(18,30,90,.12);
+      --focus:rgba(142,162,255,.55);
+    }
 
-input[type="checkbox"]{
-  width:18px;
-  height:18px;
-  accent-color:var(--accent);
-  cursor:pointer;
-}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 12% 10%, rgba(142,162,255,.25),transparent 60%),
+        radial-gradient(900px 600px at 86% 22%, rgba(70,230,179,.18),transparent 55%),
+        radial-gradient(900px 600px at 75% 95%, rgba(255,211,110,.14),transparent 55%),
+        var(--bg);
+      overflow-x:hidden;
+    }
 
-.btn{
-  padding:8px 14px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:var(--panel-strong);
-  color:var(--text);
-  cursor:pointer;
-  transition:0.15s ease;
-}
+    a{color:inherit}
+    button, input, select, textarea{font:inherit; color:inherit}
 
-.btn:hover{
-  background:var(--panel);
-}
+    /* Layout */
+    .wrap{
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 22px 16px 44px;
+    }
 
-.btn.primary{
-  background:var(--accent);
-  color:white;
-  border:none;
-}
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:14px;
+      flex-wrap:wrap;
+    }
 
-html[data-theme="light"] .btn.primary{
-  color:white;
-}
+    .brand{
+      display:flex; align-items:center; gap:12px;
+      min-width: 280px;
+    }
 
-.btn.danger{
-  background:rgba(255,0,0,.15);
-  border:1px solid var(--danger);
-  color:var(--danger);
-}
+    .logo{
+      width:44px; height:44px; border-radius:14px;
+      background: linear-gradient(135deg, rgba(142,162,255,.9), rgba(70,230,179,.75));
+      box-shadow: 0 14px 35px rgba(0,0,0,.18);
+      position:relative; overflow:hidden;
+      flex:0 0 auto;
+    }
+    .logo:after{
+      content:""; position:absolute; inset:-40%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.65), transparent 55%);
+      transform: rotate(12deg);
+    }
 
-.notice{
-  font-size:13px;
-  color:var(--muted);
-  margin-top:6px;
-}
-</style>
+    .titleBlock{display:flex; flex-direction:column; gap:2px;}
+    .titleBlock h1{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.2px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .subtitle{
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .badgeTiny{
+      font-size:11px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(142,162,255,.35);
+      background:rgba(142,162,255,.12);
+      color:rgba(255,255,255,.86);
+    }
+    html[data-theme="light"] .badgeTiny{color:rgba(0,0,0,.78);}
+
+    .toolbar{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .btn{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.08);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      transition: transform .06s ease, background .12s ease, border-color .12s ease;
+      user-select:none;
+    }
+    html[data-theme="light"] .btn{ background: rgba(0,0,0,.04); }
+    .btn:hover{background:rgba(255,255,255,.12);}
+    html[data-theme="light"] .btn:hover{ background: rgba(0,0,0,.06); }
+    .btn:active{transform:translateY(1px);}
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(142,162,255,.85), rgba(70,230,179,.65));
+      border-color:transparent;
+      color: rgba(10,16,32,.95);
+      font-weight:800;
+    }
+    .btn.danger{
+      background: rgba(255,123,143,.14);
+      border-color: rgba(255,123,143,.22);
+    }
+    .btn.ghost{ background: transparent; }
+
+    .chip{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:10px 12px; border-radius:999px;
+      background:var(--panel); border:1px solid var(--border);
+      box-shadow: 0 10px 26px rgba(0,0,0,.08);
+    }
+    .chip small{ color:var(--muted); }
+    .chip b{ font-weight:800; }
+
+    /* Main grid */
+    .grid{
+      display:grid;
+      grid-template-columns: 320px 1fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid{
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Sidebar */
+    .sidebar{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      position: sticky;
+      top: 14px;
+    }
+    @media (max-width: 980px){
+      .sidebar{ position:relative; top:auto; }
+    }
+
+    .sideHeader{
+      padding:14px;
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel2), transparent);
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .avatar{
+      width:44px; height:44px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      display:grid;
+      place-items:center;
+      font-weight:900;
+      letter-spacing:.5px;
+      flex:0 0 auto;
+      position:relative;
+      overflow:hidden;
+    }
+    .avatar:after{
+      content:"";
+      position:absolute; inset:-40%;
+      background: radial-gradient(circle at 30% 30%, rgba(142,162,255,.35), transparent 60%);
+      transform: rotate(18deg);
+    }
+    .avatar span{ position:relative; z-index:1; }
+
+    .userMeta{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .userMeta .name{
+      font-weight:900;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 220px;
+    }
+    .userMeta .email{
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 220px;
+    }
+
+    .sideBody{
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .navItem{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      border:1px solid transparent;
+      background: transparent;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .navItem:hover{
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.10);
+    }
+    html[data-theme="light"] .navItem:hover{
+      background: rgba(0,0,0,.03);
+      border-color: rgba(0,0,0,.08);
+    }
+    .navItem.active{
+      background: rgba(142,162,255,.16);
+      border-color: rgba(142,162,255,.28);
+    }
+    .navItem .left{
+      display:flex; align-items:center; gap:10px;
+      min-width:0;
+    }
+    .navItem .icon{
+      width:28px; height:28px;
+      border-radius:10px;
+      display:grid; place-items:center;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
+    html[data-theme="light"] .navItem .icon{
+      background: rgba(0,0,0,.03);
+      border-color: rgba(0,0,0,.08);
+    }
+    .navItem .label{
+      font-weight:800;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .navItem .hint{
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    /* Content panels */
+    .content{
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .panelHeader{
+      padding:14px 14px 10px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel2), transparent);
+    }
+
+    .panelHeader h2{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.25px;
+      text-transform:uppercase;
+      color:var(--muted);
+      font-weight:900;
+    }
+    .panelHeader .right{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .panelBody{
+      padding:14px;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .divider{
+      height:1px;
+      background:var(--border);
+      margin:12px 0;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width: 180px;
+      flex: 1;
+    }
+    .field.small{
+      min-width: 140px;
+      flex: 0 0 auto;
+    }
+    .field.full{
+      min-width: 100%;
+      flex: 1 1 100%;
+    }
+    .label{
+      font-size:12px;
+      color:var(--muted);
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    input[type="text"], input[type="time"], select{
+      width:100%;
+      background: rgba(0,0,0,0);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+      transition: box-shadow .12s ease, border-color .12s ease, background .12s ease;
+    }
+    select{
+      background-color: var(--panel);
+      color: var(--text);
+    }
+    select option{
+      background-color: var(--bg);
+      color: var(--text);
+    }
+    input:focus, select:focus{
+      border-color: rgba(142,162,255,.55);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      font-size:12px;
+      color:var(--muted);
+    }
+    html[data-theme="light"] .pill{ background: rgba(0,0,0,.02); }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-size:12px;
+      font-weight:800;
+    }
+    .badge.good{background: rgba(70,230,179,.14); border-color: rgba(70,230,179,.25);}
+    .badge.warn{background: rgba(255,211,110,.14); border-color: rgba(255,211,110,.25);}
+    .badge.bad{background: rgba(255,123,143,.14); border-color: rgba(255,123,143,.25);}
+
+    /* Toggle switch */
+    .toggle{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      user-select:none;
+    }
+    .switch{
+      width:44px;
+      height:24px;
+      border-radius:999px;
+      background: rgba(255,255,255,.10);
+      border:1px solid var(--border);
+      position:relative;
+      cursor:pointer;
+      transition:.15s;
+      flex:0 0 auto;
+    }
+    .switch:before{
+      content:"";
+      width:18px; height:18px;
+      position:absolute;
+      top:2px; left:2px;
+      border-radius:999px;
+      background: rgba(255,255,255,.85);
+      transition:.15s;
+    }
+    .switch[data-on="true"]{
+      background: rgba(70,230,179,.20);
+      border-color: rgba(70,230,179,.35);
+    }
+    .switch[data-on="true"]:before{
+      left:22px;
+      background: rgba(70,230,179,.85);
+    }
+    html[data-theme="light"] .switch:before{ background: rgba(0,0,0,.65); }
+    html[data-theme="light"] .switch[data-on="true"]:before{ background: rgba(70,230,179,.95); }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 9999;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(10,16,32,.75);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      min-width: 220px;
+      max-width: 440px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events:none;
+      white-space: pre-wrap;
+    }
+    html[data-theme="light"] .toast{ background: rgba(255,255,255,.85); }
+    .toast.show{opacity:1; transform: translateY(0);}
+    .toast .small{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+    /* Modal */
+    .modalOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 9998;
+      padding: 20px;
+    }
+    .modalOverlay.show{ display:flex; }
+    .modal{
+      width: min(720px, 100%);
+      background: var(--panel);
+      border:1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .modalHead{
+      padding: 14px;
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel2), transparent);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modalHead b{
+      font-size:14px;
+      letter-spacing:.25px;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .modalBody{ padding: 14px; }
+    .mono{ font-family: var(--mono); }
+
+    /* Skeleton loaders */
+    .skeleton{
+      background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.10), rgba(255,255,255,.04));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      height: 14px;
+      background-size: 200% 100%;
+      animation: shimmer 1.1s infinite linear;
+    }
+    @keyframes shimmer{
+      0%{ background-position: 0% 0; }
+      100%{ background-position: 200% 0; }
+    }
+
+    /* Helper text */
+    .help{
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.5;
+    }
+
+    .statusLine{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .warnText{ color: var(--warn); font-weight:800; }
+    .goodText{ color: var(--good); font-weight:800; }
+    .badText{  color: var(--bad);  font-weight:800; }
+
+    /* Username availability chip */
+    .avail{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      font-size:12px;
+      color: var(--muted);
+      background: rgba(255,255,255,.04);
+    }
+    .avail.good{ border-color: rgba(70,230,179,.35); background: rgba(70,230,179,.12); color: rgba(70,230,179,.95); }
+    .avail.bad{  border-color: rgba(255,123,143,.35); background: rgba(255,123,143,.12); color: rgba(255,123,143,.95); }
+    .avail.warn{ border-color: rgba(255,211,110,.35); background: rgba(255,211,110,.12); color: rgba(255,211,110,.95); }
+
+    /* Footer-ish */
+    .footNote{
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
 </head>
 
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" title="ReviseFlow"></div>
+        <div class="titleBlock">
+          <h1>Account <span class="badgeTiny">ReviseFlow</span></h1>
+          <div class="subtitle">Profile • Subscription • Preferences • Security</div>
+        </div>
+      </div>
 
-<div class="topbar">
-  <h1>Account</h1>
-  <div>
-    <button class="btn" onclick="window.location.href='index.html'">← Back</button>
-    <button class="btn" id="btnLogout">Logout</button>
+      <div class="toolbar">
+        <div class="chip">
+          <div>
+            <small>Signed in</small>
+            <div><b id="chipUser">Loading…</b></div>
+          </div>
+          <div style="width:1px;height:24px;background:var(--border)"></div>
+          <div>
+            <small>Status</small>
+            <div><b id="chipTier">—</b></div>
+          </div>
+        </div>
+
+        <button class="btn" id="btnBack">← Back</button>
+        <button class="btn" id="btnThemeToggle">🌙 Theme</button>
+        <button class="btn danger" id="btnLogout">Logout</button>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="grid">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="sideHeader">
+          <div class="avatar" title="Avatar">
+            <span id="avatarText">RF</span>
+          </div>
+          <div class="userMeta">
+            <div class="name" id="sideName">Loading…</div>
+            <div class="email" id="sideEmail">—</div>
+          </div>
+        </div>
+
+        <div class="sideBody">
+          <div class="navItem active" data-nav="profile">
+            <div class="left">
+              <div class="icon">👤</div>
+              <div class="label">Profile</div>
+            </div>
+            <div class="hint">username</div>
+          </div>
+
+          <div class="navItem" data-nav="subscription">
+            <div class="left">
+              <div class="icon">💳</div>
+              <div class="label">Subscription</div>
+            </div>
+            <div class="hint">billing</div>
+          </div>
+
+          <div class="navItem" data-nav="preferences">
+            <div class="left">
+              <div class="icon">🎛️</div>
+              <div class="label">Preferences</div>
+            </div>
+            <div class="hint">theme</div>
+          </div>
+
+          <div class="navItem" data-nav="notifications">
+            <div class="left">
+              <div class="icon">🔔</div>
+              <div class="label">Notifications</div>
+            </div>
+            <div class="hint">reminders</div>
+          </div>
+
+          <div class="navItem" data-nav="security">
+            <div class="left">
+              <div class="icon">🔒</div>
+              <div class="label">Security</div>
+            </div>
+            <div class="hint">password</div>
+          </div>
+
+          <div class="navItem" data-nav="data">
+            <div class="left">
+              <div class="icon">🗂️</div>
+              <div class="label">Data</div>
+            </div>
+            <div class="hint">export</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CONTENT -->
+      <section class="content">
+        <!-- PROFILE PANEL -->
+        <section class="panel" data-panel="profile">
+          <div class="panelHeader">
+            <h2>Profile</h2>
+            <div class="right">
+              <span class="pill">User ID: <b class="mono" id="userIdShort">—</b></span>
+              <span class="pill">Created: <b id="userCreated">—</b></span>
+            </div>
+          </div>
+
+          <div class="panelBody">
+            <div class="statusLine">
+              <div class="help">
+                Your username is public inside ReviseFlow. Keep it short and clean.
+              </div>
+              <div id="usernameAvail" class="avail warn" title="Availability status">Checking…</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <div class="field">
+                <div class="label">Username <span class="pill">3–20 chars</span> <span class="pill">letters/numbers/_</span></div>
+                <input id="usernameInput" type="text" placeholder="e.g. SmartStudent" autocomplete="off" />
+                <div class="help" id="usernameHelp">
+                  Tip: Avoid spaces. We’ll automatically convert spaces into underscores.
+                </div>
+              </div>
+
+              <div class="field small">
+                <div class="label">Email</div>
+                <input id="emailInput" type="text" readonly />
+                <div class="help">Email is managed by login.</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <button class="btn primary" id="btnSaveUsername">Save username</button>
+              <button class="btn" id="btnReloadSettings">Reload</button>
+              <span class="pill" id="saveStatePill">Idle</span>
+            </div>
+
+            <div class="footNote" id="profileNote"></div>
+          </div>
+        </section>
+
+        <!-- SUBSCRIPTION PANEL -->
+        <section class="panel" data-panel="subscription" style="display:none;">
+          <div class="panelHeader">
+            <h2>Subscription</h2>
+            <div class="right">
+              <span class="badge good" id="subBadge">—</span>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="row">
+              <div class="field">
+                <div class="label">Plan</div>
+                <div class="pill">Current: <b id="tierText">—</b></div>
+                <div class="help">
+                  Purchases are activated securely after Stripe verifies payment.
+                </div>
+              </div>
+
+              <div class="field small">
+                <div class="label">Billing</div>
+                <button class="btn primary" id="btnManageBilling">Manage</button>
+                <div class="help">Opens subscriptions.html</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <div class="pill">Pro flag: <b id="proFlag">—</b></div>
+              <div class="pill">Tier field: <b id="tierField">—</b></div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="help">
+              If you just paid, it can take a moment for the webhook to update your account.
+              Refresh the page after payment.
+            </div>
+          </div>
+        </section>
+
+        <!-- PREFERENCES PANEL -->
+        <section class="panel" data-panel="preferences" style="display:none;">
+          <div class="panelHeader">
+            <h2>Preferences</h2>
+            <div class="right">
+              <span class="pill">Theme</span>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="row">
+              <div class="field small">
+                <div class="label">Theme</div>
+                <select id="themeSelect">
+                  <option value="auto">Auto</option>
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+                <div class="help">Stored in your account settings.</div>
+              </div>
+
+              <div class="field">
+                <div class="label">UI extras (stored locally)</div>
+                <div class="row">
+                  <div class="toggle">
+                    <div class="switch" id="swCompact" data-on="false"></div>
+                    <div>
+                      <div style="font-weight:900;">Compact mode</div>
+                      <div class="help">Slightly tighter spacing (local-only).</div>
+                    </div>
+                  </div>
+
+                  <div class="toggle">
+                    <div class="switch" id="swAnimations" data-on="true"></div>
+                    <div>
+                      <div style="font-weight:900;">Animations</div>
+                      <div class="help">Enable UI transitions (local-only).</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <button class="btn" id="btnResetLocalPrefs">Reset local prefs</button>
+              <span class="pill" id="prefsState">Ready</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- NOTIFICATIONS PANEL -->
+        <section class="panel" data-panel="notifications" style="display:none;">
+          <div class="panelHeader">
+            <h2>Notifications</h2>
+            <div class="right">
+              <span class="pill">Reminders</span>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="row">
+              <div class="field small">
+                <div class="label">Study reminder time</div>
+                <input type="time" id="reminderTime" />
+                <div class="help">Stored in your account settings.</div>
+              </div>
+
+              <div class="field">
+                <div class="label">Email preferences</div>
+
+                <div class="row" style="gap:18px;">
+                  <div class="toggle">
+                    <div class="switch" id="swUpdates" data-on="true"></div>
+                    <div>
+                      <div style="font-weight:900;">Email updates</div>
+                      <div class="help">News, important updates.</div>
+                    </div>
+                  </div>
+
+                  <div class="toggle">
+                    <div class="switch" id="swPromos" data-on="false"></div>
+                    <div>
+                      <div style="font-weight:900;">Promotions</div>
+                      <div class="help">Discounts and offers (optional).</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="footNote" id="notifyNote"></div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="help">
+              If you don’t have a notifications system yet, you can still store these settings
+              now and use them later.
+            </div>
+          </div>
+        </section>
+
+        <!-- SECURITY PANEL -->
+        <section class="panel" data-panel="security" style="display:none;">
+          <div class="panelHeader">
+            <h2>Security</h2>
+            <div class="right">
+              <span class="pill">Auth</span>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="row">
+              <div class="field">
+                <div class="label">Password reset</div>
+                <div class="help">
+                  Sends a password reset email to your account email address.
+                </div>
+              </div>
+              <div class="field small">
+                <div class="label">&nbsp;</div>
+                <button class="btn primary" id="btnResetPw">Request reset email</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <div class="field">
+                <div class="label">Logout</div>
+                <div class="help">Ends your session on this device.</div>
+              </div>
+              <div class="field small">
+                <div class="label">&nbsp;</div>
+                <button class="btn danger" id="btnLogout2">Logout</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <div class="field">
+                <div class="label">Delete account</div>
+                <div class="help badText">
+                  Must be implemented securely via a server function (do not do this from frontend).
+                </div>
+              </div>
+              <div class="field small">
+                <div class="label">&nbsp;</div>
+                <button class="btn danger" id="btnDeleteAccount">Delete (disabled)</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DATA PANEL -->
+        <section class="panel" data-panel="data" style="display:none;">
+          <div class="panelHeader">
+            <h2>Data</h2>
+            <div class="right">
+              <span class="pill">Export</span>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="row">
+              <div class="field">
+                <div class="label">Export settings</div>
+                <div class="help">
+                  Download your user_settings row as JSON (useful for debugging).
+                </div>
+              </div>
+              <div class="field small">
+                <div class="label">&nbsp;</div>
+                <button class="btn" id="btnExportSettings">Export JSON</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <div class="field">
+                <div class="label">Debug info</div>
+                <div class="help">Open a debug view with raw data + errors.</div>
+              </div>
+              <div class="field small">
+                <div class="label">&nbsp;</div>
+                <button class="btn" id="btnOpenDebug">Open debug</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="help">
+              If you see errors like 406 or 400, this debug window helps identify exactly what caused it.
+            </div>
+          </div>
+        </section>
+
+      </section>
+    </div>
   </div>
-</div>
 
-<div class="panel">
-  <h2>Profile</h2>
-  <div class="row">
-    <span class="label">Username</span>
-    <input type="text" id="usernameInput">
+  <div class="toast" id="toast"></div>
+
+  <div class="modalOverlay" id="modalOverlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHead">
+        <b id="modalTitle">Debug</b>
+        <button class="btn" id="modalClose">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="help" style="margin-bottom:10px;">
+          Raw data and recent errors (safe to screenshot for debugging).
+        </div>
+        <pre class="mono" id="modalContent" style="white-space:pre-wrap; margin:0;"></pre>
+      </div>
+    </div>
   </div>
-  <div class="row">
-    <span class="label">Email</span>
-    <span id="email"></span>
-  </div>
-</div>
 
-<div class="panel">
-  <h2>Subscription</h2>
-  <div class="row">
-    <span class="label">Account type</span>
-    <span>Student</span>
-  </div>
-  <div class="row">
-    <span class="label">Subscription type</span>
-    <span id="tier">Free</span>
-  </div>
-  <div class="row">
-    <span class="label">Payment</span>
-    <button class="btn">Manage</button>
-  </div>
-</div>
+  <script>
+    /* ============================================================
+      Supabase config
+      NOTE: Keep using your anon key for frontend.
+      Service role key must NEVER be in HTML.
+    ============================================================ */
+    const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-<div class="panel">
-  <h2>Appearance</h2>
-  <div class="row">
-    <span class="label">Theme</span>
-    <select id="themeSelect">
-      <option value="auto">Auto</option>
-      <option value="dark">Dark</option>
-      <option value="light">Light</option>
-    </select>
-  </div>
-</div>
+    /* ============================================================
+      State
+    ============================================================ */
+    let currentUser = null;
+    let settingsRow = null;
+    let lastError = null;
 
-<div class="panel">
-  <h2>Notifications</h2>
-  <div class="row">
-    <span class="label">Study reminders</span>
-    <input type="time" id="reminderTime">
-  </div>
-  <div class="row">
-    <span class="label">Email updates</span>
-    <input type="checkbox" id="notifyUpdates">
-  </div>
-  <div class="row">
-    <span class="label">Promotions</span>
-    <input type="checkbox" id="notifyPromos">
-  </div>
-</div>
+    /* ============================================================
+      DOM helpers
+    ============================================================ */
+    const $  = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-<div class="panel">
-  <h2>Security</h2>
-  <button class="btn primary" id="btnChangePassword">Request Password Reset</button>
-  <button class="btn danger" id="btnDeleteAccount">Delete Account</button>
-</div>
+    /* ============================================================
+      Toast
+    ============================================================ */
+    const toastEl = $("#toast");
+    function toast(msg, detail=""){
+      if(!toastEl) return;
+      toastEl.textContent = msg;
+      if(detail){
+        const d = document.createElement("div");
+        d.className = "small";
+        d.textContent = detail;
+        toastEl.appendChild(d);
+      }
+      toastEl.classList.add("show");
+      clearTimeout(toastEl._t);
+      toastEl._t = setTimeout(()=>toastEl.classList.remove("show"), 2600);
+    }
 
-</div>
+    /* ============================================================
+      Modal
+    ============================================================ */
+    const modalOverlay = $("#modalOverlay");
+    const modalTitle   = $("#modalTitle");
+    const modalContent = $("#modalContent");
 
-<script>
-const supabaseClient = supabase.createClient(
-  "https://mgpwknnbhaljsscsvucm.supabase.co",
-  "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
-);
+    function openModal(title, content){
+      modalTitle.textContent = title;
+      modalContent.textContent = content;
+      modalOverlay.classList.add("show");
+    }
+    function closeModal(){
+      modalOverlay.classList.remove("show");
+    }
+    $("#modalClose").addEventListener("click", closeModal);
+    modalOverlay.addEventListener("click", (e)=>{
+      if(e.target === modalOverlay) closeModal();
+    });
 
-async function saveSettings(updates, userId){
-  await supabaseClient
-    .from("user_settings")
-    .update(updates)
-    .eq("user_id", userId);
-}
+    /* ============================================================
+      Utilities
+    ============================================================ */
+    function shortId(uuid){
+      if(!uuid) return "—";
+      return uuid.slice(0,8);
+    }
 
-async function init(){
-  const { data:{ session } } = await supabaseClient.auth.getSession();
-  if(!session){
-    window.location.href="auth.html";
-    return;
-  }
+    function fmtDate(isoOrDate){
+      try{
+        const d = new Date(isoOrDate);
+        return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"numeric" });
+      }catch{
+        return "—";
+      }
+    }
 
-  const userId = session.user.id;
-  document.getElementById("email").textContent = session.user.email;
+    function debounce(fn, wait=250){
+      let t = null;
+      return (...args)=>{
+        clearTimeout(t);
+        t = setTimeout(()=>fn(...args), wait);
+      };
+    }
 
-  const { data } = await supabaseClient
-    .from("user_settings")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
+    function setTheme(value){
+      if(value === "auto"){
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+      }else{
+        document.documentElement.setAttribute("data-theme", value);
+      }
+    }
 
-  if(data){
-    document.getElementById("usernameInput").value = data.username || "";
-    document.getElementById("tier").textContent = data.tier || "Free";
-    document.getElementById("themeSelect").value = data.preferred_theme || "auto";
-    document.getElementById("reminderTime").value = data.reminder_time || "08:00";
-    document.getElementById("notifyUpdates").checked = data.notify_updates ?? true;
-    document.getElementById("notifyPromos").checked = data.notify_promos ?? false;
+    function setPillState(text, kind=""){
+      const pill = $("#saveStatePill");
+      if(!pill) return;
+      pill.textContent = text;
+      pill.className = "pill";
+      if(kind === "good") pill.classList.add("goodText");
+      if(kind === "warn") pill.classList.add("warnText");
+      if(kind === "bad")  pill.classList.add("badText");
+    }
 
-    applyTheme(data.preferred_theme || "auto");
-  }
+    function setAvail(text, kind){
+      const el = $("#usernameAvail");
+      if(!el) return;
+      el.textContent = text;
+      el.classList.remove("good","bad","warn");
+      el.classList.add(kind);
+    }
 
-  document.getElementById("usernameInput")
-    .addEventListener("change", async (e)=>{
-      const newUsername = e.target.value.trim();
-      if(!newUsername) return;
+    /* ============================================================
+      Local prefs (safe even if DB columns don't exist)
+    ============================================================ */
+    const LOCAL_PREFS_KEY = "reviseflow_account_localprefs_v1";
+    function getLocalPrefs(){
+      try{
+        return JSON.parse(localStorage.getItem(LOCAL_PREFS_KEY) || "{}");
+      }catch{
+        return {};
+      }
+    }
+    function setLocalPrefs(p){
+      localStorage.setItem(LOCAL_PREFS_KEY, JSON.stringify(p));
+    }
 
-      const { data:existing } = await supabaseClient
+    function applyLocalPrefs(){
+      const p = getLocalPrefs();
+
+      const compact = !!p.compact;
+      const anim = p.animations !== false;
+
+      $("#swCompact").setAttribute("data-on", compact ? "true" : "false");
+      $("#swAnimations").setAttribute("data-on", anim ? "true" : "false");
+
+      // Example: if you want compact mode to affect spacing, you can hook a class here:
+      document.body.classList.toggle("compact", compact);
+
+      $("#prefsState").textContent = "Ready";
+    }
+
+    function toggleSwitch(el, key){
+      const p = getLocalPrefs();
+      const nowOn = el.getAttribute("data-on") === "true";
+      const nextOn = !nowOn;
+      el.setAttribute("data-on", nextOn ? "true" : "false");
+      p[key] = nextOn;
+      setLocalPrefs(p);
+    }
+
+    /* ============================================================
+      Navigation between panels
+    ============================================================ */
+    function showPanel(name){
+      $$("[data-panel]").forEach(p=>{
+        p.style.display = (p.getAttribute("data-panel") === name) ? "block" : "none";
+      });
+      $$("[data-nav]").forEach(n=>{
+        n.classList.toggle("active", n.getAttribute("data-nav") === name);
+      });
+    }
+
+    $$("[data-nav]").forEach(item=>{
+      item.addEventListener("click", ()=>{
+        showPanel(item.getAttribute("data-nav"));
+      });
+    });
+
+    /* ============================================================
+      Core DB helpers
+      - Avoid .single() 406: use maybeSingle() + insert if null
+      - Use select("user_id") not select("id") to avoid 400
+    ============================================================ */
+    async function ensureUserSettingsRow(userId){
+      // Try to fetch existing row (safe)
+      const r1 = await supabaseClient
         .from("user_settings")
-        .select("id")
-        .eq("username", newUsername)
-        .neq("user_id", userId)
+        .select("*")
+        .eq("user_id", userId)
         .maybeSingle();
 
-      if(existing){
-        alert("Username already in use.");
+      if(r1.error){
+        lastError = r1.error;
+        // If RLS blocks SELECT, you may need a policy that allows users to select their own row.
+        // Still, we'll try an upsert to create/update minimal fields.
+      }
+
+      if(r1.data){
+        return r1.data;
+      }
+
+      // If row doesn't exist (common cause of 406 previously), create it.
+      // Use insert + select to get the row back.
+      const r2 = await supabaseClient
+        .from("user_settings")
+        .insert({
+          user_id: userId,
+          tier: "Free",
+          // pro defaults false in DB ideally; if not, it remains null/false.
+          // preferred_theme defaults handled in UI.
+        })
+        .select("*")
+        .maybeSingle();
+
+      if(r2.error){
+        lastError = r2.error;
+        throw r2.error;
+      }
+
+      return r2.data;
+    }
+
+    async function updateUserSettings(userId, patch){
+      setPillState("Saving…", "warn");
+
+      const r = await supabaseClient
+        .from("user_settings")
+        .update(patch)
+        .eq("user_id", userId);
+
+      if(r.error){
+        lastError = r.error;
+        setPillState("Save failed", "bad");
+        toast("Save failed", r.error.message || "Unknown error");
+        return false;
+      }
+
+      setPillState("Saved", "good");
+      return true;
+    }
+
+    /* ============================================================
+      Username rules + availability
+    ============================================================ */
+    function normalizeUsername(s){
+      return (s || "")
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^\w]/g, "_"); // keep letters/numbers/_ (no dots)
+    }
+
+    function validateUsername(u){
+      if(!u) return { ok:false, msg:"Username cannot be empty." };
+      if(u.length < 3) return { ok:false, msg:"Username must be at least 3 characters." };
+      if(u.length > 20) return { ok:false, msg:"Username must be 20 characters or fewer." };
+      if(!/^[A-Za-z0-9_]+$/.test(u)) return { ok:false, msg:"Only letters, numbers, and underscore allowed." };
+      return { ok:true, msg:"" };
+    }
+
+    // Availability check (does NOT require select=id, uses select=user_id)
+    async function checkUsernameAvailable(userId, username){
+      // If your RLS prevents selecting other users' rows, you have two options:
+      // 1) Enforce uniqueness with a UNIQUE constraint and catch update errors (best)
+      // 2) Create an RPC / edge function to check availability server-side
+      //
+      // We'll still try a public check; if RLS blocks it, we handle gracefully.
+
+      const r = await supabaseClient
+        .from("user_settings")
+        .select("user_id")
+        .eq("username", username)
+        .neq("user_id", userId)
+        .limit(1);
+
+      if(r.error){
+        // RLS might block this query. In that case, we can't reliably pre-check.
+        lastError = r.error;
+        return { ok:true, uncertain:true, reason:r.error.message || "Check blocked" };
+      }
+
+      const taken = (r.data || []).length > 0;
+      if(taken) return { ok:false, uncertain:false, reason:"Taken" };
+      return { ok:true, uncertain:false, reason:"Available" };
+    }
+
+    const debouncedAvail = debounce(async ()=>{
+      if(!currentUser) return;
+
+      const raw = $("#usernameInput").value;
+      const normalized = normalizeUsername(raw);
+
+      if(raw !== normalized){
+        $("#usernameInput").value = normalized;
+      }
+
+      const v = validateUsername(normalized);
+      if(!v.ok){
+        setAvail(v.msg, "bad");
+        $("#usernameHelp").textContent = v.msg;
         return;
       }
 
-      await saveSettings({ username:newUsername }, userId);
-      alert("Username updated");
-  });
+      setAvail("Checking…", "warn");
 
-  document.getElementById("themeSelect")
-    .addEventListener("change", async (e)=>{
-      const value = e.target.value;
-      applyTheme(value);
-      await saveSettings({ preferred_theme:value }, userId);
-  });
+      const res = await checkUsernameAvailable(currentUser.id, normalized);
+      if(!res.ok){
+        setAvail("Taken", "bad");
+        $("#usernameHelp").textContent = "That username is already taken.";
+        return;
+      }
 
-  document.getElementById("reminderTime")
-    .addEventListener("change", e=>{
-      saveSettings({ reminder_time:e.target.value }, userId);
-  });
+      if(res.uncertain){
+        setAvail("Can’t verify (RLS)", "warn");
+        $("#usernameHelp").textContent =
+          "Username format is valid. Availability check is blocked by security rules — the final save will confirm.";
+        return;
+      }
 
-  document.getElementById("notifyUpdates")
-    .addEventListener("change", e=>{
-      saveSettings({ notify_updates:e.target.checked }, userId);
-  });
+      setAvail("Available", "good");
+      $("#usernameHelp").textContent = "Looks good. Click Save.";
+    }, 350);
 
-  document.getElementById("notifyPromos")
-    .addEventListener("change", e=>{
-      saveSettings({ notify_promos:e.target.checked }, userId);
-  });
+    /* ============================================================
+      Load UI from settings row
+    ============================================================ */
+    function paintUserBasics(session){
+      const email = session.user.email || "—";
+      const createdAt = session.user.created_at || null;
+      const uid = session.user.id;
 
-  document.getElementById("btnChangePassword")
-    .addEventListener("click", async ()=>{
-      await supabaseClient.auth.resetPasswordForEmail(session.user.email);
-      alert("Password reset email sent.");
-  });
+      $("#chipUser").textContent = email.includes("@") ? email.split("@")[0] : email;
+      $("#sideEmail").textContent = email;
+      $("#emailInput").value = email;
 
-  document.getElementById("btnLogout")
-    .addEventListener("click", async ()=>{
-      await supabaseClient.auth.signOut();
-      window.location.href="auth.html";
-  });
+      $("#userIdShort").textContent = shortId(uid);
+      $("#userCreated").textContent = createdAt ? fmtDate(createdAt) : "—";
 
-  document.getElementById("btnDeleteAccount")
-    .addEventListener("click", ()=>{
-      alert("Account deletion must be implemented securely via server.");
-  });
-}
+      // Avatar initials from username/email
+      const seed = ($("#usernameInput").value || email || "RF").trim();
+      const initials = seed
+        .replace(/[^A-Za-z0-9]+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .slice(0,2)
+        .map(x=>x[0]?.toUpperCase() || "")
+        .join("") || "RF";
+      $("#avatarText").textContent = initials;
+    }
 
-function applyTheme(value){
-  if(value==="auto"){
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.setAttribute("data-theme", prefersDark?"dark":"light");
-  } else {
-    document.documentElement.setAttribute("data-theme", value);
-  }
-}
+    function paintFromSettingsRow(row){
+      settingsRow = row;
 
-init();
-</script>
+      const username = row?.username || "";
+      const tierField = row?.tier || "Free";
+      const pro = !!row?.pro;
 
+      $("#usernameInput").value = username;
+      $("#sideName").textContent = username || "Student";
+      $("#chipTier").textContent = pro ? "Pro" : (tierField || "Free");
+
+      $("#tierText").textContent = pro ? "Pro" : (tierField || "Free");
+      $("#proFlag").textContent = pro ? "true" : "false";
+      $("#tierField").textContent = tierField || "—";
+
+      $("#subBadge").textContent = pro ? "PRO ACTIVE" : "FREE";
+      $("#subBadge").className = pro ? "badge good" : "badge warn";
+
+      // Theme select (if column exists)
+      const preferredTheme = row?.preferred_theme || "auto";
+      $("#themeSelect").value = preferredTheme;
+      setTheme(preferredTheme);
+
+      // Notifications (if columns exist)
+      $("#reminderTime").value = row?.reminder_time || "08:00";
+      $("#swUpdates").setAttribute("data-on", (row?.notify_updates ?? true) ? "true" : "false");
+      $("#swPromos").setAttribute("data-on", (row?.notify_promos ?? false) ? "true" : "false");
+
+      // Show availability state
+      if(username){
+        setAvail("Checking…", "warn");
+        debouncedAvail();
+      }else{
+        setAvail("Set a username", "warn");
+        $("#usernameHelp").textContent = "Pick a username and click Save.";
+      }
+
+      $("#profileNote").textContent = pro
+        ? "You have Pro access. Enjoy the premium features."
+        : "You’re on Free. Upgrade from the Checkout page if you want Pro.";
+
+      setPillState("Idle");
+    }
+
+    /* ============================================================
+      Event wiring
+    ============================================================ */
+    function bindEvents(){
+      $("#btnBack").addEventListener("click", ()=> window.location.href = "index.html");
+
+      $("#btnThemeToggle").addEventListener("click", ()=>{
+        const cur = document.documentElement.getAttribute("data-theme") || "dark";
+        const next = (cur === "dark") ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        toast("Theme toggled", `Now using ${next}`);
+      });
+
+      $("#btnManageBilling").addEventListener("click", ()=>{
+        window.location.href = "subscriptions.html";
+      });
+
+      $("#btnLogout").addEventListener("click", async ()=>{
+        await supabaseClient.auth.signOut();
+        window.location.href = "auth.html";
+      });
+      $("#btnLogout2").addEventListener("click", async ()=>{
+        await supabaseClient.auth.signOut();
+        window.location.href = "auth.html";
+      });
+
+      $("#btnResetPw").addEventListener("click", async ()=>{
+        if(!currentUser) return;
+        const email = currentUser.email;
+        const r = await supabaseClient.auth.resetPasswordForEmail(email);
+        if(r.error){
+          lastError = r.error;
+          toast("Reset failed", r.error.message || "Unknown error");
+          return;
+        }
+        toast("Password reset email sent", "Check your inbox (and spam).");
+      });
+
+      $("#btnDeleteAccount").addEventListener("click", ()=>{
+        toast("Disabled", "Account deletion must be done via server function.");
+      });
+
+      $("#btnReloadSettings").addEventListener("click", async ()=>{
+        await loadAll();
+        toast("Reloaded");
+      });
+
+      $("#usernameInput").addEventListener("input", ()=>{
+        setPillState("Unsaved", "warn");
+        debouncedAvail();
+      });
+
+      $("#btnSaveUsername").addEventListener("click", async ()=>{
+        if(!currentUser) return;
+
+        const raw = $("#usernameInput").value;
+        const u = normalizeUsername(raw);
+        $("#usernameInput").value = u;
+
+        const v = validateUsername(u);
+        if(!v.ok){
+          setAvail(v.msg, "bad");
+          toast("Invalid username", v.msg);
+          return;
+        }
+
+        // Check availability (best effort)
+        const check = await checkUsernameAvailable(currentUser.id, u);
+        if(!check.ok){
+          setAvail("Taken", "bad");
+          toast("Username taken", "Choose a different username.");
+          return;
+        }
+
+        const ok = await updateUserSettings(currentUser.id, { username: u });
+        if(ok){
+          $("#sideName").textContent = u;
+          paintUserBasics({ user: currentUser });
+          toast("Username updated");
+        }
+      });
+
+      $("#themeSelect").addEventListener("change", async (e)=>{
+        if(!currentUser) return;
+        const value = e.target.value;
+        setTheme(value);
+        const ok = await updateUserSettings(currentUser.id, { preferred_theme: value });
+        if(ok) toast("Theme saved", value);
+      });
+
+      $("#reminderTime").addEventListener("change", async (e)=>{
+        if(!currentUser) return;
+        const value = e.target.value || "08:00";
+        const ok = await updateUserSettings(currentUser.id, { reminder_time: value });
+        if(ok) toast("Reminder time saved", value);
+      });
+
+      $("#swUpdates").addEventListener("click", async ()=>{
+        if(!currentUser) return;
+        const el = $("#swUpdates");
+        const on = el.getAttribute("data-on") === "true";
+        const next = !on;
+        el.setAttribute("data-on", next ? "true" : "false");
+        const ok = await updateUserSettings(currentUser.id, { notify_updates: next });
+        if(ok) toast("Email updates", next ? "Enabled" : "Disabled");
+      });
+
+      $("#swPromos").addEventListener("click", async ()=>{
+        if(!currentUser) return;
+        const el = $("#swPromos");
+        const on = el.getAttribute("data-on") === "true";
+        const next = !on;
+        el.setAttribute("data-on", next ? "true" : "false");
+        const ok = await updateUserSettings(currentUser.id, { notify_promos: next });
+        if(ok) toast("Promotions", next ? "Enabled" : "Disabled");
+      });
+
+      // Local prefs
+      $("#swCompact").addEventListener("click", ()=>{
+        toggleSwitch($("#swCompact"), "compact");
+        applyLocalPrefs();
+        toast("Local pref", "Compact mode toggled");
+      });
+      $("#swAnimations").addEventListener("click", ()=>{
+        // store "animations" inverted is messy; keep as boolean
+        const el = $("#swAnimations");
+        const on = el.getAttribute("data-on") === "true";
+        const next = !on;
+        el.setAttribute("data-on", next ? "true" : "false");
+        const p = getLocalPrefs();
+        p.animations = next;
+        setLocalPrefs(p);
+        applyLocalPrefs();
+        toast("Local pref", "Animations toggled");
+      });
+
+      $("#btnResetLocalPrefs").addEventListener("click", ()=>{
+        localStorage.removeItem(LOCAL_PREFS_KEY);
+        applyLocalPrefs();
+        toast("Local prefs reset");
+      });
+
+      // Export settings
+      $("#btnExportSettings").addEventListener("click", ()=>{
+        const blob = new Blob([JSON.stringify(settingsRow || {}, null, 2)], { type:"application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `reviseflow_user_settings_${shortId(currentUser?.id)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast("Exported", "Downloaded JSON");
+      });
+
+      // Debug modal
+      $("#btnOpenDebug").addEventListener("click", ()=>{
+        const content = {
+          user: currentUser ? {
+            id: currentUser.id,
+            email: currentUser.email,
+            created_at: currentUser.created_at
+          } : null,
+          settingsRow,
+          lastError
+        };
+        openModal("Debug", JSON.stringify(content, null, 2));
+      });
+    }
+
+    /* ============================================================
+      Load everything
+    ============================================================ */
+    async function loadAll(){
+      // Session
+      const { data:{ session }, error } = await supabaseClient.auth.getSession();
+      if(error){
+        lastError = error;
+        toast("Session error", error.message || "Unknown");
+        return;
+      }
+      if(!session){
+        window.location.href = "auth.html";
+        return;
+      }
+
+      currentUser = session.user;
+
+      // Ensure row exists (prevents 406)
+      try{
+        const row = await ensureUserSettingsRow(currentUser.id);
+        paintFromSettingsRow(row);
+      }catch(err){
+        toast("Settings error", (err && err.message) ? err.message : "Could not load user_settings.");
+        // still paint basics so page isn't dead
+      }
+
+      // Paint user UI basics
+      paintUserBasics(session);
+
+      // Apply local prefs
+      applyLocalPrefs();
+    }
+
+    /* ============================================================
+      Boot
+    ============================================================ */
+    bindEvents();
+    showPanel("profile");
+    loadAll();
+  </script>
 </body>
 </html>
