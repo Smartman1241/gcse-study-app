@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Payment Successful — ReviseFlow</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.stripe.com/v3/"></script>
+
+<style>
+:root{
+  --bg:#0b1020;
+  --panel:rgba(255,255,255,.06);
+  --border:rgba(255,255,255,.14);
+  --text:rgba(255,255,255,.92);
+  --muted:rgba(255,255,255,.65);
+  --good:#46e6b3;
+}
+
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto;
+  background:var(--bg);
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+}
+
+.card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:50px;
+  text-align:center;
+  max-width:520px;
+}
+
+.success{
+  font-size:60px;
+  color:var(--good);
+}
+
+h1{
+  margin:20px 0 10px;
+}
+
+p{
+  color:var(--muted);
+}
+
+button{
+  margin-top:30px;
+  padding:14px 24px;
+  border-radius:14px;
+  border:none;
+  font-weight:800;
+  cursor:pointer;
+  background:var(--good);
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <div class="success">✓</div>
+  <h1>Payment Successful</h1>
+  <p>Your ReviseFlow Pro access is being activated.</p>
+  <button onclick="window.location.href='index.html'">
+    Return to Dashboard
+  </button>
+</div>
+
+<script>
+const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function activatePro(){
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("session_id");
+
+  if(!sessionId) return;
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(!session) return;
+
+  // Mark user as Pro in your database
+  await supabaseClient
+    .from("user_settings")
+    .update({ pro: true })
+    .eq("user_id", session.user.id);
+}
+
+activatePro();
+</script>
+
+</body>
+</html>
