@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/Smartman1241/gcse-study-app#readme",
   "dependencies": {
-    "@supabase/supabase-js": "^2.95.3"
+    "@supabase/supabase-js": "^2.95.3",
+    "stripe": "^20.3.1"
   }
 }
