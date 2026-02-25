@@ -1148,11 +1148,11 @@
           <div class="checkRow">
             <input type="checkbox" id="consentNow" />
             <label for="consentNow">
-              I agree to immediate access after payment and I understand I lose my 14 Day canellation right<
-              <span>
-                This is a digital service. Access starts straight away after checkout.
-              </span>
-            </label>
+  I request immediate access after payment and understand I lose my 14-day cooling-off right.
+  <span>
+    This is a digital digital service. Access starts immediately after checkout. By continuing, you expressly waive your statutory cancellation period.
+  </span>
+</label>>
           </div>
           <div class="fineprint" style="margin-top:10px;">
             You’ll be redirected to Stripe Checkout. The selected plan will appear in the Stripe order summary.
@@ -1221,8 +1221,8 @@
   // IMPORTANT:
   // Put your real values here (same anon key you use elsewhere on the site).
   // If you already have these in another global file, you can remove this block and reuse that.
-  const SUPABASE_URL = window.SUPABASE_URL || "YOUR_SUPABASE_URL";
-  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "YOUR_SUPABASE_ANON_KEY";
+  const SUPABASE_URL = window.SUPABASE_URL || "https://mgpwknnbhaljsscsvucm.supabase.co";
+  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
   const supabase = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.startsWith("YOUR_"))
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
