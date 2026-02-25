@@ -1,0 +1,1374 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ReviseFlow — Upgrade</title>
+  <meta name="description" content="Upgrade to Plus or Pro to unlock more study power." />
+
+  <style>
+    :root{
+      --bg0:#070a14;
+      --bg1:#0b1020;
+      --card:rgba(255,255,255,.06);
+      --card2:rgba(255,255,255,.04);
+      --stroke:rgba(255,255,255,.12);
+      --stroke2:rgba(255,255,255,.08);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.68);
+      --muted2:rgba(255,255,255,.55);
+      --good:#5dffb1;
+      --bad:#ff6b6b;
+      --accent:#7c5cff;
+      --accent2:#4ad7ff;
+      --warn:#ffd166;
+      --shadow: 0 16px 50px rgba(0,0,0,.55);
+      --radius:18px;
+      --radius2:24px;
+      --pad:16px;
+      --pad2:22px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 10% 10%, rgba(124,92,255,.18), transparent 60%),
+        radial-gradient(900px 600px at 80% 30%, rgba(74,215,255,.12), transparent 60%),
+        radial-gradient(900px 600px at 50% 90%, rgba(255,209,102,.08), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ width:min(1200px, 92vw); margin:0 auto; padding:28px 0 60px; }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:14px;
+      padding:10px 0 18px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:800;
+      letter-spacing:.2px;
+      font-size:16px;
+    }
+    .logo{
+      width:34px; height:34px; border-radius:10px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.18), transparent 60%),
+        linear-gradient(135deg, rgba(124,92,255,1), rgba(74,215,255,1));
+      box-shadow: 0 10px 30px rgba(124,92,255,.25);
+    }
+    .topActions{
+      display:flex; gap:10px; flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:9px 12px;
+      border:1px solid var(--stroke2);
+      background:rgba(255,255,255,.04);
+      border-radius:999px;
+      color:var(--muted);
+      font-size:13px;
+      user-select:none;
+    }
+    .pill strong{ color:var(--text); font-weight:800; }
+    .btn{
+      appearance:none;
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:14px;
+      transition: transform .08s ease, background .12s ease, border-color .12s ease;
+    }
+    .btn:hover{ background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.16); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      border-color:rgba(124,92,255,.5);
+      background: linear-gradient(135deg, rgba(124,92,255,.95), rgba(74,215,255,.85));
+      box-shadow: 0 18px 60px rgba(124,92,255,.25);
+    }
+    .btn.primary:hover{ filter:brightness(1.03); }
+    .btn.ghost{ background:transparent; }
+    .btn.small{ padding:8px 10px; border-radius:10px; font-size:13px; }
+
+    .hero{
+      display:grid;
+      grid-template-columns: 1.3fr .7fr;
+      gap:16px;
+      align-items:stretch;
+      margin-top:4px;
+    }
+    @media (max-width: 980px){
+      .hero{ grid-template-columns: 1fr; }
+    }
+    .heroCard{
+      border:1px solid var(--stroke2);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border-radius: var(--radius2);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .heroCard:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(800px 350px at 10% 0%, rgba(124,92,255,.22), transparent 60%),
+        radial-gradient(800px 350px at 90% 30%, rgba(74,215,255,.16), transparent 60%);
+      pointer-events:none;
+    }
+    .heroInner{ position:relative; z-index:1; }
+    .hero h1{
+      margin:0 0 10px;
+      font-size: clamp(26px, 3.1vw, 42px);
+      line-height:1.1;
+      letter-spacing:-.4px;
+    }
+    .sub{
+      margin:0 0 16px;
+      color:var(--muted);
+      font-size:15px;
+      max-width: 72ch;
+    }
+    .callouts{
+      display:flex; flex-wrap:wrap; gap:10px;
+      margin-top:10px;
+    }
+    .tag{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 12px;
+      border:1px solid var(--stroke2);
+      border-radius:999px;
+      background:rgba(0,0,0,.18);
+      font-size:13px;
+      color:var(--muted);
+    }
+    .dot{
+      width:9px; height:9px; border-radius:999px;
+      background:var(--good);
+      box-shadow: 0 0 0 4px rgba(93,255,177,.12);
+    }
+
+    .heroSide{
+      border:1px solid var(--stroke2);
+      background: rgba(255,255,255,.04);
+      border-radius: var(--radius2);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .cycleBox{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .cycleTitle{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .cycleTitle h3{ margin:0; font-size:15px; letter-spacing:.1px; }
+    .cycleTitle p{ margin:4px 0 0; font-size:13px; color:var(--muted); }
+
+    .seg{
+      display:flex;
+      border:1px solid var(--stroke2);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding:4px;
+      gap:4px;
+    }
+    .seg button{
+      flex:1;
+      border:0;
+      background:transparent;
+      color:var(--muted);
+      padding:10px 10px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight:800;
+      font-size:13px;
+      transition: background .12s ease, color .12s ease;
+      text-align:center;
+      line-height:1.1;
+    }
+    .seg button.active{
+      background: rgba(255,255,255,.08);
+      color:var(--text);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .seg button .mini{
+      display:block;
+      font-size:11px;
+      color:var(--muted2);
+      font-weight:800;
+      margin-top:3px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr .62fr;
+      gap:16px;
+      margin-top:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .plans{
+      border:1px solid var(--stroke2);
+      background: rgba(255,255,255,.03);
+      border-radius: var(--radius2);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .plansHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+    .plansHeader h2{ margin:0; font-size:16px; }
+    .plansHeader .hint{ margin:0; color:var(--muted); font-size:13px; }
+
+    .planRow{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+    @media (max-width: 740px){
+      .planRow{ grid-template-columns: 1fr; }
+    }
+
+    .planCard{
+      position:relative;
+      border:1px solid var(--stroke2);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+      border-radius: var(--radius2);
+      padding: 18px;
+      overflow:hidden;
+      cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+      min-height: 260px;
+    }
+    .planCard:hover{
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,.18);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.035));
+    }
+    .planCard.selected{
+      border-color: rgba(124,92,255,.5);
+      box-shadow: 0 20px 70px rgba(124,92,255,.16);
+    }
+    .ribbon{
+      position:absolute; top:14px; right:-48px;
+      width:180px;
+      transform: rotate(35deg);
+      text-align:center;
+      font-weight:900;
+      font-size:11px;
+      letter-spacing:.6px;
+      padding:8px 0;
+      background: linear-gradient(135deg, rgba(255,209,102,.9), rgba(124,92,255,.85));
+      color:#0b1020;
+      border-radius: 12px;
+      opacity:.95;
+    }
+    .planTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+    }
+    .planName{
+      display:flex; flex-direction:column;
+      gap:2px;
+    }
+    .planName h3{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.1px;
+    }
+    .planName .desc{
+      margin:0;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .priceBox{
+      text-align:right;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:4px;
+    }
+    .price{
+      font-size:26px;
+      font-weight:950;
+      letter-spacing:-.4px;
+      margin:0;
+      line-height:1;
+    }
+    .per{
+      margin:0;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+    }
+    .save{
+      margin:0;
+      color:var(--warn);
+      font-size:12px;
+      font-weight:950;
+    }
+
+    .miniList{
+      margin:14px 0 0;
+      padding:0;
+      list-style:none;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .miniList li{
+      display:flex; gap:10px; align-items:flex-start;
+      line-height:1.25;
+    }
+    .tick{
+      width:18px; height:18px; border-radius:8px;
+      display:inline-flex; align-items:center; justify-content:center;
+      background: rgba(93,255,177,.12);
+      border:1px solid rgba(93,255,177,.22);
+      flex:0 0 18px;
+      margin-top:1px;
+    }
+    .tick:before{
+      content:"✓";
+      color:var(--good);
+      font-weight:1000;
+      font-size:12px;
+      position:relative;
+      top:-.5px;
+    }
+
+    .basket{
+      position:sticky;
+      top:16px;
+      border:1px solid var(--stroke2);
+      background: rgba(255,255,255,.04);
+      border-radius: var(--radius2);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .basketHeader{
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      margin-bottom:12px;
+    }
+    .basketHeader h2{ margin:0; font-size:15px; }
+    .badge{
+      font-size:11px;
+      font-weight:950;
+      color:#0b1020;
+      padding:6px 10px;
+      border-radius:999px;
+      background: linear-gradient(135deg, rgba(255,209,102,.92), rgba(74,215,255,.80));
+    }
+    .basketLine{
+      display:flex; justify-content:space-between; gap:10px;
+      padding:10px 0;
+      border-top:1px solid rgba(255,255,255,.07);
+      font-size:13px;
+      color:var(--muted);
+    }
+    .basketLine:first-of-type{ border-top:0; }
+    .basketLine strong{ color:var(--text); }
+    .basketTotal{
+      display:flex; justify-content:space-between; gap:10px;
+      padding:12px 0 6px;
+      border-top:1px solid rgba(255,255,255,.10);
+      font-size:14px;
+    }
+    .basketTotal .big{
+      font-size:20px;
+      font-weight:1000;
+      letter-spacing:-.3px;
+    }
+    .basketHelp{
+      margin:8px 0 0;
+      font-size:12px;
+      color:var(--muted2);
+      line-height:1.35;
+    }
+    .basketBtns{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin-top:14px;
+    }
+    .basketBtns .btn{ flex:1; min-width:140px; }
+    .err{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,107,107,.25);
+      background: rgba(255,107,107,.10);
+      color: rgba(255,255,255,.88);
+      font-size:13px;
+      display:none;
+    }
+
+    .section{
+      margin-top:16px;
+      border:1px solid var(--stroke2);
+      background: rgba(255,255,255,.03);
+      border-radius: var(--radius2);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .section h2{
+      margin:0 0 10px;
+      font-size:16px;
+      letter-spacing:.1px;
+    }
+    .section .lead{
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.4;
+    }
+
+    .tools{
+      display:flex; gap:10px; flex-wrap:wrap;
+      align-items:center;
+      margin: 10px 0 14px;
+    }
+    .input{
+      flex:1;
+      min-width:240px;
+      padding:10px 12px;
+      border-radius: 12px;
+      border:1px solid var(--stroke2);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      font-weight:700;
+      outline:none;
+    }
+    .select{
+      padding:10px 12px;
+      border-radius: 12px;
+      border:1px solid var(--stroke2);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      font-weight:800;
+      outline:none;
+      min-width:180px;
+    }
+
+    .tableWrap{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      overflow:hidden;
+      background: rgba(0,0,0,.16);
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    thead th{
+      position:sticky;
+      top:0;
+      background: rgba(10,14,28,.92);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(255,255,255,.10);
+      padding:12px 12px;
+      text-align:left;
+      z-index:2;
+    }
+    thead th:nth-child(2),
+    thead th:nth-child(3){
+      text-align:center;
+      width:140px;
+    }
+    tbody td{
+      border-bottom:1px solid rgba(255,255,255,.06);
+      padding:10px 12px;
+      vertical-align:top;
+      color:var(--muted);
+    }
+    tbody td:first-child{ color:var(--text); }
+    tbody td:nth-child(2),
+    tbody td:nth-child(3){
+      text-align:center;
+      color:var(--muted);
+      font-weight:900;
+    }
+    .groupRow td{
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      font-weight:1000;
+      letter-spacing:.2px;
+    }
+    .yes{ color: var(--good) !important; }
+    .no{ color: rgba(255,255,255,.25) !important; }
+    .tiny{
+      display:block;
+      font-size:11px;
+      color:var(--muted2);
+      font-weight:800;
+      margin-top:3px;
+      line-height:1.25;
+    }
+
+    .faq{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width: 980px){
+      .faq{ grid-template-columns: 1fr; }
+    }
+    details{
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      background: rgba(0,0,0,.16);
+      padding: 12px 12px;
+    }
+    summary{
+      cursor:pointer;
+      font-weight:950;
+      color:var(--text);
+      outline:none;
+    }
+    details p{
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    .fineprint{
+      margin-top:14px;
+      color:var(--muted2);
+      font-size:12px;
+      line-height:1.45;
+    }
+
+    .toast{
+      position:fixed;
+      bottom:14px;
+      left:50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.65);
+      border:1px solid rgba(255,255,255,.14);
+      padding:10px 12px;
+      border-radius: 999px;
+      color: rgba(255,255,255,.9);
+      font-weight:800;
+      font-size:13px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.6);
+      display:none;
+      z-index:999;
+      max-width:min(780px, 92vw);
+      text-align:center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>ReviseFlow <span style="opacity:.7">/ Upgrade</span></div>
+      </div>
+
+      <div class="topActions">
+        <div class="pill"><span class="dot" aria-hidden="true"></span><strong>Annual</strong> shows best value</div>
+        <button class="btn ghost" id="backBtn">← Back</button>
+        <button class="btn" id="refreshBtn">Reset</button>
+      </div>
+    </div>
+
+    <div class="hero">
+      <div class="heroCard">
+        <div class="heroInner">
+          <h1>Upgrade your study setup — faster, smarter, calmer.</h1>
+          <p class="sub">
+            Pick a plan, choose your billing cycle, and checkout via Stripe.
+            The comparison below lists what each plan includes.
+          </p>
+
+          <div class="callouts">
+            <div class="tag"><span class="dot"></span> Cancel anytime</div>
+            <div class="tag"><span class="dot"></span> Secure checkout (Stripe)</div>
+            <div class="tag"><span class="dot"></span> Annual = biggest discount</div>
+            <div class="tag"><span class="dot"></span> Instant access after payment</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="heroSide">
+        <div class="cycleBox">
+          <div class="cycleTitle">
+            <div>
+              <h3>Billing cycle</h3>
+              <p>Annual is highlighted because it saves the most.</p>
+            </div>
+          </div>
+
+          <div class="seg" role="tablist" aria-label="Billing cycle">
+            <button id="cycleMonthly" type="button" data-cycle="monthly">Monthly<span class="mini">Try it</span></button>
+            <button id="cycleQuarterly" type="button" data-cycle="quarterly">Quarterly<span class="mini">Save a bit</span></button>
+            <button id="cycleAnnual" type="button" data-cycle="annual">Annual<span class="mini">Best value</span></button>
+          </div>
+
+          <div class="fineprint" id="cycleExplain"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="plans">
+        <div class="plansHeader">
+          <div>
+            <h2>Choose your plan</h2>
+            <p class="hint">Click a card to add it to your basket.</p>
+          </div>
+          <div class="pill"><strong id="pickedSummary">Annual · Pro</strong></div>
+        </div>
+
+        <div class="planRow">
+          <div class="planCard" id="cardPlus" role="button" tabindex="0" aria-label="Select Plus">
+            <div class="planTop">
+              <div class="planName">
+                <h3>Plus</h3>
+                <p class="desc">Better study tools + more AI help.</p>
+              </div>
+              <div class="priceBox">
+                <p class="price" id="plusPrice">£—</p>
+                <p class="per" id="plusPer">per —</p>
+                <p class="save" id="plusSave"> </p>
+              </div>
+            </div>
+
+            <ul class="miniList" id="plusMini">
+              <li><span class="tick"></span><span>More AI help for homework + revision</span></li>
+              <li><span class="tick"></span><span>Advanced flashcards + spaced repetition</span></li>
+              <li><span class="tick"></span><span>Quiz modes + smarter marking</span></li>
+              <li><span class="tick"></span><span>Study analytics + streak tracking</span></li>
+              <li><span class="tick"></span><span>Export tools + templates</span></li>
+            </ul>
+          </div>
+
+          <div class="planCard selected" id="cardPro" role="button" tabindex="0" aria-label="Select Pro">
+            <div class="ribbon">RECOMMENDED</div>
+            <div class="planTop">
+              <div class="planName">
+                <h3>Pro</h3>
+                <p class="desc">Everything in Plus, and the “serious” tools.</p>
+              </div>
+              <div class="priceBox">
+                <p class="price" id="proPrice">£—</p>
+                <p class="per" id="proPer">per —</p>
+                <p class="save" id="proSave"> </p>
+              </div>
+            </div>
+
+            <ul class="miniList" id="proMini">
+              <li><span class="tick"></span><span>Highest AI limits + advanced modes</span></li>
+              <li><span class="tick"></span><span>Full analytics + personalised weak-topic map</span></li>
+              <li><span class="tick"></span><span>Premium packs + exam-style feedback</span></li>
+              <li><span class="tick"></span><span>Priority support + early features</span></li>
+              <li><span class="tick"></span><span>Power-user tools + integrations</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="section" style="margin-top:14px;">
+          <h2>Compare everything</h2>
+          <p class="lead">
+            Search features or filter by category. “Pro” includes everything in “Plus”.
+          </p>
+
+          <div class="tools">
+            <input class="input" id="search" placeholder="Search features… (e.g. flashcards, analytics, AI, pomodoro)" />
+            <select class="select" id="groupFilter">
+              <option value="all">All categories</option>
+            </select>
+            <button class="btn small" id="clearSearchBtn">Clear</button>
+          </div>
+
+          <div class="tableWrap" style="max-height:520px; overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Plus</th>
+                  <th>Pro</th>
+                </tr>
+              </thead>
+              <tbody id="featureBody"></tbody>
+            </table>
+          </div>
+
+          <div class="fineprint">
+            Prices and savings are shown transparently. The “Annual” option is highlighted because it is the lowest effective cost.
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>FAQ</h2>
+          <p class="lead">Quick answers to common billing questions.</p>
+
+          <div class="faq">
+            <details>
+              <summary>Can I cancel anytime?</summary>
+              <p>Yes. You can cancel your subscription in Stripe’s customer portal (recommended) or by contacting support.</p>
+            </details>
+            <details>
+              <summary>Do I get access immediately?</summary>
+              <p>Stripe sends you back after payment. Your app should confirm the subscription via webhook and unlock features.</p>
+            </details>
+            <details>
+              <summary>Why does Annual look “best”?</summary>
+              <p>Because it is genuinely cheaper over a year than paying monthly or quarterly. The page shows the real savings.</p>
+            </details>
+            <details>
+              <summary>How does the app know what plan I bought?</summary>
+              <p>You’ll add a Stripe webhook that updates the user’s plan in Supabase. (I’ll tell you what to add below.)</p>
+            </details>
+          </div>
+
+          <div class="fineprint">
+            Tip: If you want the cleanest flow, add a “Manage billing” button later using Stripe Billing Portal.
+          </div>
+        </div>
+      </div>
+
+      <aside class="basket" aria-label="Basket">
+        <div class="basketHeader">
+          <h2>Your basket</h2>
+          <div class="badge" id="valueBadge">Best value</div>
+        </div>
+
+        <div class="basketLine">
+          <div>Plan</div>
+          <div><strong id="bPlan">Pro</strong></div>
+        </div>
+        <div class="basketLine">
+          <div>Billing</div>
+          <div><strong id="bCycle">Annual</strong></div>
+        </div>
+        <div class="basketLine">
+          <div>Price</div>
+          <div><strong id="bPrice">£—</strong></div>
+        </div>
+        <div class="basketLine">
+          <div>Savings</div>
+          <div><strong id="bSave">—</strong></div>
+        </div>
+
+        <div class="basketTotal">
+          <div>
+            <div style="font-weight:950;">Total today</div>
+            <span class="tiny" id="bRenew">Renews in —</span>
+          </div>
+          <div class="big" id="bTotal">£—</div>
+        </div>
+
+        <div class="basketHelp" id="basketHelp">
+          Annual is selected by default because it’s the lowest cost per month.
+        </div>
+
+        <div class="basketBtns">
+          <button class="btn primary" id="checkoutBtn">Checkout</button>
+          <button class="btn" id="copyBtn">Copy summary</button>
+        </div>
+
+        <div class="err" id="errBox"></div>
+
+        <div class="fineprint">
+          You’ll be redirected to Stripe Checkout. The selected plan will appear in the Stripe order summary.
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const PRICE_IDS = {
+      plus: {
+        monthly:   "price_1T46nyRzC23qaxzMIu41ccnt",
+        quarterly: "price_1T46nyRzC23qaxzM2apXOsNE",
+        annual:    "price_1T46nyRzC23qaxzMsuQppAj6"
+      },
+      pro: {
+        monthly:   "price_1T46qbRzC23qaxzM2ebMn3o6",
+        quarterly: "price_1T46qbRzC23qaxzMh15YdWfh",
+        annual:    "price_1T46qbRzC23qaxzMC9TWNVsK"
+      }
+    };
+
+    const DISPLAY_PRICES = {
+      plus: { monthly: 4.99, quarterly: 12.99, annual: 37.99 },
+      pro:  { monthly: 9.99, quarterly: 24.99, annual: 79.99 }
+    };
+
+    const CYCLE_LABEL = { monthly:"Monthly", quarterly:"Quarterly", annual:"Annual" };
+    const CYCLE_MONTHS = { monthly:1, quarterly:3, annual:12 };
+
+    let selectedPlan = "pro";
+    let selectedCycle = "annual";
+
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      cycleMonthly: $("cycleMonthly"),
+      cycleQuarterly: $("cycleQuarterly"),
+      cycleAnnual: $("cycleAnnual"),
+      cycleExplain: $("cycleExplain"),
+
+      cardPlus: $("cardPlus"),
+      cardPro: $("cardPro"),
+
+      plusPrice: $("plusPrice"),
+      plusPer: $("plusPer"),
+      plusSave: $("plusSave"),
+
+      proPrice: $("proPrice"),
+      proPer: $("proPer"),
+      proSave: $("proSave"),
+
+      pickedSummary: $("pickedSummary"),
+
+      bPlan: $("bPlan"),
+      bCycle: $("bCycle"),
+      bPrice: $("bPrice"),
+      bSave: $("bSave"),
+      bTotal: $("bTotal"),
+      bRenew: $("bRenew"),
+      basketHelp: $("basketHelp"),
+      valueBadge: $("valueBadge"),
+
+      checkoutBtn: $("checkoutBtn"),
+      copyBtn: $("copyBtn"),
+      errBox: $("errBox"),
+      toast: $("toast"),
+
+      search: $("search"),
+      groupFilter: $("groupFilter"),
+      featureBody: $("featureBody"),
+      clearSearchBtn: $("clearSearchBtn"),
+
+      backBtn: $("backBtn"),
+      refreshBtn: $("refreshBtn")
+    };
+
+    function money(n){
+      return "£" + Number(n).toFixed(2);
+    }
+
+    function calcSavings(plan, cycle){
+      const m = DISPLAY_PRICES[plan].monthly;
+      const q = DISPLAY_PRICES[plan].quarterly;
+      const a = DISPLAY_PRICES[plan].annual;
+
+      const yearlyMonthly = m * 12;
+      const yearlyQuarterly = q * 4;
+
+      if(cycle === "annual"){
+        const saveVsMonthly = yearlyMonthly - a;
+        const saveVsQuarterly = yearlyQuarterly - a;
+        const pct = (saveVsMonthly / yearlyMonthly) * 100;
+        return { label: `${money(saveVsMonthly)} saved vs monthly`, extra: `${money(saveVsQuarterly)} saved vs quarterly`, pct };
+      }
+
+      if(cycle === "quarterly"){
+        const saveVsMonthly = yearlyMonthly - yearlyQuarterly;
+        const pct = (saveVsMonthly / yearlyMonthly) * 100;
+        return { label: `${money(saveVsMonthly)} saved vs monthly (per year)`, extra: `Annual saves more`, pct };
+      }
+
+      return { label: `Annual saves the most`, extra: `Upgrade to annual anytime`, pct: 0 };
+    }
+
+    function cycleExplainText(){
+      const sPlus = calcSavings("plus", selectedCycle);
+      const sPro  = calcSavings("pro", selectedCycle);
+
+      if(selectedCycle === "annual"){
+        return `
+          <strong>Annual is best value:</strong><br>
+          Plus saves <strong>${money((DISPLAY_PRICES.plus.monthly*12) - DISPLAY_PRICES.plus.annual)}</strong> per year vs monthly.<br>
+          Pro saves <strong>${money((DISPLAY_PRICES.pro.monthly*12) - DISPLAY_PRICES.pro.annual)}</strong> per year vs monthly.
+        `;
+      }
+      if(selectedCycle === "quarterly"){
+        return `
+          Quarterly is a mid option.<br>
+          You still save vs monthly, but annual is the biggest discount.
+        `;
+      }
+      return `
+        Monthly is best for trying it out.<br>
+        If you already know you’ll use it, annual is cheaper overall.
+      `;
+    }
+
+    function setCycle(cycle){
+      selectedCycle = cycle;
+      els.cycleMonthly.classList.toggle("active", cycle==="monthly");
+      els.cycleQuarterly.classList.toggle("active", cycle==="quarterly");
+      els.cycleAnnual.classList.toggle("active", cycle==="annual");
+      els.cycleExplain.innerHTML = cycleExplainText();
+      renderCards();
+      renderBasket();
+      renderFeatures();
+      toast(`Billing cycle: ${CYCLE_LABEL[cycle]}`);
+    }
+
+    function setPlan(plan){
+      selectedPlan = plan;
+      els.cardPlus.classList.toggle("selected", plan==="plus");
+      els.cardPro.classList.toggle("selected", plan==="pro");
+      els.pickedSummary.textContent = `${CYCLE_LABEL[selectedCycle]} · ${plan==="pro"?"Pro":"Plus"}`;
+      renderBasket();
+      toast(`Selected: ${plan==="pro"?"Pro":"Plus"}`);
+    }
+
+    function renderCards(){
+      const c = selectedCycle;
+
+      const plusP = DISPLAY_PRICES.plus[c];
+      const proP  = DISPLAY_PRICES.pro[c];
+
+      const plusMonths = CYCLE_MONTHS[c];
+      const proMonths  = CYCLE_MONTHS[c];
+
+      const plusEff = plusP / plusMonths;
+      const proEff  = proP / proMonths;
+
+      const plusS = calcSavings("plus", c);
+      const proS  = calcSavings("pro", c);
+
+      els.plusPrice.textContent = money(plusP);
+      els.plusPer.textContent = c === "monthly" ? "per month" : (c==="quarterly" ? "per 3 months" : "per year");
+      els.plusSave.textContent = c === "annual" ? `Save ~${plusS.pct.toFixed(0)}%` : (c==="quarterly" ? `Save ~${plusS.pct.toFixed(0)}%` : "Annual saves most");
+
+      els.proPrice.textContent = money(proP);
+      els.proPer.textContent = c === "monthly" ? "per month" : (c==="quarterly" ? "per 3 months" : "per year");
+      els.proSave.textContent = c === "annual" ? `Save ~${proS.pct.toFixed(0)}%` : (c==="quarterly" ? `Save ~${proS.pct.toFixed(0)}%` : "Annual saves most");
+
+      if(c === "annual"){
+        els.valueBadge.textContent = "Best value";
+      } else if(c === "quarterly"){
+        els.valueBadge.textContent = "Balanced";
+      } else {
+        els.valueBadge.textContent = "Try it";
+      }
+
+      const plusHint = `Effective ~${money(plusEff)}/mo`;
+      const proHint  = `Effective ~${money(proEff)}/mo`;
+
+      els.plusSave.textContent += ` · ${plusHint}`;
+      els.proSave.textContent  += ` · ${proHint}`;
+    }
+
+    function renderBasket(){
+      const plan = selectedPlan;
+      const cycle = selectedCycle;
+      const price = DISPLAY_PRICES[plan][cycle];
+
+      els.bPlan.textContent = plan === "pro" ? "Pro" : "Plus";
+      els.bCycle.textContent = CYCLE_LABEL[cycle];
+      els.bPrice.textContent = money(price);
+      els.bTotal.textContent = money(price);
+
+      const s = calcSavings(plan, cycle);
+      els.bSave.textContent = (cycle === "annual") ? s.label : (cycle === "quarterly" ? s.label : "Annual saves most");
+
+      const months = CYCLE_MONTHS[cycle];
+      els.bRenew.textContent = cycle === "annual" ? "Renews yearly" : (cycle==="quarterly" ? "Renews every 3 months" : "Renews monthly");
+
+      if(cycle === "annual"){
+        els.basketHelp.innerHTML = `You chose <strong>annual</strong>. That’s the lowest effective monthly cost.`;
+      } else if(cycle === "quarterly"){
+        els.basketHelp.innerHTML = `Quarterly is a good middle ground. Annual still costs less overall.`;
+      } else {
+        els.basketHelp.innerHTML = `Monthly is flexible. If you’ll use it long-term, annual saves the most.`;
+      }
+    }
+
+    function showErr(msg){
+      els.errBox.style.display = "block";
+      els.errBox.textContent = msg;
+    }
+    function clearErr(){
+      els.errBox.style.display = "none";
+      els.errBox.textContent = "";
+    }
+    function toast(msg){
+      els.toast.textContent = msg;
+      els.toast.style.display = "block";
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(()=>{ els.toast.style.display="none"; }, 1500);
+    }
+
+    async function startCheckout(){
+      clearErr();
+      els.checkoutBtn.disabled = true;
+      els.checkoutBtn.textContent = "Redirecting…";
+
+      const priceId = PRICE_IDS[selectedPlan][selectedCycle];
+
+      try{
+        const res = await fetch("/api/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({
+            priceId,
+            plan: selectedPlan,
+            cycle: selectedCycle
+          })
+        });
+
+        const data = await res.json();
+
+        if(!res.ok){
+          throw new Error(data?.error || "Checkout failed.");
+        }
+
+        if(!data?.url){
+          throw new Error("No checkout URL returned.");
+        }
+
+        window.location.href = data.url;
+      }catch(e){
+        showErr(e.message || "Something went wrong.");
+        els.checkoutBtn.disabled = false;
+        els.checkoutBtn.textContent = "Checkout";
+      }
+    }
+
+    function copySummary(){
+      const plan = selectedPlan === "pro" ? "Pro" : "Plus";
+      const cycle = CYCLE_LABEL[selectedCycle];
+      const price = money(DISPLAY_PRICES[selectedPlan][selectedCycle]);
+      const text = `ReviseFlow ${plan} · ${cycle} · ${price}`;
+      navigator.clipboard.writeText(text).then(()=>toast("Copied!"));
+    }
+
+    function resetAll(){
+      selectedPlan = "pro";
+      selectedCycle = "annual";
+      setCycle("annual");
+      setPlan("pro");
+      els.search.value = "";
+      els.groupFilter.value = "all";
+      renderFeatures();
+      toast("Reset");
+    }
+
+    els.cycleMonthly.addEventListener("click", ()=>setCycle("monthly"));
+    els.cycleQuarterly.addEventListener("click", ()=>setCycle("quarterly"));
+    els.cycleAnnual.addEventListener("click", ()=>setCycle("annual"));
+
+    els.cardPlus.addEventListener("click", ()=>setPlan("plus"));
+    els.cardPro.addEventListener("click", ()=>setPlan("pro"));
+    els.cardPlus.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("plus"); }});
+    els.cardPro.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("pro"); }});
+
+    els.checkoutBtn.addEventListener("click", startCheckout);
+    els.copyBtn.addEventListener("click", copySummary);
+    els.clearSearchBtn.addEventListener("click", ()=>{ els.search.value=""; els.groupFilter.value="all"; renderFeatures(); });
+
+    els.backBtn.addEventListener("click", ()=>{ window.history.length>1 ? window.history.back() : window.location.href="index.html"; });
+    els.refreshBtn.addEventListener("click", resetAll);
+
+    const FEATURES = [
+      {g:"AI & Tutor", f:"Step-by-step GCSE explanations", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Answer rewriter (shorter / clearer)", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Explain like I'm 10 / like an examiner", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Mark my answer (AO1/AO2/AO3 style)", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Weak-topic detection from mistakes", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Revision plan generator (per subject)", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Homework helper mode", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Flashcard generator from notes", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Quiz generator from a topic", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Past-paper question explainer", plus:1, pro:1},
+      {g:"AI & Tutor", f:"Advanced “exam marker” feedback", plus:0, pro:1},
+      {g:"AI & Tutor", f:"Long-form deep explanations mode", plus:0, pro:1},
+      {g:"AI & Tutor", f:"Priority AI queue at peak times", plus:0, pro:1},
+      {g:"AI & Tutor", f:"Unlimited AI (fair-use policy)", plus:0, pro:1},
+      {g:"AI & Tutor", f:"Custom system prompts / study personas", plus:0, pro:1},
+      {g:"AI & Tutor", f:"AI memory for your study profile", plus:0, pro:1},
+      {g:"AI & Tutor", f:"AI-based study timetable optimisation", plus:0, pro:1},
+      {g:"AI & Tutor", f:"AI error-pattern clustering", plus:0, pro:1},
+      {g:"AI & Tutor", f:"AI “teach-back” interactive sessions", plus:0, pro:1},
+      {g:"AI & Tutor", f:"AI voice read-out (optional)", plus:0, pro:1},
+
+      {g:"Flashcards", f:"Unlimited flashcard sets", plus:1, pro:1},
+      {g:"Flashcards", f:"Spaced repetition scheduling", plus:1, pro:1},
+      {g:"Flashcards", f:"Card difficulty rating + auto reviews", plus:1, pro:1},
+      {g:"Flashcards", f:"Import from CSV", plus:1, pro:1},
+      {g:"Flashcards", f:"Export to CSV", plus:1, pro:1},
+      {g:"Flashcards", f:"Images on cards", plus:1, pro:1},
+      {g:"Flashcards", f:"LaTeX / maths rendering", plus:1, pro:1},
+      {g:"Flashcards", f:"Cloze deletion cards", plus:1, pro:1},
+      {g:"Flashcards", f:"Audio pronunciation (optional)", plus:1, pro:1},
+      {g:"Flashcards", f:"Deck tags + smart search", plus:1, pro:1},
+      {g:"Flashcards", f:"Advanced card templates", plus:0, pro:1},
+      {g:"Flashcards", f:"Per-subject preset decks", plus:0, pro:1},
+      {g:"Flashcards", f:"Auto “leech card” detection", plus:0, pro:1},
+      {g:"Flashcards", f:"Time-to-master predictions", plus:0, pro:1},
+      {g:"Flashcards", f:"Adaptive intervals per subject", plus:0, pro:1},
+      {g:"Flashcards", f:"Deck sharing links", plus:0, pro:1},
+      {g:"Flashcards", f:"Classroom sharing controls", plus:0, pro:1},
+      {g:"Flashcards", f:"Daily review goals by weak areas", plus:0, pro:1},
+      {g:"Flashcards", f:"Auto-tagging via AI", plus:0, pro:1},
+      {g:"Flashcards", f:"Bulk edit + bulk move tools", plus:0, pro:1},
+
+      {g:"Quizzes & Tests", f:"Topic quizzes (multiple choice)", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Topic quizzes (short answer)", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Instant marking + explanations", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Timed tests", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Question bank builder", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Difficulty scaling", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Retake missed questions mode", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Confidence rating (sure/unsure)", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Smart mix: easy + hard balancing", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Exam-board style formatting", plus:1, pro:1},
+      {g:"Quizzes & Tests", f:"Examiner markscheme alignment tools", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Pro-only advanced question types", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Auto-generated markschemes", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Grade boundary projection", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Adaptive testing per weakness", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Mock exam builder", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Auto review set after each test", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Skill map by topic", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Detailed answer audit trail", plus:0, pro:1},
+      {g:"Quizzes & Tests", f:"Anti-cheat session settings", plus:0, pro:1},
+
+      {g:"Past Papers", f:"Past paper library links", plus:1, pro:1},
+      {g:"Past Papers", f:"Past paper practice sessions", plus:1, pro:1},
+      {g:"Past Papers", f:"Timer + section splits", plus:1, pro:1},
+      {g:"Past Papers", f:"Auto logging of paper attempts", plus:1, pro:1},
+      {g:"Past Papers", f:"Mistake log per question", plus:1, pro:1},
+      {g:"Past Papers", f:"Markscheme notes tracker", plus:1, pro:1},
+      {g:"Past Papers", f:"Topic extraction per paper", plus:1, pro:1},
+      {g:"Past Papers", f:"Paper score history chart", plus:1, pro:1},
+      {g:"Past Papers", f:"Paper review checklist", plus:1, pro:1},
+      {g:"Past Papers", f:"AI explanation for tricky questions", plus:1, pro:1},
+      {g:"Past Papers", f:"Paper-to-topic weakness map", plus:0, pro:1},
+      {g:"Past Papers", f:"Grade predictor per paper set", plus:0, pro:1},
+      {g:"Past Papers", f:"“Exam conditions” lock mode", plus:0, pro:1},
+      {g:"Past Papers", f:"Paper schedule generator", plus:0, pro:1},
+      {g:"Past Papers", f:"Markscheme alignment scoring", plus:0, pro:1},
+      {g:"Past Papers", f:"AI-written model answers", plus:0, pro:1},
+      {g:"Past Papers", f:"Paper difficulty normalisation", plus:0, pro:1},
+      {g:"Past Papers", f:"Auto revision plan from papers", plus:0, pro:1},
+      {g:"Past Papers", f:"Pro-only paper analytics pack", plus:0, pro:1},
+      {g:"Past Papers", f:"Exportable paper attempt reports", plus:0, pro:1},
+
+      {g:"Tasks & Planner", f:"Unlimited tasks", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Subjects + priorities + due dates", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Recurring tasks", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Smart “do today” queue", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Task templates (homework/revision)", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Calendar-like week view", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Daily goals", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Streak tracking", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Task time estimates", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Completion analytics", plus:1, pro:1},
+      {g:"Tasks & Planner", f:"Auto-planning with AI", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Focus-mode scheduling rules", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Priority auto-rebalancing", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Study load forecasting", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Exam countdown milestones", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Pro-only timetable optimiser", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Smart avoidance of burnout days", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Plan based on weak topics", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Integrations (calendar export)", plus:0, pro:1},
+      {g:"Tasks & Planner", f:"Advanced task dashboards", plus:0, pro:1},
+
+      {g:"Focus & Pomodoro", f:"Pomodoro timer", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Custom focus/break lengths", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Session history", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Distraction log", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Focus music links", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Auto-start next session", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Subject tagging per session", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Session goals", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Daily focus target", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Focus streaks", plus:1, pro:1},
+      {g:"Focus & Pomodoro", f:"Pro-only deep focus mode", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Auto break suggestions", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Focus to weak-topics routing", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Study fatigue detection", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Pro-only session insights", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Pomodoro presets per subject", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Advanced notifications settings", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Focus mode across devices", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Pro-only automation rules", plus:0, pro:1},
+      {g:"Focus & Pomodoro", f:"Export focus logs", plus:0, pro:1},
+
+      {g:"Analytics", f:"Progress dashboard", plus:1, pro:1},
+      {g:"Analytics", f:"Flashcard mastery charts", plus:1, pro:1},
+      {g:"Analytics", f:"Quiz performance charts", plus:1, pro:1},
+      {g:"Analytics", f:"Task completion charts", plus:1, pro:1},
+      {g:"Analytics", f:"Paper attempt history", plus:1, pro:1},
+      {g:"Analytics", f:"Time spent per subject", plus:1, pro:1},
+      {g:"Analytics", f:"Week-by-week trends", plus:1, pro:1},
+      {g:"Analytics", f:"Mistake log insights", plus:1, pro:1},
+      {g:"Analytics", f:"Streak analytics", plus:1, pro:1},
+      {g:"Analytics", f:"Goal tracking", plus:1, pro:1},
+      {g:"Analytics", f:"Weak-topic heatmap", plus:0, pro:1},
+      {g:"Analytics", f:"Grade projection", plus:0, pro:1},
+      {g:"Analytics", f:"Topic-to-mark correlation", plus:0, pro:1},
+      {g:"Analytics", f:"Exam readiness score", plus:0, pro:1},
+      {g:"Analytics", f:"Pro-only advanced dashboards", plus:0, pro:1},
+      {g:"Analytics", f:"Smart recommendations engine", plus:0, pro:1},
+      {g:"Analytics", f:"Auto-generated weekly report", plus:0, pro:1},
+      {g:"Analytics", f:"Benchmark vs your past weeks", plus:0, pro:1},
+      {g:"Analytics", f:"Export analytics report PDF", plus:0, pro:1},
+      {g:"Analytics", f:"Data drill-down per topic", plus:0, pro:1},
+
+      {g:"Account & Support", f:"Email login / magic link", plus:1, pro:1},
+      {g:"Account & Support", f:"Sync across devices", plus:1, pro:1},
+      {g:"Account & Support", f:"Backup + restore", plus:1, pro:1},
+      {g:"Account & Support", f:"Help centre access", plus:1, pro:1},
+      {g:"Account & Support", f:"Standard support", plus:1, pro:1},
+      {g:"Account & Support", f:"Priority support (fast replies)", plus:0, pro:1},
+      {g:"Account & Support", f:"Early access to new features", plus:0, pro:1},
+      {g:"Account & Support", f:"Pro-only feature voting power", plus:0, pro:1},
+      {g:"Account & Support", f:"Dedicated troubleshooting channel", plus:0, pro:1},
+      {g:"Account & Support", f:"Pro-only onboarding checklist", plus:0, pro:1},
+
+      {g:"Integrations", f:"Export to CSV", plus:1, pro:1},
+      {g:"Integrations", f:"Import from CSV", plus:1, pro:1},
+      {g:"Integrations", f:"Share links (basic)", plus:1, pro:1},
+      {g:"Integrations", f:"Calendar export (ICS)", plus:0, pro:1},
+      {g:"Integrations", f:"Google Calendar sync", plus:0, pro:1},
+      {g:"Integrations", f:"Notion export", plus:0, pro:1},
+      {g:"Integrations", f:"Drive backups", plus:0, pro:1},
+      {g:"Integrations", f:"Webhook automation (advanced)", plus:0, pro:1},
+      {g:"Integrations", f:"API access (optional)", plus:0, pro:1},
+      {g:"Integrations", f:"Pro-only integrations bundle", plus:0, pro:1},
+
+      {g:"Security & Privacy", f:"Encrypted connections (HTTPS)", plus:1, pro:1},
+      {g:"Security & Privacy", f:"Data export on request", plus:1, pro:1},
+      {g:"Security & Privacy", f:"Privacy-first defaults", plus:1, pro:1},
+      {g:"Security & Privacy", f:"Role-based plan gating", plus:1, pro:1},
+      {g:"Security & Privacy", f:"Advanced audit logs", plus:0, pro:1},
+      {g:"Security & Privacy", f:"Pro-only account controls", plus:0, pro:1},
+
+      {g:"Customization", f:"Themes + fonts", plus:1, pro:1},
+      {g:"Customization", f:"Dashboard widgets", plus:1, pro:1},
+      {g:"Customization", f:"Study templates", plus:1, pro:1},
+      {g:"Customization", f:"Custom goal presets", plus:1, pro:1},
+      {g:"Customization", f:"Advanced custom templates", plus:0, pro:1},
+      {g:"Customization", f:"Pro-only power settings pack", plus:0, pro:1},
+
+      {g:"Bonus", f:"Annual members get the lowest effective monthly cost", plus:1, pro:1},
+      {g:"Bonus", f:"Annual is the best value option shown on this page", plus:1, pro:1}
+    ];
+
+    function buildGroupFilter(){
+      const groups = Array.from(new Set(FEATURES.map(x=>x.g)));
+      groups.sort((a,b)=>a.localeCompare(b));
+      for(const g of groups){
+        const opt = document.createElement("option");
+        opt.value = g;
+        opt.textContent = g;
+        els.groupFilter.appendChild(opt);
+      }
+    }
+
+    function iconCell(ok){
+      if(ok) return `<span class="yes">✓</span>`;
+      return `<span class="no">—</span>`;
+    }
+
+    function renderFeatures(){
+      const q = (els.search.value || "").trim().toLowerCase();
+      const gf = els.groupFilter.value;
+
+      let rows = FEATURES;
+
+      if(gf !== "all"){
+        rows = rows.filter(x => x.g === gf);
+      }
+      if(q){
+        rows = rows.filter(x => (x.f || "").toLowerCase().includes(q));
+      }
+
+      let html = "";
+      let lastGroup = null;
+
+      for(const r of rows){
+        if(r.g !== lastGroup){
+          html += `<tr class="groupRow"><td colspan="3">${escapeHtml(r.g)}</td></tr>`;
+          lastGroup = r.g;
+        }
+        html += `
+          <tr>
+            <td>${escapeHtml(r.f)}</td>
+            <td class="${r.plus ? "yes":"no"}">${r.plus ? "✓":"—"}</td>
+            <td class="${r.pro ? "yes":"no"}">${r.pro ? "✓":"—"}</td>
+          </tr>
+        `;
+      }
+
+      els.featureBody.innerHTML = html || `<tr><td colspan="3" style="padding:16px;color:rgba(255,255,255,.6)">No matches.</td></tr>`;
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    els.search.addEventListener("input", renderFeatures);
+    els.groupFilter.addEventListener("change", renderFeatures);
+
+    function initFromQuery(){
+      const p = new URLSearchParams(location.search);
+      if(p.get("canceled")){
+        showErr("Checkout canceled — your card wasn’t charged.");
+      }
+    }
+
+    buildGroupFilter();
+    initFromQuery();
+    setCycle("annual");
+    setPlan("pro");
+    renderCards();
+    renderBasket();
+    renderFeatures();
+  </script>
+</body>
+</html>
