@@ -31,6 +31,7 @@
 
     *{ box-sizing:border-box; }
     html,body{ height:100%; }
+
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
@@ -44,7 +45,19 @@
     }
 
     a{ color:inherit; text-decoration:none; }
-    .wrap{ width:min(1200px, 92vw); margin:0 auto; padding:28px 0 60px; }
+
+    .wrap{
+      width:min(1200px, 92vw);
+      margin:0 auto;
+      padding:28px 0 60px;
+    }
+
+
+
+
+
+
+
 
     .topbar{
       display:flex;
@@ -53,25 +66,37 @@
       gap:14px;
       padding:10px 0 18px;
     }
+
     .brand{
-      display:flex; align-items:center; gap:10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
       font-weight:800;
       letter-spacing:.2px;
       font-size:16px;
     }
+
     .logo{
-      width:34px; height:34px; border-radius:10px;
+      width:34px;
+      height:34px;
+      border-radius:10px;
       background:
         radial-gradient(circle at 30% 30%, rgba(255,255,255,.18), transparent 60%),
         linear-gradient(135deg, rgba(124,92,255,1), rgba(74,215,255,1));
       box-shadow: 0 10px 30px rgba(124,92,255,.25);
     }
+
     .topActions{
-      display:flex; gap:10px; flex-wrap:wrap;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
       justify-content:flex-end;
     }
+
     .pill{
-      display:inline-flex; align-items:center; gap:8px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
       padding:9px 12px;
       border:1px solid var(--stroke2);
       background:rgba(255,255,255,.04);
@@ -80,7 +105,12 @@
       font-size:13px;
       user-select:none;
     }
-    .pill strong{ color:var(--text); font-weight:800; }
+
+    .pill strong{
+      color:var(--text);
+      font-weight:800;
+    }
+
     .btn{
       appearance:none;
       border:1px solid var(--stroke);
@@ -91,18 +121,43 @@
       cursor:pointer;
       font-weight:700;
       font-size:14px;
-      transition: transform .08s ease, background .12s ease, border-color .12s ease;
+      transition: transform .08s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
     }
-    .btn:hover{ background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.16); }
+
+    .btn:hover{
+      background:rgba(255,255,255,.08);
+      border-color:rgba(255,255,255,.16);
+    }
+
     .btn:active{ transform: translateY(1px); }
+
     .btn.primary{
       border-color:rgba(124,92,255,.5);
       background: linear-gradient(135deg, rgba(124,92,255,.95), rgba(74,215,255,.85));
       box-shadow: 0 18px 60px rgba(124,92,255,.25);
     }
+
     .btn.primary:hover{ filter:brightness(1.03); }
+
     .btn.ghost{ background:transparent; }
-    .btn.small{ padding:8px 10px; border-radius:10px; font-size:13px; }
+
+    .btn.small{
+      padding:8px 10px;
+      border-radius:10px;
+      font-size:13px;
+    }
+
+    .btn:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
+
+
+
+
+
+
+
 
     .hero{
       display:grid;
@@ -111,9 +166,11 @@
       align-items:stretch;
       margin-top:4px;
     }
+
     @media (max-width: 980px){
       .hero{ grid-template-columns: 1fr; }
     }
+
     .heroCard{
       border:1px solid var(--stroke2);
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
@@ -123,33 +180,44 @@
       position:relative;
       overflow:hidden;
     }
+
     .heroCard:before{
       content:"";
-      position:absolute; inset:-2px;
+      position:absolute;
+      inset:-2px;
       background:
         radial-gradient(800px 350px at 10% 0%, rgba(124,92,255,.22), transparent 60%),
         radial-gradient(800px 350px at 90% 30%, rgba(74,215,255,.16), transparent 60%);
       pointer-events:none;
     }
+
     .heroInner{ position:relative; z-index:1; }
+
     .hero h1{
       margin:0 0 10px;
       font-size: clamp(26px, 3.1vw, 42px);
       line-height:1.1;
       letter-spacing:-.4px;
     }
+
     .sub{
       margin:0 0 16px;
       color:var(--muted);
       font-size:15px;
       max-width: 72ch;
     }
+
     .callouts{
-      display:flex; flex-wrap:wrap; gap:10px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
       margin-top:10px;
     }
+
     .tag{
-      display:inline-flex; align-items:center; gap:8px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
       padding:10px 12px;
       border:1px solid var(--stroke2);
       border-radius:999px;
@@ -157,8 +225,11 @@
       font-size:13px;
       color:var(--muted);
     }
+
     .dot{
-      width:9px; height:9px; border-radius:999px;
+      width:9px;
+      height:9px;
+      border-radius:999px;
       background:var(--good);
       box-shadow: 0 0 0 4px rgba(93,255,177,.12);
     }
@@ -176,14 +247,25 @@
       flex-direction:column;
       gap:12px;
     }
+
     .cycleTitle{
       display:flex;
       align-items:flex-start;
       justify-content:space-between;
       gap:12px;
     }
-    .cycleTitle h3{ margin:0; font-size:15px; letter-spacing:.1px; }
-    .cycleTitle p{ margin:4px 0 0; font-size:13px; color:var(--muted); }
+
+    .cycleTitle h3{
+      margin:0;
+      font-size:15px;
+      letter-spacing:.1px;
+    }
+
+    .cycleTitle p{
+      margin:4px 0 0;
+      font-size:13px;
+      color:var(--muted);
+    }
 
     .seg{
       display:flex;
@@ -193,6 +275,7 @@
       padding:4px;
       gap:4px;
     }
+
     .seg button{
       flex:1;
       border:0;
@@ -207,11 +290,13 @@
       text-align:center;
       line-height:1.1;
     }
+
     .seg button.active{
       background: rgba(255,255,255,.08);
       color:var(--text);
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
+
     .seg button .mini{
       display:block;
       font-size:11px;
@@ -220,6 +305,13 @@
       margin-top:3px;
     }
 
+
+
+
+
+
+
+
     .grid{
       display:grid;
       grid-template-columns: 1fr .62fr;
@@ -227,6 +319,7 @@
       margin-top:16px;
       align-items:start;
     }
+
     @media (max-width: 980px){
       .grid{ grid-template-columns: 1fr; }
     }
@@ -238,6 +331,7 @@
       padding: 16px;
       box-shadow: var(--shadow);
     }
+
     .plansHeader{
       display:flex;
       justify-content:space-between;
@@ -246,14 +340,21 @@
       flex-wrap:wrap;
       margin-bottom:14px;
     }
+
     .plansHeader h2{ margin:0; font-size:16px; }
-    .plansHeader .hint{ margin:0; color:var(--muted); font-size:13px; }
+
+    .plansHeader .hint{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+    }
 
     .planRow{
       display:grid;
       grid-template-columns: 1fr 1fr;
       gap:14px;
     }
+
     @media (max-width: 740px){
       .planRow{ grid-template-columns: 1fr; }
     }
@@ -269,44 +370,65 @@
       transition: transform .12s ease, border-color .12s ease, background .12s ease;
       min-height: 260px;
     }
+
     .planCard:hover{
       transform: translateY(-2px);
       border-color: rgba(255,255,255,.18);
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.035));
     }
+
     .planCard.selected{
       border-color: rgba(124,92,255,.5);
       box-shadow: 0 20px 70px rgba(124,92,255,.16);
     }
-    .ribbon{
-      position:absolute; top:14px; right:-48px;
-      width:180px;
-      transform: rotate(35deg);
-      text-align:center;
-      font-weight:900;
-      font-size:11px;
-      letter-spacing:.6px;
-      padding:8px 0;
-      background: linear-gradient(135deg, rgba(255,209,102,.9), rgba(124,92,255,.85));
-      color:#0b1020;
-      border-radius: 12px;
-      opacity:.95;
-    }
+
     .planTop{
       display:flex;
       justify-content:space-between;
       align-items:flex-start;
       gap:10px;
     }
+
     .planName{
-      display:flex; flex-direction:column;
+      display:flex;
+      flex-direction:column;
       gap:2px;
     }
+
     .planName h3{
       margin:0;
       font-size:18px;
       letter-spacing:.1px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
     }
+
+    .planBadge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(124,92,255,.30);
+      background: rgba(124,92,255,.10);
+      color: rgba(255,255,255,.88);
+      font-size:11px;
+      font-weight:950;
+      letter-spacing:.4px;
+      white-space:nowrap;
+    }
+
+    .planBadge i{
+      width:7px;
+      height:7px;
+      border-radius:999px;
+      background: rgba(74,215,255,.95);
+      box-shadow: 0 0 0 4px rgba(74,215,255,.12);
+      display:inline-block;
+    }
+
     .planName .desc{
       margin:0;
       font-size:13px;
@@ -320,6 +442,7 @@
       align-items:flex-end;
       gap:4px;
     }
+
     .price{
       font-size:26px;
       font-weight:950;
@@ -327,12 +450,14 @@
       margin:0;
       line-height:1;
     }
+
     .per{
       margin:0;
       color:var(--muted);
       font-size:12px;
       font-weight:800;
     }
+
     .save{
       margin:0;
       color:var(--warn);
@@ -350,18 +475,27 @@
       color:var(--muted);
       font-size:13px;
     }
+
     .miniList li{
-      display:flex; gap:10px; align-items:flex-start;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
       line-height:1.25;
     }
+
     .tick{
-      width:18px; height:18px; border-radius:8px;
-      display:inline-flex; align-items:center; justify-content:center;
+      width:18px;
+      height:18px;
+      border-radius:8px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
       background: rgba(93,255,177,.12);
       border:1px solid rgba(93,255,177,.22);
       flex:0 0 18px;
       margin-top:1px;
     }
+
     .tick:before{
       content:"✓";
       color:var(--good);
@@ -370,6 +504,13 @@
       position:relative;
       top:-.5px;
     }
+
+
+
+
+
+
+
 
     .basket{
       position:sticky;
@@ -381,11 +522,20 @@
       box-shadow: var(--shadow);
       overflow:hidden;
     }
+
     .basketHeader{
-      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
       margin-bottom:12px;
     }
-    .basketHeader h2{ margin:0; font-size:15px; }
+
+    .basketHeader h2{
+      margin:0;
+      font-size:15px;
+    }
+
     .badge{
       font-size:11px;
       font-weight:950;
@@ -394,37 +544,55 @@
       border-radius:999px;
       background: linear-gradient(135deg, rgba(255,209,102,.92), rgba(74,215,255,.80));
     }
+
     .basketLine{
-      display:flex; justify-content:space-between; gap:10px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
       padding:10px 0;
       border-top:1px solid rgba(255,255,255,.07);
       font-size:13px;
       color:var(--muted);
     }
+
     .basketLine:first-of-type{ border-top:0; }
+
     .basketLine strong{ color:var(--text); }
+
     .basketTotal{
-      display:flex; justify-content:space-between; gap:10px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
       padding:12px 0 6px;
       border-top:1px solid rgba(255,255,255,.10);
       font-size:14px;
     }
+
     .basketTotal .big{
       font-size:20px;
       font-weight:1000;
       letter-spacing:-.3px;
     }
+
     .basketHelp{
       margin:8px 0 0;
       font-size:12px;
       color:var(--muted2);
       line-height:1.35;
     }
+
     .basketBtns{
-      display:flex; gap:10px; flex-wrap:wrap;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
       margin-top:14px;
     }
-    .basketBtns .btn{ flex:1; min-width:140px; }
+
+    .basketBtns .btn{
+      flex:1;
+      min-width:140px;
+    }
+
     .err{
       margin-top:10px;
       padding:10px 12px;
@@ -434,7 +602,68 @@
       color: rgba(255,255,255,.88);
       font-size:13px;
       display:none;
+      line-height:1.35;
     }
+
+    .ok{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(93,255,177,.24);
+      background: rgba(93,255,177,.08);
+      color: rgba(255,255,255,.88);
+      font-size:13px;
+      display:none;
+      line-height:1.35;
+    }
+
+    .consentBox{
+      margin-top:12px;
+      border-top:1px solid rgba(255,255,255,.10);
+      padding-top:12px;
+    }
+
+    .checkRow{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding:10px 10px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+    }
+
+    .checkRow input{
+      width:18px;
+      height:18px;
+      margin-top:2px;
+      accent-color: var(--accent);
+      cursor:pointer;
+      flex:0 0 auto;
+    }
+
+    .checkRow label{
+      cursor:pointer;
+      color: rgba(255,255,255,.86);
+      font-size:12.8px;
+      line-height:1.35;
+      font-weight:800;
+    }
+
+    .checkRow label span{
+      display:block;
+      margin-top:4px;
+      color: var(--muted2);
+      font-weight:800;
+      font-size:12px;
+    }
+
+
+
+
+
+
+
 
     .section{
       margin-top:16px;
@@ -444,11 +673,13 @@
       padding: 16px;
       box-shadow: var(--shadow);
     }
+
     .section h2{
       margin:0 0 10px;
       font-size:16px;
       letter-spacing:.1px;
     }
+
     .section .lead{
       margin:0 0 12px;
       color:var(--muted);
@@ -457,10 +688,13 @@
     }
 
     .tools{
-      display:flex; gap:10px; flex-wrap:wrap;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
       align-items:center;
       margin: 10px 0 14px;
     }
+
     .input{
       flex:1;
       min-width:240px;
@@ -472,6 +706,7 @@
       font-weight:700;
       outline:none;
     }
+
     .select{
       padding:10px 12px;
       border-radius: 12px;
@@ -489,11 +724,13 @@
       overflow:hidden;
       background: rgba(0,0,0,.16);
     }
+
     table{
       width:100%;
       border-collapse:collapse;
       font-size:13px;
     }
+
     thead th{
       position:sticky;
       top:0;
@@ -504,32 +741,42 @@
       text-align:left;
       z-index:2;
     }
+
     thead th:nth-child(2),
     thead th:nth-child(3){
       text-align:center;
-      width:140px;
+      width:160px;
     }
+
     tbody td{
       border-bottom:1px solid rgba(255,255,255,.06);
       padding:10px 12px;
       vertical-align:top;
       color:var(--muted);
     }
-    tbody td:first-child{ color:var(--text); }
+
+    tbody td:first-child{
+      color:var(--text);
+      font-weight:900;
+    }
+
     tbody td:nth-child(2),
     tbody td:nth-child(3){
       text-align:center;
       color:var(--muted);
       font-weight:900;
     }
+
     .groupRow td{
       background: rgba(255,255,255,.04);
       color: var(--text);
       font-weight:1000;
       letter-spacing:.2px;
     }
+
     .yes{ color: var(--good) !important; }
     .no{ color: rgba(255,255,255,.25) !important; }
+
     .tiny{
       display:block;
       font-size:11px;
@@ -539,26 +786,52 @@
       line-height:1.25;
     }
 
+    .cellWrap{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:3px;
+      padding:2px 0;
+    }
+
+    .cellWrap .mark{
+      font-weight:1000;
+      font-size:14px;
+      line-height:1;
+    }
+
+
+
+
+
+
+
+
     .faq{
       display:grid;
       grid-template-columns: 1fr 1fr;
       gap:12px;
     }
+
     @media (max-width: 980px){
       .faq{ grid-template-columns: 1fr; }
     }
+
     details{
       border:1px solid rgba(255,255,255,.10);
       border-radius: 16px;
       background: rgba(0,0,0,.16);
       padding: 12px 12px;
     }
+
     summary{
       cursor:pointer;
       font-weight:950;
       color:var(--text);
       outline:none;
     }
+
     details p{
       margin:10px 0 0;
       color:var(--muted);
@@ -591,6 +864,26 @@
       max-width:min(780px, 92vw);
       text-align:center;
     }
+
+
+
+
+
+
+
+
+    .srOnly{
+      position:absolute;
+      width:1px;
+      height:1px;
+      padding:0;
+      margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+
   </style>
 </head>
 
@@ -608,6 +901,13 @@
         <button class="btn" id="refreshBtn">Reset</button>
       </div>
     </div>
+
+
+
+
+
+
+
 
     <div class="hero">
       <div class="heroCard">
@@ -647,6 +947,13 @@
       </div>
     </div>
 
+
+
+
+
+
+
+
     <div class="grid">
       <div class="plans">
         <div class="plansHeader">
@@ -654,6 +961,7 @@
             <h2>Choose your plan</h2>
             <p class="hint">Click a card to add it to your basket.</p>
           </div>
+
           <div class="pill"><strong id="pickedSummary">Annual · Pro</strong></div>
         </div>
 
@@ -664,6 +972,7 @@
                 <h3>Plus</h3>
                 <p class="desc">Better study tools + more AI help.</p>
               </div>
+
               <div class="priceBox">
                 <p class="price" id="plusPrice">£—</p>
                 <p class="per" id="plusPer">per —</p>
@@ -672,21 +981,21 @@
             </div>
 
             <ul class="miniList" id="plusMini">
-              <li><span class="tick"></span><span>More AI help for homework + revision</span></li>
-              <li><span class="tick"></span><span>Advanced flashcards + spaced repetition</span></li>
-              <li><span class="tick"></span><span>Quiz modes + smarter marking</span></li>
+              <li><span class="tick"></span><span>Step-by-step GCSE explanations + rewrite mode</span></li>
+              <li><span class="tick"></span><span>Flashcards with spaced repetition</span></li>
+              <li><span class="tick"></span><span>Quiz generator + instant marking</span></li>
               <li><span class="tick"></span><span>Study analytics + streak tracking</span></li>
-              <li><span class="tick"></span><span>Export tools + templates</span></li>
+              <li><span class="tick"></span><span>Upload analysis: <strong>1 image/PDF per day</strong></span></li>
             </ul>
           </div>
 
           <div class="planCard selected" id="cardPro" role="button" tabindex="0" aria-label="Select Pro">
-            <div class="ribbon">RECOMMENDED</div>
             <div class="planTop">
               <div class="planName">
-                <h3>Pro</h3>
+                <h3>Pro <span class="planBadge"><i aria-hidden="true"></i>More power</span></h3>
                 <p class="desc">Everything in Plus, and the “serious” tools.</p>
               </div>
+
               <div class="priceBox">
                 <p class="price" id="proPrice">£—</p>
                 <p class="per" id="proPer">per —</p>
@@ -695,14 +1004,21 @@
             </div>
 
             <ul class="miniList" id="proMini">
-              <li><span class="tick"></span><span>Highest AI limits + advanced modes</span></li>
-              <li><span class="tick"></span><span>Full analytics + personalised weak-topic map</span></li>
-              <li><span class="tick"></span><span>Premium packs + exam-style feedback</span></li>
+              <li><span class="tick"></span><span>Higher AI limits + advanced modes</span></li>
+              <li><span class="tick"></span><span>Examiner-style feedback + weak-topic map</span></li>
+              <li><span class="tick"></span><span>Premium packs + model answers</span></li>
               <li><span class="tick"></span><span>Priority support + early features</span></li>
-              <li><span class="tick"></span><span>Power-user tools + integrations</span></li>
+              <li><span class="tick"></span><span>Upload analysis: <strong>up to 4 images/PDFs per day</strong></span></li>
             </ul>
           </div>
         </div>
+
+
+
+
+
+
+
 
         <div class="section" style="margin-top:14px;">
           <h2>Compare everything</h2>
@@ -711,7 +1027,7 @@
           </p>
 
           <div class="tools">
-            <input class="input" id="search" placeholder="Search features… (e.g. flashcards, analytics, AI, pomodoro)" />
+            <input class="input" id="search" placeholder="Search features… (e.g. uploads, flashcards, marking, analytics)" />
             <select class="select" id="groupFilter">
               <option value="all">All categories</option>
             </select>
@@ -732,9 +1048,16 @@
           </div>
 
           <div class="fineprint">
-            Prices and savings are shown transparently. The “Annual” option is highlighted because it is the lowest effective cost.
+            Pricing and savings are shown transparently. Annual is highlighted because it’s the lowest effective monthly cost.
           </div>
         </div>
+
+
+
+
+
+
+
 
         <div class="section">
           <h2>FAQ</h2>
@@ -745,25 +1068,35 @@
               <summary>Can I cancel anytime?</summary>
               <p>Yes. You can cancel your subscription in Stripe’s customer portal (recommended) or by contacting support.</p>
             </details>
+
             <details>
               <summary>Do I get access immediately?</summary>
-              <p>Stripe sends you back after payment. Your app should confirm the subscription via webhook and unlock features.</p>
+              <p>Yes. After payment, your subscription is confirmed by webhook and your plan is unlocked automatically.</p>
             </details>
+
             <details>
-              <summary>Why does Annual look “best”?</summary>
-              <p>Because it is genuinely cheaper over a year than paying monthly or quarterly. The page shows the real savings.</p>
+              <summary>What are the upload limits?</summary>
+              <p>Plus: up to 1 image/PDF per day. Pro: up to 4 images/PDFs per day. Limits reset daily.</p>
             </details>
+
             <details>
               <summary>How does the app know what plan I bought?</summary>
-              <p>You’ll add a Stripe webhook that updates the user’s plan in Supabase. (I’ll tell you what to add below.)</p>
+              <p>Stripe webhooks update your plan in Supabase. The app reads your plan server-side, not from the success redirect.</p>
             </details>
           </div>
 
           <div class="fineprint">
-            Tip: If you want the cleanest flow, add a “Manage billing” button later using Stripe Billing Portal.
+            Tip: Add a “Manage billing” button later via Stripe Billing Portal.
           </div>
         </div>
       </div>
+
+
+
+
+
+
+
 
       <aside class="basket" aria-label="Basket">
         <div class="basketHeader">
@@ -775,14 +1108,17 @@
           <div>Plan</div>
           <div><strong id="bPlan">Pro</strong></div>
         </div>
+
         <div class="basketLine">
           <div>Billing</div>
           <div><strong id="bCycle">Annual</strong></div>
         </div>
+
         <div class="basketLine">
           <div>Price</div>
           <div><strong id="bPrice">£—</strong></div>
         </div>
+
         <div class="basketLine">
           <div>Savings</div>
           <div><strong id="bSave">—</strong></div>
@@ -793,6 +1129,7 @@
             <div style="font-weight:950;">Total today</div>
             <span class="tiny" id="bRenew">Renews in —</span>
           </div>
+
           <div class="big" id="bTotal">£—</div>
         </div>
 
@@ -800,21 +1137,58 @@
           Annual is selected by default because it’s the lowest cost per month.
         </div>
 
+
+
+
+
+
+
+
+        <div class="consentBox" aria-label="Purchase consent">
+          <div class="checkRow">
+            <input type="checkbox" id="consentNow" />
+            <label for="consentNow">
+              I agree to immediate access after payment and I accept the Terms.
+              <span>
+                This is a digital service. Access starts straight away after checkout.
+              </span>
+            </label>
+          </div>
+          <div class="fineprint" style="margin-top:10px;">
+            You’ll be redirected to Stripe Checkout. The selected plan will appear in the Stripe order summary.
+          </div>
+        </div>
+
+
+
+
+
+
+
+
         <div class="basketBtns">
-          <button class="btn primary" id="checkoutBtn">Checkout</button>
+          <button class="btn primary" id="checkoutBtn" disabled>Checkout</button>
           <button class="btn" id="copyBtn">Copy summary</button>
         </div>
 
         <div class="err" id="errBox"></div>
+        <div class="ok" id="okBox"></div>
 
-        <div class="fineprint">
-          You’ll be redirected to Stripe Checkout. The selected plan will appear in the Stripe order summary.
+        <div class="fineprint" style="margin-top:12px;">
+          If checkout doesn’t open, disable ad-blockers for this site and try again.
         </div>
       </aside>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
+
+
+
+
+
+
+
 
   <script>
     const PRICE_IDS = {
@@ -874,7 +1248,10 @@
       checkoutBtn: $("checkoutBtn"),
       copyBtn: $("copyBtn"),
       errBox: $("errBox"),
+      okBox: $("okBox"),
       toast: $("toast"),
+
+      consentNow: $("consentNow"),
 
       search: $("search"),
       groupFilter: $("groupFilter"),
@@ -885,9 +1262,64 @@
       refreshBtn: $("refreshBtn")
     };
 
+
+
+
+
+
+
+
     function money(n){
       return "£" + Number(n).toFixed(2);
     }
+
+    function clamp(n, a, b){
+      return Math.max(a, Math.min(b, n));
+    }
+
+    function showErr(msg){
+      els.okBox.style.display = "none";
+      els.okBox.textContent = "";
+      els.errBox.style.display = "block";
+      els.errBox.textContent = msg;
+    }
+
+    function showOk(msg){
+      els.errBox.style.display = "none";
+      els.errBox.textContent = "";
+      els.okBox.style.display = "block";
+      els.okBox.textContent = msg;
+    }
+
+    function clearMsgs(){
+      els.errBox.style.display = "none";
+      els.errBox.textContent = "";
+      els.okBox.style.display = "none";
+      els.okBox.textContent = "";
+    }
+
+    function toast(msg){
+      els.toast.textContent = msg;
+      els.toast.style.display = "block";
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(()=>{ els.toast.style.display="none"; }, 1500);
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+
+
+
+
+
+
 
     function calcSavings(plan, cycle){
       const m = DISPLAY_PRICES[plan].monthly;
@@ -901,22 +1333,31 @@
         const saveVsMonthly = yearlyMonthly - a;
         const saveVsQuarterly = yearlyQuarterly - a;
         const pct = (saveVsMonthly / yearlyMonthly) * 100;
-        return { label: `${money(saveVsMonthly)} saved vs monthly`, extra: `${money(saveVsQuarterly)} saved vs quarterly`, pct };
+        return {
+          label: `${money(saveVsMonthly)} saved vs monthly`,
+          extra: `${money(saveVsQuarterly)} saved vs quarterly`,
+          pct
+        };
       }
 
       if(cycle === "quarterly"){
         const saveVsMonthly = yearlyMonthly - yearlyQuarterly;
         const pct = (saveVsMonthly / yearlyMonthly) * 100;
-        return { label: `${money(saveVsMonthly)} saved vs monthly (per year)`, extra: `Annual saves more`, pct };
+        return {
+          label: `${money(saveVsMonthly)} saved vs monthly (per year)`,
+          extra: `Annual saves more`,
+          pct
+        };
       }
 
-      return { label: `Annual saves the most`, extra: `Upgrade to annual anytime`, pct: 0 };
+      return {
+        label: `Annual saves the most`,
+        extra: `Upgrade to annual anytime`,
+        pct: 0
+      };
     }
 
     function cycleExplainText(){
-      const sPlus = calcSavings("plus", selectedCycle);
-      const sPro  = calcSavings("pro", selectedCycle);
-
       if(selectedCycle === "annual"){
         return `
           <strong>Annual is best value:</strong><br>
@@ -924,38 +1365,62 @@
           Pro saves <strong>${money((DISPLAY_PRICES.pro.monthly*12) - DISPLAY_PRICES.pro.annual)}</strong> per year vs monthly.
         `;
       }
+
       if(selectedCycle === "quarterly"){
         return `
           Quarterly is a mid option.<br>
           You still save vs monthly, but annual is the biggest discount.
         `;
       }
+
       return `
         Monthly is best for trying it out.<br>
         If you already know you’ll use it, annual is cheaper overall.
       `;
     }
 
+
+
+
+
+
+
+
     function setCycle(cycle){
       selectedCycle = cycle;
+
       els.cycleMonthly.classList.toggle("active", cycle==="monthly");
       els.cycleQuarterly.classList.toggle("active", cycle==="quarterly");
       els.cycleAnnual.classList.toggle("active", cycle==="annual");
+
       els.cycleExplain.innerHTML = cycleExplainText();
+
       renderCards();
       renderBasket();
       renderFeatures();
+
       toast(`Billing cycle: ${CYCLE_LABEL[cycle]}`);
     }
 
     function setPlan(plan){
       selectedPlan = plan;
+
       els.cardPlus.classList.toggle("selected", plan==="plus");
       els.cardPro.classList.toggle("selected", plan==="pro");
+
       els.pickedSummary.textContent = `${CYCLE_LABEL[selectedCycle]} · ${plan==="pro"?"Pro":"Plus"}`;
+
       renderBasket();
+
       toast(`Selected: ${plan==="pro"?"Pro":"Plus"}`);
     }
+
+
+
+
+
+
+
 
     function renderCards(){
       const c = selectedCycle;
@@ -980,6 +1445,12 @@
       els.proPer.textContent = c === "monthly" ? "per month" : (c==="quarterly" ? "per 3 months" : "per year");
       els.proSave.textContent = c === "annual" ? `Save ~${proS.pct.toFixed(0)}%` : (c==="quarterly" ? `Save ~${proS.pct.toFixed(0)}%` : "Annual saves most");
 
+      const plusHint = `Effective ~${money(plusEff)}/mo`;
+      const proHint  = `Effective ~${money(proEff)}/mo`;
+
+      els.plusSave.textContent += ` · ${plusHint}`;
+      els.proSave.textContent  += ` · ${proHint}`;
+
       if(c === "annual"){
         els.valueBadge.textContent = "Best value";
       } else if(c === "quarterly"){
@@ -987,13 +1458,14 @@
       } else {
         els.valueBadge.textContent = "Try it";
       }
-
-      const plusHint = `Effective ~${money(plusEff)}/mo`;
-      const proHint  = `Effective ~${money(proEff)}/mo`;
-
-      els.plusSave.textContent += ` · ${plusHint}`;
-      els.proSave.textContent  += ` · ${proHint}`;
     }
+
+
+
+
+
+
+
 
     function renderBasket(){
       const plan = selectedPlan;
@@ -1008,7 +1480,6 @@
       const s = calcSavings(plan, cycle);
       els.bSave.textContent = (cycle === "annual") ? s.label : (cycle === "quarterly" ? s.label : "Annual saves most");
 
-      const months = CYCLE_MONTHS[cycle];
       els.bRenew.textContent = cycle === "annual" ? "Renews yearly" : (cycle==="quarterly" ? "Renews every 3 months" : "Renews monthly");
 
       if(cycle === "annual"){
@@ -1020,279 +1491,44 @@
       }
     }
 
-    function showErr(msg){
-      els.errBox.style.display = "block";
-      els.errBox.textContent = msg;
-    }
-    function clearErr(){
-      els.errBox.style.display = "none";
-      els.errBox.textContent = "";
-    }
-    function toast(msg){
-      els.toast.textContent = msg;
-      els.toast.style.display = "block";
-      clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(()=>{ els.toast.style.display="none"; }, 1500);
-    }
 
-    async function startCheckout(){
-      clearErr();
-      els.checkoutBtn.disabled = true;
-      els.checkoutBtn.textContent = "Redirecting…";
 
-      const priceId = PRICE_IDS[selectedPlan][selectedCycle];
 
-      try{
-        const res = await fetch("/api/create-checkout-session", {
-          method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify({
-            priceId,
-            plan: selectedPlan,
-            cycle: selectedCycle
-          })
-        });
 
-        const data = await res.json();
 
-        if(!res.ok){
-          throw new Error(data?.error || "Checkout failed.");
-        }
 
-        if(!data?.url){
-          throw new Error("No checkout URL returned.");
-        }
-
-        window.location.href = data.url;
-      }catch(e){
-        showErr(e.message || "Something went wrong.");
-        els.checkoutBtn.disabled = false;
-        els.checkoutBtn.textContent = "Checkout";
-      }
-    }
-
-    function copySummary(){
-      const plan = selectedPlan === "pro" ? "Pro" : "Plus";
-      const cycle = CYCLE_LABEL[selectedCycle];
-      const price = money(DISPLAY_PRICES[selectedPlan][selectedCycle]);
-      const text = `ReviseFlow ${plan} · ${cycle} · ${price}`;
-      navigator.clipboard.writeText(text).then(()=>toast("Copied!"));
-    }
-
-    function resetAll(){
-      selectedPlan = "pro";
-      selectedCycle = "annual";
-      setCycle("annual");
-      setPlan("pro");
-      els.search.value = "";
-      els.groupFilter.value = "all";
-      renderFeatures();
-      toast("Reset");
-    }
-
-    els.cycleMonthly.addEventListener("click", ()=>setCycle("monthly"));
-    els.cycleQuarterly.addEventListener("click", ()=>setCycle("quarterly"));
-    els.cycleAnnual.addEventListener("click", ()=>setCycle("annual"));
-
-    els.cardPlus.addEventListener("click", ()=>setPlan("plus"));
-    els.cardPro.addEventListener("click", ()=>setPlan("pro"));
-    els.cardPlus.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("plus"); }});
-    els.cardPro.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("pro"); }});
-
-    els.checkoutBtn.addEventListener("click", startCheckout);
-    els.copyBtn.addEventListener("click", copySummary);
-    els.clearSearchBtn.addEventListener("click", ()=>{ els.search.value=""; els.groupFilter.value="all"; renderFeatures(); });
-
-    els.backBtn.addEventListener("click", ()=>{ window.history.length>1 ? window.history.back() : window.location.href="index.html"; });
-    els.refreshBtn.addEventListener("click", resetAll);
 
     const FEATURES = [
-      {g:"AI & Tutor", f:"Step-by-step GCSE explanations", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Answer rewriter (shorter / clearer)", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Explain like I'm 10 / like an examiner", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Mark my answer (AO1/AO2/AO3 style)", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Weak-topic detection from mistakes", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Revision plan generator (per subject)", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Homework helper mode", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Flashcard generator from notes", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Quiz generator from a topic", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Past-paper question explainer", plus:1, pro:1},
-      {g:"AI & Tutor", f:"Advanced “exam marker” feedback", plus:0, pro:1},
-      {g:"AI & Tutor", f:"Long-form deep explanations mode", plus:0, pro:1},
-      {g:"AI & Tutor", f:"Priority AI queue at peak times", plus:0, pro:1},
-      {g:"AI & Tutor", f:"Unlimited AI (fair-use policy)", plus:0, pro:1},
-      {g:"AI & Tutor", f:"Custom system prompts / study personas", plus:0, pro:1},
-      {g:"AI & Tutor", f:"AI memory for your study profile", plus:0, pro:1},
-      {g:"AI & Tutor", f:"AI-based study timetable optimisation", plus:0, pro:1},
-      {g:"AI & Tutor", f:"AI error-pattern clustering", plus:0, pro:1},
-      {g:"AI & Tutor", f:"AI “teach-back” interactive sessions", plus:0, pro:1},
-      {g:"AI & Tutor", f:"AI voice read-out (optional)", plus:0, pro:1},
+      { g:"Included in Plus & Pro", f:"Step-by-step GCSE explanations (AI tutor)", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Answer rewriter (shorter / clearer)", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Flashcards with spaced repetition", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Quiz generator + instant marking", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Past-paper question explainer", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Study analytics + streak tracking", plus:1, pro:1 },
+      {
+        g:"Included in Plus & Pro",
+        f:"Upload work for analysis (images + PDFs)",
+        plus:1,
+        pro:1,
+        plusNote:"1 image/PDF per day",
+        proNote:"Up to 4 images/PDFs per day"
+      },
 
-      {g:"Flashcards", f:"Unlimited flashcard sets", plus:1, pro:1},
-      {g:"Flashcards", f:"Spaced repetition scheduling", plus:1, pro:1},
-      {g:"Flashcards", f:"Card difficulty rating + auto reviews", plus:1, pro:1},
-      {g:"Flashcards", f:"Import from CSV", plus:1, pro:1},
-      {g:"Flashcards", f:"Export to CSV", plus:1, pro:1},
-      {g:"Flashcards", f:"Images on cards", plus:1, pro:1},
-      {g:"Flashcards", f:"LaTeX / maths rendering", plus:1, pro:1},
-      {g:"Flashcards", f:"Cloze deletion cards", plus:1, pro:1},
-      {g:"Flashcards", f:"Audio pronunciation (optional)", plus:1, pro:1},
-      {g:"Flashcards", f:"Deck tags + smart search", plus:1, pro:1},
-      {g:"Flashcards", f:"Advanced card templates", plus:0, pro:1},
-      {g:"Flashcards", f:"Per-subject preset decks", plus:0, pro:1},
-      {g:"Flashcards", f:"Auto “leech card” detection", plus:0, pro:1},
-      {g:"Flashcards", f:"Time-to-master predictions", plus:0, pro:1},
-      {g:"Flashcards", f:"Adaptive intervals per subject", plus:0, pro:1},
-      {g:"Flashcards", f:"Deck sharing links", plus:0, pro:1},
-      {g:"Flashcards", f:"Classroom sharing controls", plus:0, pro:1},
-      {g:"Flashcards", f:"Daily review goals by weak areas", plus:0, pro:1},
-      {g:"Flashcards", f:"Auto-tagging via AI", plus:0, pro:1},
-      {g:"Flashcards", f:"Bulk edit + bulk move tools", plus:0, pro:1},
-
-      {g:"Quizzes & Tests", f:"Topic quizzes (multiple choice)", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Topic quizzes (short answer)", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Instant marking + explanations", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Timed tests", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Question bank builder", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Difficulty scaling", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Retake missed questions mode", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Confidence rating (sure/unsure)", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Smart mix: easy + hard balancing", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Exam-board style formatting", plus:1, pro:1},
-      {g:"Quizzes & Tests", f:"Examiner markscheme alignment tools", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Pro-only advanced question types", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Auto-generated markschemes", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Grade boundary projection", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Adaptive testing per weakness", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Mock exam builder", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Auto review set after each test", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Skill map by topic", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Detailed answer audit trail", plus:0, pro:1},
-      {g:"Quizzes & Tests", f:"Anti-cheat session settings", plus:0, pro:1},
-
-      {g:"Past Papers", f:"Past paper library links", plus:1, pro:1},
-      {g:"Past Papers", f:"Past paper practice sessions", plus:1, pro:1},
-      {g:"Past Papers", f:"Timer + section splits", plus:1, pro:1},
-      {g:"Past Papers", f:"Auto logging of paper attempts", plus:1, pro:1},
-      {g:"Past Papers", f:"Mistake log per question", plus:1, pro:1},
-      {g:"Past Papers", f:"Markscheme notes tracker", plus:1, pro:1},
-      {g:"Past Papers", f:"Topic extraction per paper", plus:1, pro:1},
-      {g:"Past Papers", f:"Paper score history chart", plus:1, pro:1},
-      {g:"Past Papers", f:"Paper review checklist", plus:1, pro:1},
-      {g:"Past Papers", f:"AI explanation for tricky questions", plus:1, pro:1},
-      {g:"Past Papers", f:"Paper-to-topic weakness map", plus:0, pro:1},
-      {g:"Past Papers", f:"Grade predictor per paper set", plus:0, pro:1},
-      {g:"Past Papers", f:"“Exam conditions” lock mode", plus:0, pro:1},
-      {g:"Past Papers", f:"Paper schedule generator", plus:0, pro:1},
-      {g:"Past Papers", f:"Markscheme alignment scoring", plus:0, pro:1},
-      {g:"Past Papers", f:"AI-written model answers", plus:0, pro:1},
-      {g:"Past Papers", f:"Paper difficulty normalisation", plus:0, pro:1},
-      {g:"Past Papers", f:"Auto revision plan from papers", plus:0, pro:1},
-      {g:"Past Papers", f:"Pro-only paper analytics pack", plus:0, pro:1},
-      {g:"Past Papers", f:"Exportable paper attempt reports", plus:0, pro:1},
-
-      {g:"Tasks & Planner", f:"Unlimited tasks", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Subjects + priorities + due dates", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Recurring tasks", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Smart “do today” queue", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Task templates (homework/revision)", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Calendar-like week view", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Daily goals", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Streak tracking", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Task time estimates", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Completion analytics", plus:1, pro:1},
-      {g:"Tasks & Planner", f:"Auto-planning with AI", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Focus-mode scheduling rules", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Priority auto-rebalancing", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Study load forecasting", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Exam countdown milestones", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Pro-only timetable optimiser", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Smart avoidance of burnout days", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Plan based on weak topics", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Integrations (calendar export)", plus:0, pro:1},
-      {g:"Tasks & Planner", f:"Advanced task dashboards", plus:0, pro:1},
-
-      {g:"Focus & Pomodoro", f:"Pomodoro timer", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Custom focus/break lengths", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Session history", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Distraction log", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Focus music links", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Auto-start next session", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Subject tagging per session", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Session goals", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Daily focus target", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Focus streaks", plus:1, pro:1},
-      {g:"Focus & Pomodoro", f:"Pro-only deep focus mode", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Auto break suggestions", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Focus to weak-topics routing", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Study fatigue detection", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Pro-only session insights", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Pomodoro presets per subject", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Advanced notifications settings", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Focus mode across devices", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Pro-only automation rules", plus:0, pro:1},
-      {g:"Focus & Pomodoro", f:"Export focus logs", plus:0, pro:1},
-
-      {g:"Analytics", f:"Progress dashboard", plus:1, pro:1},
-      {g:"Analytics", f:"Flashcard mastery charts", plus:1, pro:1},
-      {g:"Analytics", f:"Quiz performance charts", plus:1, pro:1},
-      {g:"Analytics", f:"Task completion charts", plus:1, pro:1},
-      {g:"Analytics", f:"Paper attempt history", plus:1, pro:1},
-      {g:"Analytics", f:"Time spent per subject", plus:1, pro:1},
-      {g:"Analytics", f:"Week-by-week trends", plus:1, pro:1},
-      {g:"Analytics", f:"Mistake log insights", plus:1, pro:1},
-      {g:"Analytics", f:"Streak analytics", plus:1, pro:1},
-      {g:"Analytics", f:"Goal tracking", plus:1, pro:1},
-      {g:"Analytics", f:"Weak-topic heatmap", plus:0, pro:1},
-      {g:"Analytics", f:"Grade projection", plus:0, pro:1},
-      {g:"Analytics", f:"Topic-to-mark correlation", plus:0, pro:1},
-      {g:"Analytics", f:"Exam readiness score", plus:0, pro:1},
-      {g:"Analytics", f:"Pro-only advanced dashboards", plus:0, pro:1},
-      {g:"Analytics", f:"Smart recommendations engine", plus:0, pro:1},
-      {g:"Analytics", f:"Auto-generated weekly report", plus:0, pro:1},
-      {g:"Analytics", f:"Benchmark vs your past weeks", plus:0, pro:1},
-      {g:"Analytics", f:"Export analytics report PDF", plus:0, pro:1},
-      {g:"Analytics", f:"Data drill-down per topic", plus:0, pro:1},
-
-      {g:"Account & Support", f:"Email login / magic link", plus:1, pro:1},
-      {g:"Account & Support", f:"Sync across devices", plus:1, pro:1},
-      {g:"Account & Support", f:"Backup + restore", plus:1, pro:1},
-      {g:"Account & Support", f:"Help centre access", plus:1, pro:1},
-      {g:"Account & Support", f:"Standard support", plus:1, pro:1},
-      {g:"Account & Support", f:"Priority support (fast replies)", plus:0, pro:1},
-      {g:"Account & Support", f:"Early access to new features", plus:0, pro:1},
-      {g:"Account & Support", f:"Pro-only feature voting power", plus:0, pro:1},
-      {g:"Account & Support", f:"Dedicated troubleshooting channel", plus:0, pro:1},
-      {g:"Account & Support", f:"Pro-only onboarding checklist", plus:0, pro:1},
-
-      {g:"Integrations", f:"Export to CSV", plus:1, pro:1},
-      {g:"Integrations", f:"Import from CSV", plus:1, pro:1},
-      {g:"Integrations", f:"Share links (basic)", plus:1, pro:1},
-      {g:"Integrations", f:"Calendar export (ICS)", plus:0, pro:1},
-      {g:"Integrations", f:"Google Calendar sync", plus:0, pro:1},
-      {g:"Integrations", f:"Notion export", plus:0, pro:1},
-      {g:"Integrations", f:"Drive backups", plus:0, pro:1},
-      {g:"Integrations", f:"Webhook automation (advanced)", plus:0, pro:1},
-      {g:"Integrations", f:"API access (optional)", plus:0, pro:1},
-      {g:"Integrations", f:"Pro-only integrations bundle", plus:0, pro:1},
-
-      {g:"Security & Privacy", f:"Encrypted connections (HTTPS)", plus:1, pro:1},
-      {g:"Security & Privacy", f:"Data export on request", plus:1, pro:1},
-      {g:"Security & Privacy", f:"Privacy-first defaults", plus:1, pro:1},
-      {g:"Security & Privacy", f:"Role-based plan gating", plus:1, pro:1},
-      {g:"Security & Privacy", f:"Advanced audit logs", plus:0, pro:1},
-      {g:"Security & Privacy", f:"Pro-only account controls", plus:0, pro:1},
-
-      {g:"Customization", f:"Themes + fonts", plus:1, pro:1},
-      {g:"Customization", f:"Dashboard widgets", plus:1, pro:1},
-      {g:"Customization", f:"Study templates", plus:1, pro:1},
-      {g:"Customization", f:"Custom goal presets", plus:1, pro:1},
-      {g:"Customization", f:"Advanced custom templates", plus:0, pro:1},
-      {g:"Customization", f:"Pro-only power settings pack", plus:0, pro:1},
-
-      {g:"Bonus", f:"Annual members get the lowest effective monthly cost", plus:1, pro:1},
-      {g:"Bonus", f:"Annual is the best value option shown on this page", plus:1, pro:1}
+      { g:"Pro upgrades", f:"Higher AI limits + advanced modes", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Examiner-style feedback (AO / marks) on answers", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Personalised weak-topic map + revision plan", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Deeper analytics drill-down", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Premium exam packs + model answers", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Priority AI queue at peak times", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Priority support + early features", plus:0, pro:1 }
     ];
+
+
+
+
+
+
+
 
     function buildGroupFilter(){
       const groups = Array.from(new Set(FEATURES.map(x=>x.g)));
@@ -1305,9 +1541,12 @@
       }
     }
 
-    function iconCell(ok){
-      if(ok) return `<span class="yes">✓</span>`;
-      return `<span class="no">—</span>`;
+    function cellHtml(ok, note){
+      if(!ok){
+        return `<div class="cellWrap"><span class="mark no">—</span></div>`;
+      }
+      const n = note ? `<span class="tiny">${escapeHtml(note)}</span>` : "";
+      return `<div class="cellWrap"><span class="mark yes">✓</span>${n}</div>`;
     }
 
     function renderFeatures(){
@@ -1331,11 +1570,12 @@
           html += `<tr class="groupRow"><td colspan="3">${escapeHtml(r.g)}</td></tr>`;
           lastGroup = r.g;
         }
+
         html += `
           <tr>
             <td>${escapeHtml(r.f)}</td>
-            <td class="${r.plus ? "yes":"no"}">${r.plus ? "✓":"—"}</td>
-            <td class="${r.pro ? "yes":"no"}">${r.pro ? "✓":"—"}</td>
+            <td>${cellHtml(!!r.plus, r.plusNote || "")}</td>
+            <td>${cellHtml(!!r.pro, r.proNote || "")}</td>
           </tr>
         `;
       }
@@ -1343,24 +1583,292 @@
       els.featureBody.innerHTML = html || `<tr><td colspan="3" style="padding:16px;color:rgba(255,255,255,.6)">No matches.</td></tr>`;
     }
 
-    function escapeHtml(s){
-      return String(s)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
+
+
+
+
+
+
+
+    function makeClientNonce(){
+      try{
+        const k = "rf_client_nonce_v1";
+        let v = localStorage.getItem(k);
+        if(!v || v.length < 16){
+          v = (crypto?.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + String(Date.now()));
+          localStorage.setItem(k, v);
+        }
+        return v;
+      }catch{
+        return String(Math.random()).slice(2) + String(Date.now());
+      }
     }
+
+    function getAttemptBucketKey(){
+      const now = new Date();
+      const key = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")}-${String(now.getUTCHours()).padStart(2,"0")}`;
+      return "rf_checkout_attempts_" + key;
+    }
+
+    function bumpAttempts(){
+      try{
+        const key = getAttemptBucketKey();
+        const cur = Number(localStorage.getItem(key) || "0");
+        const next = cur + 1;
+        localStorage.setItem(key, String(next));
+        return next;
+      }catch{
+        return 1;
+      }
+    }
+
+    function getAttempts(){
+      try{
+        const key = getAttemptBucketKey();
+        return Number(localStorage.getItem(key) || "0");
+      }catch{
+        return 0;
+      }
+    }
+
+    function canAttemptCheckout(){
+      const attempts = getAttempts();
+      if(attempts >= 8) return false;
+      return true;
+    }
+
+
+
+
+
+
+
+
+    let checkoutLock = false;
+    let lastCheckoutAt = 0;
+
+    function updateCheckoutEnabled(){
+      const ok = !!els.consentNow.checked;
+      els.checkoutBtn.disabled = !ok || checkoutLock;
+    }
+
+    async function safeJson(res){
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      if(ct.includes("application/json")){
+        return await res.json();
+      }
+      const txt = await res.text();
+      return { raw: txt };
+    }
+
+    async function postWithTimeout(url, body, ms){
+      const controller = new AbortController();
+      const t = setTimeout(()=>controller.abort(), ms);
+
+      try{
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+
+        const data = await safeJson(res);
+        return { res, data };
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
+
+
+
+
+
+
+
+    async function startCheckout(){
+      clearMsgs();
+
+      if(navigator.webdriver){
+        showErr("Checkout is unavailable in automated browsers.");
+        return;
+      }
+
+      if(!els.consentNow.checked){
+        showErr("Tick the checkbox to continue.");
+        return;
+      }
+
+      const now = Date.now();
+      const delta = now - lastCheckoutAt;
+
+      if(delta < 3500){
+        showErr("Please wait a moment and try again.");
+        return;
+      }
+
+      if(!canAttemptCheckout()){
+        showErr("Too many attempts. Please wait a bit and try again.");
+        return;
+      }
+
+      lastCheckoutAt = now;
+      bumpAttempts();
+
+      checkoutLock = true;
+      updateCheckoutEnabled();
+
+      els.checkoutBtn.textContent = "Redirecting…";
+
+      const priceId = PRICE_IDS[selectedPlan][selectedCycle];
+
+      const payload = {
+        priceId,
+        plan: selectedPlan,
+        cycle: selectedCycle,
+        consent: true,
+        idempotencyKey: (crypto?.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + "_" + String(Date.now())),
+        client: {
+          nonce: makeClientNonce(),
+          tzOffsetMinutes: new Date().getTimezoneOffset(),
+          lang: navigator.language || "",
+          ua: navigator.userAgent || "",
+          ref: document.referrer || "",
+          screen: {
+            w: window.screen?.width || 0,
+            h: window.screen?.height || 0,
+            dpr: window.devicePixelRatio || 1
+          }
+        }
+      };
+
+      try{
+        const { res, data } = await postWithTimeout("/api/create-checkout-session", payload, 12000);
+
+        if(!res.ok){
+          const msg = data?.error || data?.message || "Checkout failed.";
+          throw new Error(msg);
+        }
+
+        if(!data?.url){
+          throw new Error("No checkout URL returned.");
+        }
+
+        showOk("Opening Stripe Checkout…");
+        window.location.href = data.url;
+      }catch(e){
+        const msg = (e && e.name === "AbortError") ? "Checkout timed out. Try again." : (e?.message || "Something went wrong.");
+        showErr(msg);
+        checkoutLock = false;
+        els.checkoutBtn.textContent = "Checkout";
+        updateCheckoutEnabled();
+      }
+    }
+
+
+
+
+
+
+
+
+    function copySummary(){
+      const plan = selectedPlan === "pro" ? "Pro" : "Plus";
+      const cycle = CYCLE_LABEL[selectedCycle];
+      const price = money(DISPLAY_PRICES[selectedPlan][selectedCycle]);
+      const text = `ReviseFlow ${plan} · ${cycle} · ${price}`;
+      navigator.clipboard.writeText(text).then(()=>toast("Copied!"));
+    }
+
+    function resetAll(){
+      selectedPlan = "pro";
+      selectedCycle = "annual";
+      els.consentNow.checked = false;
+      checkoutLock = false;
+      lastCheckoutAt = 0;
+
+      setCycle("annual");
+      setPlan("pro");
+
+      els.search.value = "";
+      els.groupFilter.value = "all";
+
+      renderFeatures();
+      clearMsgs();
+
+      els.checkoutBtn.textContent = "Checkout";
+      updateCheckoutEnabled();
+
+      toast("Reset");
+    }
+
+
+
+
+
+
+
+
+    els.cycleMonthly.addEventListener("click", ()=>setCycle("monthly"));
+    els.cycleQuarterly.addEventListener("click", ()=>setCycle("quarterly"));
+    els.cycleAnnual.addEventListener("click", ()=>setCycle("annual"));
+
+    els.cardPlus.addEventListener("click", ()=>setPlan("plus"));
+    els.cardPro.addEventListener("click", ()=>setPlan("pro"));
+
+    els.cardPlus.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("plus"); }});
+    els.cardPro.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("pro"); }});
+
+    els.checkoutBtn.addEventListener("click", startCheckout);
+    els.copyBtn.addEventListener("click", copySummary);
+
+    els.clearSearchBtn.addEventListener("click", ()=>{
+      els.search.value="";
+      els.groupFilter.value="all";
+      renderFeatures();
+    });
 
     els.search.addEventListener("input", renderFeatures);
     els.groupFilter.addEventListener("change", renderFeatures);
+
+    els.consentNow.addEventListener("change", ()=>{
+      clearMsgs();
+      updateCheckoutEnabled();
+      if(els.consentNow.checked){
+        toast("Ready to checkout");
+      }
+    });
+
+    els.backBtn.addEventListener("click", ()=>{
+      window.history.length>1 ? window.history.back() : window.location.href="index.html";
+    });
+
+    els.refreshBtn.addEventListener("click", resetAll);
+
+
+
+
+
+
+
 
     function initFromQuery(){
       const p = new URLSearchParams(location.search);
       if(p.get("canceled")){
         showErr("Checkout canceled — your card wasn’t charged.");
       }
+      if(p.get("success")){
+        showOk("Payment received. If your plan doesn’t update in a few seconds, refresh the app.");
+      }
     }
+
+
+
+
+
+
+
 
     buildGroupFilter();
     initFromQuery();
@@ -1369,6 +1877,8 @@
     renderCards();
     renderBasket();
     renderFeatures();
+    updateCheckoutEnabled();
   </script>
+
 </body>
 </html>

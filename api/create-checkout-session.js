@@ -1,15 +1,21 @@
 const Stripe = require("stripe");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16"
+});
 
-const ALLOWLIST = new Set([
-  "price_1T46nyRzC23qaxzMIu41ccnt",
-  "price_1T46nyRzC23qaxzM2apXOsNE",
-  "price_1T46nyRzC23qaxzMsuQppAj6",
-  "price_1T46qbRzC23qaxzM2ebMn3o6",
-  "price_1T46qbRzC23qaxzMh15YdWfh",
-  "price_1T46qbRzC23qaxzMC9TWNVsK"
-]);
+/*
+  Price Mapping (Single Source of Truth)
+  Never trust frontend for plan/cycle.
+*/
+const PRICE_MAP = {
+  price_1T46nyRzC23qaxzMIu41ccnt: { plan: "plus", cycle: "monthly" },
+  price_1T46nyRzC23qaxzM2apXOsNE: { plan: "plus", cycle: "quarterly" },
+  price_1T46nyRzC23qaxzMsuQppAj6: { plan: "plus", cycle: "annual" },
+  price_1T46qbRzC23qaxzM2ebMn3o6: { plan: "pro", cycle: "monthly" },
+  price_1T46qbRzC23qaxzMh15YdWfh: { plan: "pro", cycle: "quarterly" },
+  price_1T46qbRzC23qaxzMC9TWNVsK: { plan: "pro", cycle: "annual" }
+};
 
 module.exports = async (req, res) => {
   try {
@@ -17,35 +23,74 @@ module.exports = async (req, res) => {
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const { priceId, plan, cycle } = req.body || {};
+    const { priceId, waiveConfirmed } = req.body || {};
 
-    if (!priceId || !ALLOWLIST.has(priceId)) {
-      return res.status(400).json({ error: "Invalid priceId" });
+    // 🔒 1. Validate priceId strictly
+    if (!priceId || !PRICE_MAP[priceId]) {
+      return res.status(400).json({ error: "Invalid price ID" });
     }
 
-    const baseUrl =
+    // 🔒 2. Enforce waiver confirmation (LEGAL PROTECTION)
+    if (waiveConfirmed !== true) {
+      return res.status(400).json({
+        error: "You must agree to immediate access and waive cancellation rights."
+      });
+    }
+
+    // 🔒 3. Derive plan & cycle server-side only
+    const { plan, cycle } = PRICE_MAP[priceId];
+
+    // 🔒 4. Determine base URL safely
+    const origin =
       req.headers.origin ||
-      (req.headers.host ? `https://${req.headers.host}` : "");
+      (req.headers.host ? `https://${req.headers.host}` : null);
 
-    if (!baseUrl) {
-      return res.status(400).json({ error: "Could not determine base URL" });
+    if (!origin) {
+      return res.status(400).json({ error: "Unable to determine base URL" });
     }
+
+    // 🔒 5. Optional: Attach user email if logged in
+    // (If you store it in req.user from auth middleware)
+    const customerEmail = req.user?.email || undefined;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       allow_promotion_codes: true,
-      line_items: [{ price: priceId, quantity: 1 }],
+
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+
+      customer_email: customerEmail,
+
       metadata: {
-        plan: String(plan || ""),
-        cycle: String(cycle || "")
+        plan,
+        cycle,
+        waive_confirmed: "true"
       },
-      success_url: `${baseUrl}/billing-success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/subscriptions.html?canceled=1`
+
+      subscription_data: {
+        metadata: {
+          plan,
+          cycle,
+          waive_confirmed: "true"
+        }
+      },
+
+      success_url: `${origin}/billing-success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/subscriptions.html?canceled=1`
     });
 
     return res.status(200).json({ url: session.url });
+
   } catch (err) {
-    return res.status(500).json({ error: err.message || "Server error" });
+    console.error("Checkout error:", err);
+    return res.status(500).json({
+      error: "Unable to create checkout session"
+    });
   }
 };
