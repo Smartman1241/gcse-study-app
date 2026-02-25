@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ReviseFlow — Upgrade</title>
   <meta name="description" content="Upgrade to Plus or Pro to unlock more study power." />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root{
       --bg0:#070a14;
@@ -51,13 +53,6 @@
       margin:0 auto;
       padding:28px 0 60px;
     }
-
-
-
-
-
-
-
 
     .topbar{
       display:flex;
@@ -151,13 +146,6 @@
       opacity:.55;
       cursor:not-allowed;
     }
-
-
-
-
-
-
-
 
     .hero{
       display:grid;
@@ -304,13 +292,6 @@
       font-weight:800;
       margin-top:3px;
     }
-
-
-
-
-
-
-
 
     .grid{
       display:grid;
@@ -505,13 +486,6 @@
       top:-.5px;
     }
 
-
-
-
-
-
-
-
     .basket{
       position:sticky;
       top:16px;
@@ -658,13 +632,6 @@
       font-size:12px;
     }
 
-
-
-
-
-
-
-
     .section{
       margin-top:16px;
       border:1px solid var(--stroke2);
@@ -801,13 +768,6 @@
       line-height:1;
     }
 
-
-
-
-
-
-
-
     .faq{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -865,13 +825,6 @@
       text-align:center;
     }
 
-
-
-
-
-
-
-
     .srOnly{
       position:absolute;
       width:1px;
@@ -883,7 +836,6 @@
       white-space:nowrap;
       border:0;
     }
-
   </style>
 </head>
 
@@ -897,17 +849,10 @@
 
       <div class="topActions">
         <div class="pill"><span class="dot" aria-hidden="true"></span><strong>Annual</strong> shows best value</div>
-        <button class="btn ghost" id="backBtn">← Back</button>
-        <button class="btn" id="refreshBtn">Reset</button>
+        <button class="btn ghost" id="backBtn" type="button">← Back</button>
+        <button class="btn" id="refreshBtn" type="button">Reset</button>
       </div>
     </div>
-
-
-
-
-
-
-
 
     <div class="hero">
       <div class="heroCard">
@@ -946,13 +891,6 @@
         </div>
       </div>
     </div>
-
-
-
-
-
-
-
 
     <div class="grid">
       <div class="plans">
@@ -1013,13 +951,6 @@
           </div>
         </div>
 
-
-
-
-
-
-
-
         <div class="section" style="margin-top:14px;">
           <h2>Compare everything</h2>
           <p class="lead">
@@ -1031,7 +962,7 @@
             <select class="select" id="groupFilter">
               <option value="all">All categories</option>
             </select>
-            <button class="btn small" id="clearSearchBtn">Clear</button>
+            <button class="btn small" id="clearSearchBtn" type="button">Clear</button>
           </div>
 
           <div class="tableWrap" style="max-height:520px; overflow:auto;">
@@ -1051,13 +982,6 @@
             Pricing and savings are shown transparently. Annual is highlighted because it’s the lowest effective monthly cost.
           </div>
         </div>
-
-
-
-
-
-
-
 
         <div class="section">
           <h2>FAQ</h2>
@@ -1090,13 +1014,6 @@
           </div>
         </div>
       </div>
-
-
-
-
-
-
-
 
       <aside class="basket" aria-label="Basket">
         <div class="basketHeader">
@@ -1137,38 +1054,24 @@
           Annual is selected by default because it’s the lowest cost per month.
         </div>
 
-
-
-
-
-
-
-
         <div class="consentBox" aria-label="Purchase consent">
           <div class="checkRow">
             <input type="checkbox" id="consentNow" />
             <label for="consentNow">
-  I request immediate access after payment and understand I lose my 14-day cooling-off right.
-  <span>
-    This is a digital digital service. Access starts immediately after checkout. By continuing, you expressly waive your statutory cancellation period.
-  </span>
-</label>>
+              I request immediate access after payment and I understand I lose my 14-day cooling-off right.
+              <span>
+                This is a digital service. Access starts immediately after checkout. By continuing, you expressly waive your statutory cancellation period.
+              </span>
+            </label>
           </div>
           <div class="fineprint" style="margin-top:10px;">
             You’ll be redirected to Stripe Checkout. The selected plan will appear in the Stripe order summary.
           </div>
         </div>
 
-
-
-
-
-
-
-
         <div class="basketBtns">
-          <button class="btn primary" id="checkoutBtn" disabled>Checkout</button>
-          <button class="btn" id="copyBtn">Copy summary</button>
+          <button class="btn primary" id="checkoutBtn" disabled type="button">Checkout</button>
+          <button class="btn" id="copyBtn" type="button">Copy summary</button>
         </div>
 
         <div class="err" id="errBox"></div>
@@ -1183,621 +1086,611 @@
 
   <div class="toast" id="toast"></div>
 
-
-
-
-
-
-
-
   <script>
-  // =========================
-  // CONFIG
-  // =========================
-  const PRICE_IDS = {
-    plus: {
-      monthly:   "price_1T46nyRzC23qaxzMIu41ccnt",
-      quarterly: "price_1T46nyRzC23qaxzM2apXOsNE",
-      annual:    "price_1T46nyRzC23qaxzMsuQppAj6"
-    },
-    pro: {
-      monthly:   "price_1T46qbRzC23qaxzM2ebMn3o6",
-      quarterly: "price_1T46qbRzC23qaxzMh15YdWfh",
-      annual:    "price_1T46qbRzC23qaxzMC9TWNVsK"
-    }
-  };
-
-  const DISPLAY_PRICES = {
-    plus: { monthly: 4.99, quarterly: 12.99, annual: 37.99 },
-    pro:  { monthly: 9.99, quarterly: 24.99, annual: 79.99 }
-  };
-
-  const CYCLE_LABEL  = { monthly:"Monthly", quarterly:"Quarterly", annual:"Annual" };
-  const CYCLE_MONTHS = { monthly:1, quarterly:3, annual:12 };
-
-  // =========================
-  // SUPABASE AUTH (USER ID)
-  // =========================
-  // IMPORTANT:
-  // Put your real values here (same anon key you use elsewhere on the site).
-  // If you already have these in another global file, you can remove this block and reuse that.
-  const SUPABASE_URL = window.SUPABASE_URL || "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-
-  const supabase = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.startsWith("YOUR_"))
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
-
-  let currentUserId = null;
-
-  async function loadUser(){
-    if(!supabase) return null;
-    const { data, error } = await supabase.auth.getSession();
-    if(error) return null;
-    const user = data?.session?.user || null;
-    currentUserId = user?.id || null;
-    return currentUserId;
-  }
-
-  // =========================
-  // STATE
-  // =========================
-  let selectedPlan = "pro";
-  let selectedCycle = "annual";
-
-  const $ = (id) => document.getElementById(id);
-
-  const els = {
-    cycleMonthly: $("cycleMonthly"),
-    cycleQuarterly: $("cycleQuarterly"),
-    cycleAnnual: $("cycleAnnual"),
-    cycleExplain: $("cycleExplain"),
-
-    cardPlus: $("cardPlus"),
-    cardPro: $("cardPro"),
-
-    plusPrice: $("plusPrice"),
-    plusPer: $("plusPer"),
-    plusSave: $("plusSave"),
-
-    proPrice: $("proPrice"),
-    proPer: $("proPer"),
-    proSave: $("proSave"),
-
-    pickedSummary: $("pickedSummary"),
-
-    bPlan: $("bPlan"),
-    bCycle: $("bCycle"),
-    bPrice: $("bPrice"),
-    bSave: $("bSave"),
-    bTotal: $("bTotal"),
-    bRenew: $("bRenew"),
-    basketHelp: $("basketHelp"),
-    valueBadge: $("valueBadge"),
-
-    checkoutBtn: $("checkoutBtn"),
-    copyBtn: $("copyBtn"),
-    errBox: $("errBox"),
-    okBox: $("okBox"),
-    toast: $("toast"),
-
-    consentNow: $("consentNow"),
-
-    search: $("search"),
-    groupFilter: $("groupFilter"),
-    featureBody: $("featureBody"),
-    clearSearchBtn: $("clearSearchBtn"),
-
-    backBtn: $("backBtn"),
-    refreshBtn: $("refreshBtn")
-  };
-
-  // =========================
-  // UI HELPERS
-  // =========================
-  function money(n){ return "£" + Number(n).toFixed(2); }
-
-  function showErr(msg){
-    els.okBox.style.display = "none";
-    els.okBox.textContent = "";
-    els.errBox.style.display = "block";
-    els.errBox.textContent = msg;
-  }
-
-  function showOk(msg){
-    els.errBox.style.display = "none";
-    els.errBox.textContent = "";
-    els.okBox.style.display = "block";
-    els.okBox.textContent = msg;
-  }
-
-  function clearMsgs(){
-    els.errBox.style.display = "none";
-    els.errBox.textContent = "";
-    els.okBox.style.display = "none";
-    els.okBox.textContent = "";
-  }
-
-  function toast(msg){
-    els.toast.textContent = msg;
-    els.toast.style.display = "block";
-    clearTimeout(window.__toastTimer);
-    window.__toastTimer = setTimeout(()=>{ els.toast.style.display="none"; }, 1500);
-  }
-
-  function escapeHtml(s){
-    return String(s)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  // =========================
-  // PRICING HELPERS
-  // =========================
-  function calcSavings(plan, cycle){
-    const m = DISPLAY_PRICES[plan].monthly;
-    const q = DISPLAY_PRICES[plan].quarterly;
-    const a = DISPLAY_PRICES[plan].annual;
-
-    const yearlyMonthly = m * 12;
-    const yearlyQuarterly = q * 4;
-
-    if(cycle === "annual"){
-      const saveVsMonthly = yearlyMonthly - a;
-      const saveVsQuarterly = yearlyQuarterly - a;
-      const pct = (saveVsMonthly / yearlyMonthly) * 100;
-      return { label: `${money(saveVsMonthly)} saved vs monthly`, extra: `${money(saveVsQuarterly)} saved vs quarterly`, pct };
-    }
-
-    if(cycle === "quarterly"){
-      const saveVsMonthly = yearlyMonthly - yearlyQuarterly;
-      const pct = (saveVsMonthly / yearlyMonthly) * 100;
-      return { label: `${money(saveVsMonthly)} saved vs monthly (per year)`, extra: `Annual saves more`, pct };
-    }
-
-    return { label: `Annual saves the most`, extra: `Upgrade to annual anytime`, pct: 0 };
-  }
-
-  function cycleExplainText(){
-    if(selectedCycle === "annual"){
-      return `
-        <strong>Annual is best value:</strong><br>
-        Plus saves <strong>${money((DISPLAY_PRICES.plus.monthly*12) - DISPLAY_PRICES.plus.annual)}</strong> per year vs monthly.<br>
-        Pro saves <strong>${money((DISPLAY_PRICES.pro.monthly*12) - DISPLAY_PRICES.pro.annual)}</strong> per year vs monthly.
-      `;
-    }
-    if(selectedCycle === "quarterly"){
-      return `Quarterly is a mid option.<br>You still save vs monthly, but annual is the biggest discount.`;
-    }
-    return `Monthly is best for trying it out.<br>If you already know you’ll use it, annual is cheaper overall.`;
-  }
-
-  // =========================
-  // RENDERING
-  // =========================
-  function renderCards(){
-    const c = selectedCycle;
-
-    const plusP = DISPLAY_PRICES.plus[c];
-    const proP  = DISPLAY_PRICES.pro[c];
-
-    const plusEff = plusP / CYCLE_MONTHS[c];
-    const proEff  = proP / CYCLE_MONTHS[c];
-
-    const plusS = calcSavings("plus", c);
-    const proS  = calcSavings("pro", c);
-
-    els.plusPrice.textContent = money(plusP);
-    els.plusPer.textContent = c === "monthly" ? "per month" : (c==="quarterly" ? "per 3 months" : "per year");
-    els.plusSave.textContent = (c === "monthly") ? "Annual saves most" : `Save ~${plusS.pct.toFixed(0)}%`;
-    els.plusSave.textContent += ` · Effective ~${money(plusEff)}/mo`;
-
-    els.proPrice.textContent = money(proP);
-    els.proPer.textContent = c === "monthly" ? "per month" : (c==="quarterly" ? "per 3 months" : "per year");
-    els.proSave.textContent = (c === "monthly") ? "Annual saves most" : `Save ~${proS.pct.toFixed(0)}%`;
-    els.proSave.textContent += ` · Effective ~${money(proEff)}/mo`;
-
-    if(c === "annual") els.valueBadge.textContent = "Best value";
-    else if(c === "quarterly") els.valueBadge.textContent = "Balanced";
-    else els.valueBadge.textContent = "Try it";
-  }
-
-  function renderBasket(){
-    const plan = selectedPlan;
-    const cycle = selectedCycle;
-    const price = DISPLAY_PRICES[plan][cycle];
-
-    els.bPlan.textContent = plan === "pro" ? "Pro" : "Plus";
-    els.bCycle.textContent = CYCLE_LABEL[cycle];
-    els.bPrice.textContent = money(price);
-    els.bTotal.textContent = money(price);
-
-    const s = calcSavings(plan, cycle);
-    els.bSave.textContent = (cycle === "annual") ? s.label : (cycle === "quarterly" ? s.label : "Annual saves most");
-    els.bRenew.textContent = cycle === "annual" ? "Renews yearly" : (cycle==="quarterly" ? "Renews every 3 months" : "Renews monthly");
-
-    if(cycle === "annual"){
-      els.basketHelp.innerHTML = `You chose <strong>annual</strong>. That’s the lowest effective monthly cost.`;
-    } else if(cycle === "quarterly"){
-      els.basketHelp.innerHTML = `Quarterly is a good middle ground. Annual still costs less overall.`;
-    } else {
-      els.basketHelp.innerHTML = `Monthly is flexible. If you’ll use it long-term, annual saves the most.`;
-    }
-  }
-
-  // =========================
-  // FEATURES TABLE (YOUR SIMPLIFIED 7+7)
-  // =========================
-  const FEATURES = [
-    { g:"Included in Plus & Pro", f:"Step-by-step GCSE explanations (AI tutor)", plus:1, pro:1 },
-    { g:"Included in Plus & Pro", f:"Answer rewriter (shorter / clearer)", plus:1, pro:1 },
-    { g:"Included in Plus & Pro", f:"Flashcards with spaced repetition", plus:1, pro:1 },
-    { g:"Included in Plus & Pro", f:"Quiz generator + instant marking", plus:1, pro:1 },
-    { g:"Included in Plus & Pro", f:"Past-paper tracking + practice sessions", plus:1, pro:1 },
-    { g:"Included in Plus & Pro", f:"Study planner + tasks", plus:1, pro:1 },
-    { g:"Included in Plus & Pro", f:"Progress analytics + streak tracking", plus:1, pro:1 },
-
-    { g:"Upload limits", f:"Upload work for analysis (Images + PDFs)", plus:1, pro:1, plusNote:"1 per day", proNote:"Up to 4 per day" },
-
-    { g:"Pro upgrades", f:"Higher AI limits", plus:0, pro:1 },
-    { g:"Pro upgrades", f:"Examiner-style feedback (marks / AO)", plus:0, pro:1 },
-    { g:"Pro upgrades", f:"Weak-topic heatmap", plus:0, pro:1 },
-    { g:"Pro upgrades", f:"Grade projection", plus:0, pro:1 },
-    { g:"Pro upgrades", f:"Priority AI at peak times", plus:0, pro:1 },
-    { g:"Pro upgrades", f:"Premium packs + model answers", plus:0, pro:1 },
-    { g:"Pro upgrades", f:"Priority support + early features", plus:0, pro:1 }
-  ];
-
-  function buildGroupFilter(){
-    const groups = Array.from(new Set(FEATURES.map(x=>x.g)));
-    groups.sort((a,b)=>a.localeCompare(b));
-    for(const g of groups){
-      const opt = document.createElement("option");
-      opt.value = g;
-      opt.textContent = g;
-      els.groupFilter.appendChild(opt);
-    }
-  }
-
-  function cellHtml(ok, note){
-    if(!ok) return `<div class="cellWrap"><span class="mark no">—</span></div>`;
-    const n = note ? `<span class="tiny">${escapeHtml(note)}</span>` : "";
-    return `<div class="cellWrap"><span class="mark yes">✓</span>${n}</div>`;
-  }
-
-  function renderFeatures(){
-    const q = (els.search.value || "").trim().toLowerCase();
-    const gf = els.groupFilter.value;
-
-    let rows = FEATURES;
-    if(gf !== "all") rows = rows.filter(x => x.g === gf);
-    if(q) rows = rows.filter(x => (x.f || "").toLowerCase().includes(q));
-
-    let html = "";
-    let lastGroup = null;
-
-    for(const r of rows){
-      if(r.g !== lastGroup){
-        html += `<tr class="groupRow"><td colspan="3">${escapeHtml(r.g)}</td></tr>`;
-        lastGroup = r.g;
-      }
-      html += `
-        <tr>
-          <td>${escapeHtml(r.f)}</td>
-          <td>${cellHtml(!!r.plus, r.plusNote || "")}</td>
-          <td>${cellHtml(!!r.pro, r.proNote || "")}</td>
-        </tr>
-      `;
-    }
-
-    els.featureBody.innerHTML = html || `<tr><td colspan="3" style="padding:16px;color:rgba(255,255,255,.6)">No matches.</td></tr>`;
-  }
-
-  // =========================
-  // CLIENT ANTI-SPAM (KEEP)
-  // =========================
-  function makeClientNonce(){
-    try{
-      const k = "rf_client_nonce_v1";
-      let v = localStorage.getItem(k);
-      if(!v || v.length < 16){
-        v = (crypto?.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + String(Date.now()));
-        localStorage.setItem(k, v);
-      }
-      return v;
-    }catch{
-      return String(Math.random()).slice(2) + String(Date.now());
-    }
-  }
-
-  function getAttemptBucketKey(){
-    const now = new Date();
-    const key = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")}-${String(now.getUTCHours()).padStart(2,"0")}`;
-    return "rf_checkout_attempts_" + key;
-  }
-
-  function bumpAttempts(){
-    try{
-      const key = getAttemptBucketKey();
-      const cur = Number(localStorage.getItem(key) || "0");
-      const next = cur + 1;
-      localStorage.setItem(key, String(next));
-      return next;
-    }catch{
-      return 1;
-    }
-  }
-
-  function getAttempts(){
-    try{
-      const key = getAttemptBucketKey();
-      return Number(localStorage.getItem(key) || "0");
-    }catch{
-      return 0;
-    }
-  }
-
-  function canAttemptCheckout(){
-    return getAttempts() < 8;
-  }
-
-  // =========================
-  // CHECKOUT ENABLEMENT
-  // =========================
-  let checkoutLock = false;
-  let lastCheckoutAt = 0;
-
-  function updateCheckoutEnabled(){
-    const consentOk = !!els.consentNow.checked;
-    const signedInOk = !!currentUserId; // require user_id so webhook updates correct user
-    els.checkoutBtn.disabled = !consentOk || !signedInOk || checkoutLock;
-  }
-
-  async function safeJson(res){
-    const ct = (res.headers.get("content-type") || "").toLowerCase();
-    if(ct.includes("application/json")) return await res.json();
-    const txt = await res.text();
-    return { raw: txt };
-  }
-
-  async function postWithTimeout(url, body, ms){
-    const controller = new AbortController();
-    const t = setTimeout(()=>controller.abort(), ms);
-    try{
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal
-      });
-      const data = await safeJson(res);
-      return { res, data };
-    } finally {
-      clearTimeout(t);
-    }
-  }
-
-  // =========================
-  // STRIPE CHECKOUT
-  // =========================
-  async function startCheckout(){
-    clearMsgs();
-
-    if(!currentUserId){
-      showErr("Please sign in before checking out.");
-      return;
-    }
-
-    if(navigator.webdriver){
-      showErr("Checkout is unavailable in automated browsers.");
-      return;
-    }
-
-    if(!els.consentNow.checked){
-      showErr("Tick the checkbox to continue.");
-      return;
-    }
-
-    const now = Date.now();
-    if(now - lastCheckoutAt < 3500){
-      showErr("Please wait a moment and try again.");
-      return;
-    }
-
-    if(!canAttemptCheckout()){
-      showErr("Too many attempts. Please wait a bit and try again.");
-      return;
-    }
-
-    lastCheckoutAt = now;
-    bumpAttempts();
-
-    checkoutLock = true;
-    updateCheckoutEnabled();
-    els.checkoutBtn.textContent = "Redirecting…";
-
-    const priceId = PRICE_IDS[selectedPlan][selectedCycle];
-
-    // IMPORTANT: Backend must receive waiveConfirmed === true
-    // and userId for Stripe metadata + webhook mapping.
-    const payload = {
-      priceId,
-      waiveConfirmed: true,
-      userId: currentUserId,
-
-      // Keep extras (optional)
-      idempotencyKey: (crypto?.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + "_" + String(Date.now())),
-      client: {
-        nonce: makeClientNonce(),
-        tzOffsetMinutes: new Date().getTimezoneOffset(),
-        lang: navigator.language || "",
-        ua: navigator.userAgent || "",
-        ref: document.referrer || "",
-        screen: {
-          w: window.screen?.width || 0,
-          h: window.screen?.height || 0,
-          dpr: window.devicePixelRatio || 1
-        }
+    // =========================
+    // CONFIG
+    // =========================
+    const PRICE_IDS = {
+      plus: {
+        monthly:   "price_1T46nyRzC23qaxzMIu41ccnt",
+        quarterly: "price_1T46nyRzC23qaxzM2apXOsNE",
+        annual:    "price_1T46nyRzC23qaxzMsuQppAj6"
+      },
+      pro: {
+        monthly:   "price_1T46qbRzC23qaxzM2ebMn3o6",
+        quarterly: "price_1T46qbRzC23qaxzMh15YdWfh",
+        annual:    "price_1T46qbRzC23qaxzMC9TWNVsK"
       }
     };
 
-    try{
-      const { res, data } = await postWithTimeout("/api/create-checkout-session", payload, 12000);
+    const DISPLAY_PRICES = {
+      plus: { monthly: 4.99, quarterly: 12.99, annual: 37.99 },
+      pro:  { monthly: 9.99, quarterly: 24.99, annual: 79.99 }
+    };
 
-      if(!res.ok){
-        const msg = data?.error || data?.message || "Checkout failed.";
-        throw new Error(msg);
+    const CYCLE_LABEL  = { monthly:"Monthly", quarterly:"Quarterly", annual:"Annual" };
+    const CYCLE_MONTHS = { monthly:1, quarterly:3, annual:12 };
+
+    // =========================
+    // SUPABASE AUTH (USER ID)
+    // =========================
+    // IMPORTANT: Use your real Supabase anon key (NOT Stripe keys).
+    // If you already set these globally, it will reuse them.
+    const SUPABASE_URL = window.SUPABASE_URL || "https://mgpwknnbhaljsscsvucm.supabase.co";
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "";
+
+    const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    let currentUserId = null;
+
+    async function loadUser(){
+      if(!supabaseClient) return null;
+      const { data, error } = await supabaseClient.auth.getSession();
+      if(error) return null;
+      const user = data?.session?.user || null;
+      currentUserId = user?.id || null;
+      return currentUserId;
+    }
+
+    // =========================
+    // STATE
+    // =========================
+    let selectedPlan = "pro";
+    let selectedCycle = "annual";
+
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      cycleMonthly: $("cycleMonthly"),
+      cycleQuarterly: $("cycleQuarterly"),
+      cycleAnnual: $("cycleAnnual"),
+      cycleExplain: $("cycleExplain"),
+
+      cardPlus: $("cardPlus"),
+      cardPro: $("cardPro"),
+
+      plusPrice: $("plusPrice"),
+      plusPer: $("plusPer"),
+      plusSave: $("plusSave"),
+
+      proPrice: $("proPrice"),
+      proPer: $("proPer"),
+      proSave: $("proSave"),
+
+      pickedSummary: $("pickedSummary"),
+
+      bPlan: $("bPlan"),
+      bCycle: $("bCycle"),
+      bPrice: $("bPrice"),
+      bSave: $("bSave"),
+      bTotal: $("bTotal"),
+      bRenew: $("bRenew"),
+      basketHelp: $("basketHelp"),
+      valueBadge: $("valueBadge"),
+
+      checkoutBtn: $("checkoutBtn"),
+      copyBtn: $("copyBtn"),
+      errBox: $("errBox"),
+      okBox: $("okBox"),
+      toast: $("toast"),
+
+      consentNow: $("consentNow"),
+
+      search: $("search"),
+      groupFilter: $("groupFilter"),
+      featureBody: $("featureBody"),
+      clearSearchBtn: $("clearSearchBtn"),
+
+      backBtn: $("backBtn"),
+      refreshBtn: $("refreshBtn")
+    };
+
+    // =========================
+    // UI HELPERS
+    // =========================
+    function money(n){ return "£" + Number(n).toFixed(2); }
+
+    function showErr(msg){
+      els.okBox.style.display = "none";
+      els.okBox.textContent = "";
+      els.errBox.style.display = "block";
+      els.errBox.textContent = msg;
+    }
+
+    function showOk(msg){
+      els.errBox.style.display = "none";
+      els.errBox.textContent = "";
+      els.okBox.style.display = "block";
+      els.okBox.textContent = msg;
+    }
+
+    function clearMsgs(){
+      els.errBox.style.display = "none";
+      els.errBox.textContent = "";
+      els.okBox.style.display = "none";
+      els.okBox.textContent = "";
+    }
+
+    function toast(msg){
+      els.toast.textContent = msg;
+      els.toast.style.display = "block";
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(()=>{ els.toast.style.display="none"; }, 1500);
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    // =========================
+    // PRICING HELPERS
+    // =========================
+    function calcSavings(plan, cycle){
+      const m = DISPLAY_PRICES[plan].monthly;
+      const q = DISPLAY_PRICES[plan].quarterly;
+      const a = DISPLAY_PRICES[plan].annual;
+
+      const yearlyMonthly = m * 12;
+      const yearlyQuarterly = q * 4;
+
+      if(cycle === "annual"){
+        const saveVsMonthly = yearlyMonthly - a;
+        const saveVsQuarterly = yearlyQuarterly - a;
+        const pct = (saveVsMonthly / yearlyMonthly) * 100;
+        return { label: `${money(saveVsMonthly)} saved vs monthly`, extra: `${money(saveVsQuarterly)} saved vs quarterly`, pct };
       }
 
-      if(!data?.url){
-        throw new Error("No checkout URL returned.");
+      if(cycle === "quarterly"){
+        const saveVsMonthly = yearlyMonthly - yearlyQuarterly;
+        const pct = (saveVsMonthly / yearlyMonthly) * 100;
+        return { label: `${money(saveVsMonthly)} saved vs monthly (per year)`, extra: `Annual saves more`, pct };
       }
 
-      showOk("Opening Stripe Checkout…");
-      window.location.href = data.url;
+      return { label: `Annual saves the most`, extra: `Upgrade to annual anytime`, pct: 0 };
+    }
 
-    }catch(e){
-      const msg = (e && e.name === "AbortError") ? "Checkout timed out. Try again." : (e?.message || "Something went wrong.");
-      showErr(msg);
+    function cycleExplainText(){
+      if(selectedCycle === "annual"){
+        return `
+          <strong>Annual is best value:</strong><br>
+          Plus saves <strong>${money((DISPLAY_PRICES.plus.monthly*12) - DISPLAY_PRICES.plus.annual)}</strong> per year vs monthly.<br>
+          Pro saves <strong>${money((DISPLAY_PRICES.pro.monthly*12) - DISPLAY_PRICES.pro.annual)}</strong> per year vs monthly.
+        `;
+      }
+      if(selectedCycle === "quarterly"){
+        return `Quarterly is a mid option.<br>You still save vs monthly, but annual is the biggest discount.`;
+      }
+      return `Monthly is best for trying it out.<br>If you already know you’ll use it, annual is cheaper overall.`;
+    }
+
+    // =========================
+    // RENDERING
+    // =========================
+    function renderCards(){
+      const c = selectedCycle;
+
+      const plusP = DISPLAY_PRICES.plus[c];
+      const proP  = DISPLAY_PRICES.pro[c];
+
+      const plusEff = plusP / CYCLE_MONTHS[c];
+      const proEff  = proP / CYCLE_MONTHS[c];
+
+      const plusS = calcSavings("plus", c);
+      const proS  = calcSavings("pro", c);
+
+      els.plusPrice.textContent = money(plusP);
+      els.plusPer.textContent = c === "monthly" ? "per month" : (c==="quarterly" ? "per 3 months" : "per year");
+      els.plusSave.textContent = (c === "monthly") ? "Annual saves most" : `Save ~${plusS.pct.toFixed(0)}%`;
+      els.plusSave.textContent += ` · Effective ~${money(plusEff)}/mo`;
+
+      els.proPrice.textContent = money(proP);
+      els.proPer.textContent = c === "monthly" ? "per month" : (c==="quarterly" ? "per 3 months" : "per year");
+      els.proSave.textContent = (c === "monthly") ? "Annual saves most" : `Save ~${proS.pct.toFixed(0)}%`;
+      els.proSave.textContent += ` · Effective ~${money(proEff)}/mo`;
+
+      if(c === "annual") els.valueBadge.textContent = "Best value";
+      else if(c === "quarterly") els.valueBadge.textContent = "Balanced";
+      else els.valueBadge.textContent = "Try it";
+    }
+
+    function renderBasket(){
+      const plan = selectedPlan;
+      const cycle = selectedCycle;
+      const price = DISPLAY_PRICES[plan][cycle];
+
+      els.bPlan.textContent = plan === "pro" ? "Pro" : "Plus";
+      els.bCycle.textContent = CYCLE_LABEL[cycle];
+      els.bPrice.textContent = money(price);
+      els.bTotal.textContent = money(price);
+
+      const s = calcSavings(plan, cycle);
+      els.bSave.textContent = (cycle === "annual") ? s.label : (cycle === "quarterly" ? s.label : "Annual saves most");
+      els.bRenew.textContent = cycle === "annual" ? "Renews yearly" : (cycle==="quarterly" ? "Renews every 3 months" : "Renews monthly");
+
+      if(cycle === "annual"){
+        els.basketHelp.innerHTML = `You chose <strong>annual</strong>. That’s the lowest effective monthly cost.`;
+      } else if(cycle === "quarterly"){
+        els.basketHelp.innerHTML = `Quarterly is a good middle ground. Annual still costs less overall.`;
+      } else {
+        els.basketHelp.innerHTML = `Monthly is flexible. If you’ll use it long-term, annual saves the most.`;
+      }
+    }
+
+    // =========================
+    // FEATURES TABLE
+    // =========================
+    const FEATURES = [
+      { g:"Included in Plus & Pro", f:"Step-by-step GCSE explanations (AI tutor)", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Answer rewriter (shorter / clearer)", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Flashcards with spaced repetition", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Quiz generator + instant marking", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Past-paper tracking + practice sessions", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Study planner + tasks", plus:1, pro:1 },
+      { g:"Included in Plus & Pro", f:"Progress analytics + streak tracking", plus:1, pro:1 },
+
+      { g:"Upload limits", f:"Upload work for analysis (Images + PDFs)", plus:1, pro:1, plusNote:"1 per day", proNote:"Up to 4 per day" },
+
+      { g:"Pro upgrades", f:"Higher AI limits", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Examiner-style feedback (marks / AO)", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Weak-topic heatmap", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Grade projection", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Priority AI at peak times", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Premium packs + model answers", plus:0, pro:1 },
+      { g:"Pro upgrades", f:"Priority support + early features", plus:0, pro:1 }
+    ];
+
+    function buildGroupFilter(){
+      const groups = Array.from(new Set(FEATURES.map(x=>x.g)));
+      groups.sort((a,b)=>a.localeCompare(b));
+      for(const g of groups){
+        const opt = document.createElement("option");
+        opt.value = g;
+        opt.textContent = g;
+        els.groupFilter.appendChild(opt);
+      }
+    }
+
+    function cellHtml(ok, note){
+      if(!ok) return `<div class="cellWrap"><span class="mark no">—</span></div>`;
+      const n = note ? `<span class="tiny">${escapeHtml(note)}</span>` : "";
+      return `<div class="cellWrap"><span class="mark yes">✓</span>${n}</div>`;
+    }
+
+    function renderFeatures(){
+      const q = (els.search.value || "").trim().toLowerCase();
+      const gf = els.groupFilter.value;
+
+      let rows = FEATURES;
+      if(gf !== "all") rows = rows.filter(x => x.g === gf);
+      if(q) rows = rows.filter(x => (x.f || "").toLowerCase().includes(q));
+
+      let html = "";
+      let lastGroup = null;
+
+      for(const r of rows){
+        if(r.g !== lastGroup){
+          html += `<tr class="groupRow"><td colspan="3">${escapeHtml(r.g)}</td></tr>`;
+          lastGroup = r.g;
+        }
+        html += `
+          <tr>
+            <td>${escapeHtml(r.f)}</td>
+            <td>${cellHtml(!!r.plus, r.plusNote || "")}</td>
+            <td>${cellHtml(!!r.pro, r.proNote || "")}</td>
+          </tr>
+        `;
+      }
+
+      els.featureBody.innerHTML = html || `<tr><td colspan="3" style="padding:16px;color:rgba(255,255,255,.6)">No matches.</td></tr>`;
+    }
+
+    // =========================
+    // CLIENT ANTI-SPAM
+    // =========================
+    function makeClientNonce(){
+      try{
+        const k = "rf_client_nonce_v1";
+        let v = localStorage.getItem(k);
+        if(!v || v.length < 16){
+          v = (crypto?.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + String(Date.now()));
+          localStorage.setItem(k, v);
+        }
+        return v;
+      }catch{
+        return String(Math.random()).slice(2) + String(Date.now());
+      }
+    }
+
+    function getAttemptBucketKey(){
+      const now = new Date();
+      const key = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")}-${String(now.getUTCHours()).padStart(2,"0")}`;
+      return "rf_checkout_attempts_" + key;
+    }
+
+    function bumpAttempts(){
+      try{
+        const key = getAttemptBucketKey();
+        const cur = Number(localStorage.getItem(key) || "0");
+        const next = cur + 1;
+        localStorage.setItem(key, String(next));
+        return next;
+      }catch{
+        return 1;
+      }
+    }
+
+    function getAttempts(){
+      try{
+        const key = getAttemptBucketKey();
+        return Number(localStorage.getItem(key) || "0");
+      }catch{
+        return 0;
+      }
+    }
+
+    function canAttemptCheckout(){
+      return getAttempts() < 8;
+    }
+
+    // =========================
+    // CHECKOUT ENABLEMENT
+    // =========================
+    let checkoutLock = false;
+    let lastCheckoutAt = 0;
+
+    function updateCheckoutEnabled(){
+      const consentOk = !!els.consentNow.checked;
+      const signedInOk = !!currentUserId;
+      els.checkoutBtn.disabled = !consentOk || !signedInOk || checkoutLock;
+    }
+
+    async function safeJson(res){
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      if(ct.includes("application/json")) return await res.json();
+      const txt = await res.text();
+      return { raw: txt };
+    }
+
+    async function postWithTimeout(url, body, ms){
+      const controller = new AbortController();
+      const t = setTimeout(()=>controller.abort(), ms);
+      try{
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        const data = await safeJson(res);
+        return { res, data };
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
+    // =========================
+    // STRIPE CHECKOUT
+    // =========================
+    async function startCheckout(){
+      clearMsgs();
+
+      if(!currentUserId){
+        showErr("Please sign in before checking out.");
+        return;
+      }
+
+      if(navigator.webdriver){
+        showErr("Checkout is unavailable in automated browsers.");
+        return;
+      }
+
+      if(!els.consentNow.checked){
+        showErr("Tick the checkbox to continue.");
+        return;
+      }
+
+      const now = Date.now();
+      if(now - lastCheckoutAt < 3500){
+        showErr("Please wait a moment and try again.");
+        return;
+      }
+
+      if(!canAttemptCheckout()){
+        showErr("Too many attempts. Please wait a bit and try again.");
+        return;
+      }
+
+      lastCheckoutAt = now;
+      bumpAttempts();
+
+      checkoutLock = true;
+      updateCheckoutEnabled();
+      els.checkoutBtn.textContent = "Redirecting…";
+
+      const priceId = PRICE_IDS[selectedPlan][selectedCycle];
+
+      const payload = {
+        priceId,
+        plan: selectedPlan,
+        cycle: selectedCycle,
+        waiveConfirmed: true,
+        userId: currentUserId,
+        idempotencyKey: (crypto?.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + "_" + String(Date.now())),
+        client: {
+          nonce: makeClientNonce(),
+          tzOffsetMinutes: new Date().getTimezoneOffset(),
+          lang: navigator.language || "",
+          ua: navigator.userAgent || "",
+          ref: document.referrer || "",
+          screen: {
+            w: window.screen?.width || 0,
+            h: window.screen?.height || 0,
+            dpr: window.devicePixelRatio || 1
+          }
+        }
+      };
+
+      try{
+        const { res, data } = await postWithTimeout("/api/create-checkout-session", payload, 12000);
+
+        if(!res.ok){
+          const msg = data?.error || data?.message || "Checkout failed.";
+          throw new Error(msg);
+        }
+
+        if(!data?.url){
+          throw new Error("No checkout URL returned.");
+        }
+
+        showOk("Opening Stripe Checkout…");
+        window.location.href = data.url;
+
+      }catch(e){
+        const msg = (e && e.name === "AbortError") ? "Checkout timed out. Try again." : (e?.message || "Something went wrong.");
+        showErr(msg);
+        checkoutLock = false;
+        els.checkoutBtn.textContent = "Checkout";
+        updateCheckoutEnabled();
+      }
+    }
+
+    // =========================
+    // PLAN/CYCLE
+    // =========================
+    function setCycle(cycle){
+      selectedCycle = cycle;
+
+      els.cycleMonthly.classList.toggle("active", cycle==="monthly");
+      els.cycleQuarterly.classList.toggle("active", cycle==="quarterly");
+      els.cycleAnnual.classList.toggle("active", cycle==="annual");
+
+      els.cycleExplain.innerHTML = cycleExplainText();
+
+      renderCards();
+      renderBasket();
+      renderFeatures();
+
+      toast(`Billing cycle: ${CYCLE_LABEL[cycle]}`);
+    }
+
+    function setPlan(plan){
+      selectedPlan = plan;
+
+      els.cardPlus.classList.toggle("selected", plan==="plus");
+      els.cardPro.classList.toggle("selected", plan==="pro");
+
+      els.pickedSummary.textContent = `${CYCLE_LABEL[selectedCycle]} · ${plan==="pro"?"Pro":"Plus"}`;
+
+      renderBasket();
+
+      toast(`Selected: ${plan==="pro"?"Pro":"Plus"}`);
+    }
+
+    // =========================
+    // ACTIONS
+    // =========================
+    function copySummary(){
+      const plan = selectedPlan === "pro" ? "Pro" : "Plus";
+      const cycle = CYCLE_LABEL[selectedCycle];
+      const price = money(DISPLAY_PRICES[selectedPlan][selectedCycle]);
+      navigator.clipboard.writeText(`ReviseFlow ${plan} · ${cycle} · ${price}`).then(()=>toast("Copied!"));
+    }
+
+    function resetAll(){
+      selectedPlan = "pro";
+      selectedCycle = "annual";
+      els.consentNow.checked = false;
       checkoutLock = false;
+      lastCheckoutAt = 0;
+
+      setCycle("annual");
+      setPlan("pro");
+
+      els.search.value = "";
+      els.groupFilter.value = "all";
+
+      renderFeatures();
+      clearMsgs();
+
       els.checkoutBtn.textContent = "Checkout";
       updateCheckoutEnabled();
-    }
-  }
 
-  // =========================
-  // PLAN/CYCLE
-  // =========================
-  function setCycle(cycle){
-    selectedCycle = cycle;
-
-    els.cycleMonthly.classList.toggle("active", cycle==="monthly");
-    els.cycleQuarterly.classList.toggle("active", cycle==="quarterly");
-    els.cycleAnnual.classList.toggle("active", cycle==="annual");
-
-    els.cycleExplain.innerHTML = cycleExplainText();
-
-    renderCards();
-    renderBasket();
-    renderFeatures();
-
-    toast(`Billing cycle: ${CYCLE_LABEL[cycle]}`);
-  }
-
-  function setPlan(plan){
-    selectedPlan = plan;
-
-    els.cardPlus.classList.toggle("selected", plan==="plus");
-    els.cardPro.classList.toggle("selected", plan==="pro");
-
-    els.pickedSummary.textContent = `${CYCLE_LABEL[selectedCycle]} · ${plan==="pro"?"Pro":"Plus"}`;
-
-    renderBasket();
-
-    toast(`Selected: ${plan==="pro"?"Pro":"Plus"}`);
-  }
-
-  // =========================
-  // ACTIONS
-  // =========================
-  function copySummary(){
-    const plan = selectedPlan === "pro" ? "Pro" : "Plus";
-    const cycle = CYCLE_LABEL[selectedCycle];
-    const price = money(DISPLAY_PRICES[selectedPlan][selectedCycle]);
-    navigator.clipboard.writeText(`ReviseFlow ${plan} · ${cycle} · ${price}`).then(()=>toast("Copied!"));
-  }
-
-  function resetAll(){
-    selectedPlan = "pro";
-    selectedCycle = "annual";
-    els.consentNow.checked = false;
-    checkoutLock = false;
-    lastCheckoutAt = 0;
-
-    setCycle("annual");
-    setPlan("pro");
-
-    els.search.value = "";
-    els.groupFilter.value = "all";
-
-    renderFeatures();
-    clearMsgs();
-
-    els.checkoutBtn.textContent = "Checkout";
-    updateCheckoutEnabled();
-
-    toast("Reset");
-  }
-
-  function initFromQuery(){
-    const p = new URLSearchParams(location.search);
-    if(p.get("canceled")) showErr("Checkout canceled — your card wasn’t charged.");
-    if(p.get("success")) showOk("Payment received. If your plan doesn’t update in a few seconds, refresh the app.");
-  }
-
-  // =========================
-  // EVENTS
-  // =========================
-  els.cycleMonthly.addEventListener("click", ()=>setCycle("monthly"));
-  els.cycleQuarterly.addEventListener("click", ()=>setCycle("quarterly"));
-  els.cycleAnnual.addEventListener("click", ()=>setCycle("annual"));
-
-  els.cardPlus.addEventListener("click", ()=>setPlan("plus"));
-  els.cardPro.addEventListener("click", ()=>setPlan("pro"));
-
-  els.cardPlus.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("plus"); }});
-  els.cardPro.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("pro"); }});
-
-  els.checkoutBtn.addEventListener("click", startCheckout);
-  els.copyBtn.addEventListener("click", copySummary);
-
-  els.clearSearchBtn.addEventListener("click", ()=>{
-    els.search.value="";
-    els.groupFilter.value="all";
-    renderFeatures();
-  });
-
-  els.search.addEventListener("input", renderFeatures);
-  els.groupFilter.addEventListener("change", renderFeatures);
-
-  els.consentNow.addEventListener("change", ()=>{
-    clearMsgs();
-    updateCheckoutEnabled();
-    if(els.consentNow.checked) toast("Ready to checkout");
-  });
-
-  els.backBtn.addEventListener("click", ()=>{
-    window.history.length>1 ? window.history.back() : window.location.href="index.html";
-  });
-
-  els.refreshBtn.addEventListener("click", resetAll);
-
-  // =========================
-  // INIT
-  // =========================
-  (async function init(){
-    buildGroupFilter();
-    initFromQuery();
-    setCycle("annual");
-    setPlan("pro");
-    renderCards();
-    renderBasket();
-    renderFeatures();
-
-    // Load user (required for webhook mapping)
-    await loadUser();
-
-    // If not signed in, disable checkout and show a helpful message once
-    if(!currentUserId){
-      showErr("Please sign in to purchase a subscription.");
+      toast("Reset");
     }
 
-    updateCheckoutEnabled();
-  })();
-</script>
+    function initFromQuery(){
+      const p = new URLSearchParams(location.search);
+      if(p.get("canceled")) showErr("Checkout canceled — your card wasn’t charged.");
+      if(p.get("success")) showOk("Payment received. If your plan doesn’t update in a few seconds, refresh the app.");
+    }
 
+    // =========================
+    // EVENTS
+    // =========================
+    els.cycleMonthly.addEventListener("click", ()=>setCycle("monthly"));
+    els.cycleQuarterly.addEventListener("click", ()=>setCycle("quarterly"));
+    els.cycleAnnual.addEventListener("click", ()=>setCycle("annual"));
+
+    els.cardPlus.addEventListener("click", ()=>setPlan("plus"));
+    els.cardPro.addEventListener("click", ()=>setPlan("pro"));
+
+    els.cardPlus.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("plus"); }});
+    els.cardPro.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setPlan("pro"); }});
+
+    els.checkoutBtn.addEventListener("click", startCheckout);
+    els.copyBtn.addEventListener("click", copySummary);
+
+    els.clearSearchBtn.addEventListener("click", ()=>{
+      els.search.value="";
+      els.groupFilter.value="all";
+      renderFeatures();
+    });
+
+    els.search.addEventListener("input", renderFeatures);
+    els.groupFilter.addEventListener("change", renderFeatures);
+
+    els.consentNow.addEventListener("change", ()=>{
+      clearMsgs();
+      updateCheckoutEnabled();
+      if(els.consentNow.checked) toast("Ready to checkout");
+    });
+
+    els.backBtn.addEventListener("click", ()=>{
+      window.history.length>1 ? window.history.back() : window.location.href="index.html";
+    });
+
+    els.refreshBtn.addEventListener("click", resetAll);
+
+    // =========================
+    // INIT
+    // =========================
+    (async function init(){
+      buildGroupFilter();
+      initFromQuery();
+
+      // IMPORTANT: setCycle/setPlan triggers renders and sets initial prices
+      setCycle("annual");
+      setPlan("pro");
+      renderCards();
+      renderBasket();
+      renderFeatures();
+
+      await loadUser();
+
+      if(!currentUserId){
+        // If anon key is missing OR user isn't logged in
+        showErr("Please sign in to purchase a subscription.");
+      }
+
+      updateCheckoutEnabled();
+    })();
+  </script>
 </body>
 </html>
