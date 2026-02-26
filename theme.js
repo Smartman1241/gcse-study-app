@@ -80,7 +80,39 @@
     }
   }
 
-  await loadAccountTheme();
+// =========================
+// THEME (GLOBAL, ALL PAGES)
+// Put this at the VERY TOP of tasks.js
+// =========================
+(() => {
+  const KEY = "reviseflow_theme";
+
+  function apply(theme) {
+    if (!theme) return;
+    document.documentElement.setAttribute("data-theme", theme);
+  }
+
+  // Apply ASAP (prevents flash)
+  try {
+    const saved = localStorage.getItem(KEY);
+    if (saved) apply(saved);
+  } catch (_) {}
+
+  // Expose a global setter you can call from ANY page/button
+  window.setTheme = (theme) => {
+    apply(theme);
+    try {
+      localStorage.setItem(KEY, theme);
+    } catch (_) {}
+  };
+
+  // Sync across already-open tabs
+  window.addEventListener("storage", (e) => {
+    if (e.key === KEY) apply(e.newValue);
+  });
+})(); 
+
+ await loadAccountTheme();
 
   // -----------------------------
   // GLOBAL THEME SETTER
