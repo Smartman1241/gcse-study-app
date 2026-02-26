@@ -1,3 +1,6 @@
+// /api/ai.js
+// ReviseFlow unified AI endpoint: chat + DALL·E image generation
+
 const { createClient } = require("@supabase/supabase-js");
 
 const supabaseAdmin = createClient(
@@ -10,179 +13,609 @@ function todayInTimezone(tz) {
     timeZone: tz,
     year: "numeric",
     month: "2-digit",
-    day: "2-digit"
+    day: "2-digit",
   });
-  return dtf.format(new Date());
+  return dtf.format(new Date()); // YYYY-MM-DD
 }
-<!-- redeploy -->
 
+function monthInTimezone(tz) {
+  const dtf = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+  });
+  const parts = dtf.formatToParts(new Date());
+  const y = parts.find((p) => p.type === "year")?.value || "1970";
+  const m = parts.find((p) => p.type === "month")?.value || "01";
+  return `${y}-${m}`; // YYYY-MM
+}
+
+function json(res, code, obj) {
+  return res.status(code).json(obj);
+}
+
+function normalizeRole(role) {
+  const r = String(role || "free").toLowerCase().trim();
+  if (["admin", "pro", "plus", "free", "user"].includes(r)) {
+    return r === "user" ? "free" : r;
+  }
+  return "free";
+}
+
+function clampInt(n, a, b) {
+  n = Number.isFinite(Number(n)) ? Number(n) : a;
+  return Math.max(a, Math.min(b, n));
+}
+
+function isDetailedPrompt(text) {
+  return /(^|\b)(detailed|in detail|step[- ]by[- ]step|full marks)(\b|$)/i.test(String(text || ""));
+}
+
+// Try to count ONLY text tokens if the API provides breakdowns.
+// Otherwise fall back to total tokens.
+function getTextTokenCountsFromUsage(usage) {
+  // Different docs/events sometimes say input_token_details vs input_tokens_details.
+  const inDet = usage?.input_token_details || usage?.input_tokens_details || {};
+  const outDet = usage?.output_token_details || usage?.output_tokens_details || {};
+
+  const inputText = Number(inDet?.text_tokens);
+  const outputText = Number(outDet?.text_tokens);
+
+  const hasTextBreakdown =
+    Number.isFinite(inputText) || Number.isFinite(outputText);
+
+  if (hasTextBreakdown) {
+    return {
+      inputTextTokens: Number.isFinite(inputText) ? inputText : 0,
+      outputTextTokens: Number.isFinite(outputText) ? outputText : 0,
+      usedFallbackTotals: false,
+    };
+  }
+
+  return {
+    inputTextTokens: Number(usage?.input_tokens || 0),
+    outputTextTokens: Number(usage?.output_tokens || 0),
+    usedFallbackTotals: true,
+  };
+}
+
+function safeBase64DataUrl(mime, base64) {
+  const m = String(mime || "").toLowerCase().trim();
+  const b = String(base64 || "").trim();
+
+  if (!b) return null;
+  if (!m) return null;
+
+  // Very light validation
+  if (!/^[a-z0-9]+\/[a-z0-9.+-]+$/.test(m)) return null;
+  // don’t allow gigantic payloads (basic protection)
+  if (b.length > 18_000_000) return null; // ~13.5MB base64-ish
+
+  return `data:${m};base64,${b}`;
+}
+
+async function getAuthUser(req) {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) return { error: "Missing auth token" };
+
+  const accessToken = authHeader.slice(7).trim();
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(accessToken);
+
+  if (userErr || !userData?.user) return { error: "Invalid session" };
+  return { user: userData.user, accessToken };
+}
+
+async function getUserSettings(userId) {
+  const { data: settings, error } = await supabaseAdmin
+    .from("user_settings")
+    .select("role, timezone")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    // Don’t hard-fail if settings row doesn’t exist
+    return { role: "free", timezone: "UTC" };
+  }
+  return {
+    role: normalizeRole(settings?.role),
+    timezone: settings?.timezone || "UTC",
+  };
+}
+
+// ---------- QUOTAS ----------
+const TOKEN_LIMITS = {
+  free: {
+    period: "daily",
+    models: {
+      "gpt-4o-mini": 6000,
+    },
+  },
+  plus: {
+    period: "monthly",
+    models: {
+      "gpt-5-mini": 1_000_000,
+      "gpt-4o-mini": 2_000_000,
+    },
+  },
+  pro: {
+    period: "monthly",
+    models: {
+      "gpt-5-mini": 3_000_000,
+      "gpt-4o-mini": 2_000_000,
+    },
+  },
+  admin: {
+    period: "none",
+    models: {},
+  },
+};
+
+const IMAGE_LIMITS = {
+  free: { "dall-e-2": 0, "dall-e-3": 0 },
+  plus: { "dall-e-2": 1, "dall-e-3": 0 },
+  pro: { "dall-e-2": 4, "dall-e-3": 2 },
+  admin: { "dall-e-2": Infinity, "dall-e-3": Infinity },
+};
+
+function allowedChatModelsForRole(role) {
+  if (role === "admin" || role === "pro" || role === "plus") {
+    return new Set(["gpt-4o-mini", "gpt-5-mini"]);
+  }
+  return new Set(["gpt-4o-mini"]);
+}
+
+function ensureModelAllowed(role, model) {
+  const allowed = allowedChatModelsForRole(role);
+  if (!allowed.has(model)) return null;
+  return model;
+}
+
+async function loadTokenUsage({ userId, role, tz, model }) {
+  if (role === "admin") {
+    return { used: 0, limit: Infinity, periodKey: null, table: null };
+  }
+
+  const plan = TOKEN_LIMITS[role] || TOKEN_LIMITS.free;
+  const limit = Number(plan.models[model] || 0);
+
+  if (plan.period === "daily") {
+    const day = todayInTimezone(tz);
+    const { data, error } = await supabaseAdmin
+      .from("ai_usage_daily")
+      .select("input_tokens, output_tokens")
+      .eq("user_id", userId)
+      .eq("day", day)
+      .eq("model", model)
+      .maybeSingle();
+
+    if (error) throw new Error(`Load ai_usage_daily failed: ${error.message}`);
+
+    const used = (data?.input_tokens || 0) + (data?.output_tokens || 0);
+    return { used, limit, periodKey: day, table: "ai_usage_daily" };
+  }
+
+  // monthly
+  const month = monthInTimezone(tz);
+  const { data, error } = await supabaseAdmin
+    .from("ai_usage_monthly")
+    .select("input_tokens, output_tokens")
+    .eq("user_id", userId)
+    .eq("month", month)
+    .eq("model", model)
+    .maybeSingle();
+
+  if (error) throw new Error(`Load ai_usage_monthly failed: ${error.message}`);
+
+  const used = (data?.input_tokens || 0) + (data?.output_tokens || 0);
+  return { used, limit, periodKey: month, table: "ai_usage_monthly" };
+}
+
+async function bumpTokenUsage({ userId, role, tz, model, addInput, addOutput }) {
+  if (role === "admin") return;
+
+  const plan = TOKEN_LIMITS[role] || TOKEN_LIMITS.free;
+
+  if (plan.period === "daily") {
+    const day = todayInTimezone(tz);
+
+    const { data: existing, error: selErr } = await supabaseAdmin
+      .from("ai_usage_daily")
+      .select("input_tokens, output_tokens")
+      .eq("user_id", userId)
+      .eq("day", day)
+      .eq("model", model)
+      .maybeSingle();
+
+    if (selErr) throw new Error(`Select ai_usage_daily failed: ${selErr.message}`);
+
+    const nextIn = (existing?.input_tokens || 0) + addInput;
+    const nextOut = (existing?.output_tokens || 0) + addOutput;
+
+    const { error: upErr } = await supabaseAdmin
+      .from("ai_usage_daily")
+      .upsert({
+        user_id: userId,
+        day,
+        model,
+        input_tokens: nextIn,
+        output_tokens: nextOut,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (upErr) throw new Error(`Upsert ai_usage_daily failed: ${upErr.message}`);
+    return;
+  }
+
+  // monthly
+  const month = monthInTimezone(tz);
+
+  const { data: existing, error: selErr } = await supabaseAdmin
+    .from("ai_usage_monthly")
+    .select("input_tokens, output_tokens")
+    .eq("user_id", userId)
+    .eq("month", month)
+    .eq("model", model)
+    .maybeSingle();
+
+  if (selErr) throw new Error(`Select ai_usage_monthly failed: ${selErr.message}`);
+
+  const nextIn = (existing?.input_tokens || 0) + addInput;
+  const nextOut = (existing?.output_tokens || 0) + addOutput;
+
+  const { error: upErr } = await supabaseAdmin
+    .from("ai_usage_monthly")
+    .upsert({
+      user_id: userId,
+      month,
+      model,
+      input_tokens: nextIn,
+      output_tokens: nextOut,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (upErr) throw new Error(`Upsert ai_usage_monthly failed: ${upErr.message}`);
+}
+
+async function loadImageUsage({ userId, tz, model }) {
+  const day = todayInTimezone(tz);
+  const { data, error } = await supabaseAdmin
+    .from("image_usage_daily")
+    .select("count")
+    .eq("user_id", userId)
+    .eq("day", day)
+    .eq("model", model)
+    .maybeSingle();
+
+  if (error) throw new Error(`Load image_usage_daily failed: ${error.message}`);
+  return { day, count: data?.count || 0 };
+}
+
+async function bumpImageUsage({ userId, tz, model, inc = 1 }) {
+  const day = todayInTimezone(tz);
+
+  const { data: existing, error: selErr } = await supabaseAdmin
+    .from("image_usage_daily")
+    .select("count")
+    .eq("user_id", userId)
+    .eq("day", day)
+    .eq("model", model)
+    .maybeSingle();
+
+  if (selErr) throw new Error(`Select image_usage_daily failed: ${selErr.message}`);
+
+  const next = (existing?.count || 0) + inc;
+
+  const { error: upErr } = await supabaseAdmin
+    .from("image_usage_daily")
+    .upsert({
+      user_id: userId,
+      day,
+      model,
+      count: next,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (upErr) throw new Error(`Upsert image_usage_daily failed: ${upErr.message}`);
+}
+
+// ---------- OPENAI CALLS ----------
+async function openaiResponses({ model, input, maxOutputTokens }) {
+  const resp = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      input,
+      max_output_tokens: maxOutputTokens,
+      temperature: 0.7,
+    }),
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data?.error?.message || "OpenAI Responses request failed");
+  }
+  return data;
+}
+
+async function openaiDalleGenerate({ model, prompt, size }) {
+  // DALL·E 2/3 supported via Images API :contentReference[oaicite:1]{index=1}
+  const body = {
+    model,
+    prompt,
+    size,
+    // default response_format is url for dall-e-2/3
+    response_format: "url",
+  };
+
+  // DALL·E 3 supports quality; user asked “standard”
+  if (model === "dall-e-3") {
+    body.quality = "standard";
+  }
+
+  const resp = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data?.error?.message || "OpenAI Images request failed");
+  }
+
+  const url = data?.data?.[0]?.url || null;
+  const revised = data?.data?.[0]?.revised_prompt || null;
+  return { url, revised_prompt: revised };
+}
+
+// ---------- MAIN HANDLER ----------
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return json(res, 405, { error: "Method not allowed" });
   }
 
   try {
-    // ---------- AUTH ----------
-    const authHeader = req.headers.authorization || "";
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing auth token" });
-    }
+    // --------- AUTH ----------
+    const auth = await getAuthUser(req);
+    if (auth.error) return json(res, 401, { error: auth.error });
 
-    const accessToken = authHeader.slice(7).trim();
+    const userId = auth.user.id;
 
-    const { data: userData, error: userErr } =
-      await supabaseAdmin.auth.getUser(accessToken);
+    // --------- SETTINGS ----------
+    const settings = await getUserSettings(userId);
+    const role = settings.role;
+    const tz = (req.body?.timezone || settings.timezone || "UTC").trim();
 
-    if (userErr || !userData?.user) {
-      return res.status(401).json({ error: "Invalid session" });
-    }
+    // --------- ROUTING ----------
+    // action: "chat" (default) | "image"
+    const action = String(req.body?.action || "chat").toLowerCase().trim();
 
-    const userId = userData.user.id;
+    // =========================================================
+    // IMAGE GENERATION (DALL·E)
+    // =========================================================
+    if (action === "image") {
+      const prompt = String(req.body?.prompt || "").trim();
+      const dalle = String(req.body?.model || "dall-e-2").trim();
 
-    // ---------- SETTINGS ----------
-    const { data: settings } = await supabaseAdmin
-      .from("user_settings")
-      .select("role, timezone")
-      .eq("user_id", userId)
-      .maybeSingle();
+      if (!prompt) return json(res, 400, { error: "No prompt provided" });
 
-    const role = settings?.role || "user";
+      const allowedModels = new Set(["dall-e-2", "dall-e-3"]);
+      if (!allowedModels.has(dalle)) {
+        return json(res, 400, { error: "Invalid image model (use dall-e-2 or dall-e-3)" });
+      }
 
-    // ---------- INPUT ----------
-    const { question, topic, history, timezone } = req.body || {};
-    const userQuestion = (question || topic || "").trim();
+      const limits = IMAGE_LIMITS[role] || IMAGE_LIMITS.free;
+      const limit = limits[dalle] ?? 0;
 
-    if (!userQuestion) {
-      return res.status(400).json({ error: "No question provided" });
-    }
+      if (role !== "admin") {
+        const { count } = await loadImageUsage({ userId, tz, model: dalle });
+        if (!(limit === Infinity) && count >= limit) {
+          return json(res, 429, {
+            error:
+              role === "plus"
+                ? "Daily image limit reached (Plus: 1× DALL·E 2/day)."
+                : "Daily image limit reached.",
+          });
+        }
+      }
 
-    const tz = timezone || settings?.timezone || "UTC";
-    const day = todayInTimezone(tz);
+      // enforce your requested sizes
+      const size = "1024x1024";
 
-    // ---------- DAILY USAGE ----------
-    let { data: usage } = await supabaseAdmin
-      .from("ai_usage_daily")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("day", day)
-      .maybeSingle();
+      const result = await openaiDalleGenerate({
+        model: dalle,
+        prompt,
+        size,
+      });
 
-    if (!usage) {
-      const { data: newRow } = await supabaseAdmin
-        .from("ai_usage_daily")
-        .insert([{ user_id: userId, day, input_tokens: 0, output_tokens: 0 }])
-        .select()
-        .single();
+      if (!result.url) {
+        return json(res, 500, { error: "Image generated but no URL returned." });
+      }
 
-      usage = newRow;
-    }
+      // bump usage
+      if (role !== "admin") await bumpImageUsage({ userId, tz, model: dalle, inc: 1 });
 
-    const usedTokens =
-      (usage.input_tokens || 0) +
-      (usage.output_tokens || 0);
-
-    const DAILY_LIMIT = 1500;
-
-    if (role !== "admin" && usedTokens >= DAILY_LIMIT) {
-      return res.status(429).json({
-        error: "Sorry, you have run out of AI usage for today."
+      return json(res, 200, {
+        image_url: result.url,
+        revised_prompt: result.revised_prompt || undefined,
+        model: dalle,
+        size,
       });
     }
 
-    // ---------- OUTPUT TOKEN LaOGIC ----------
-    let maxOutputTokens = 250;
+    // =========================================================
+    // CHAT (GCSE tutor)
+    // =========================================================
+    const question = (req.body?.question || req.body?.topic || "").trim();
+    const history = Array.isArray(req.body?.history) ? req.body.history : [];
 
-    const isDetailed = /detailed/i.test(userQuestion);
+    // optional attachments: plus/pro/admin only
+    // attachments: [{ kind:"pdf"|"image", filename, mime, base64 }]
+    const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments : [];
 
-    if (isDetailed) {
-      if (usedTokens + 500 <= DAILY_LIMIT) {
-        maxOutputTokens = 500;
-      } else if (usedTokens + 250 <= DAILY_LIMIT) {
-        maxOutputTokens = 250;
-      } else {
-        return res.status(429).json({
-          error: "Sorry, you have run out of AI usage for today."
-        });
+    if (!question) return json(res, 400, { error: "No question provided" });
+
+    // model selection
+    const requestedModel = String(req.body?.model || "").trim();
+    const defaultModel = role === "plus" || role === "pro" || role === "admin" ? "gpt-5-mini" : "gpt-4o-mini";
+    const model = ensureModelAllowed(role, requestedModel || defaultModel);
+
+    if (!model) {
+      return json(res, 403, { error: "Your plan can’t use that model." });
+    }
+
+    // attachments allowed?
+    const canAttach = role === "plus" || role === "pro" || role === "admin";
+    if (attachments.length > 0 && !canAttach) {
+      return json(res, 403, { error: "File/image inputs are Plus/Pro/Admin only." });
+    }
+
+    // output caps
+    let maxOutputTokens = 450;
+    if (isDetailedPrompt(question)) maxOutputTokens = 900;
+
+    // quota check
+    const { used, limit } = await loadTokenUsage({ userId, role, tz, model });
+
+    if (role !== "admin") {
+      if (limit <= 0) {
+        return json(res, 403, { error: "Your plan doesn’t include token usage for this model." });
       }
-    } else {
-      if (usedTokens + 250 > DAILY_LIMIT && role !== "admin") {
-        return res.status(429).json({
-          error: "Sorry, you have run out of AI usage for today."
-        });
+
+      // quick pre-check: ensure they can at least afford the max output
+      // (we’ll do a stricter “after” check too)
+      if (used + maxOutputTokens > limit) {
+        // try downgrade output
+        if (maxOutputTokens === 900 && used + 450 <= limit) {
+          maxOutputTokens = 450;
+        } else {
+          return json(res, 429, { error: "Sorry, you have run out of AI usage for this period." });
+        }
       }
     }
 
-    // ---------- SYSTEM PROMPT ----------
+    // Build Responses API input array
+    const content = [];
+
+    // Add attachments first (so the question references them)
+    for (const a of attachments) {
+      const kind = String(a?.kind || "").toLowerCase().trim();
+      const filename = String(a?.filename || "").trim() || (kind === "pdf" ? "document.pdf" : "image.png");
+      const mime = String(a?.mime || "").trim();
+      const base64 = String(a?.base64 || "").trim();
+
+      if (kind === "pdf") {
+        const dataUrl = safeBase64DataUrl(mime || "application/pdf", base64);
+        if (!dataUrl) return json(res, 400, { error: "Bad PDF attachment (mime/base64)." });
+
+        content.push({
+          type: "input_file",
+          filename,
+          file_data: dataUrl, // file inputs format :contentReference[oaicite:2]{index=2}
+        });
+      } else if (kind === "image") {
+        const dataUrl = safeBase64DataUrl(mime || "image/png", base64);
+        if (!dataUrl) return json(res, 400, { error: "Bad image attachment (mime/base64)." });
+
+        content.push({
+          type: "input_image",
+          image_url: dataUrl,
+        });
+      } else {
+        return json(res, 400, { error: "Attachment kind must be 'pdf' or 'image'." });
+      }
+    }
+
+    // GCSE tutor system style
+    const system = [
+      "You are a professional GCSE tutor.",
+      "Give clear, exam-style answers.",
+      "No markdown symbols. No LaTeX.",
+      "Write chemical formulas using Unicode subscripts like CO₂.",
+      "Keep answers concise unless user asks for detailed.",
+    ].join(" ");
+
+    // History (simple pass-through; expect {role, content} with text)
+    const safeHistory = history
+      .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+      .slice(-12)
+      .map((m) => ({
+        role: m.role,
+        content: [{ type: "input_text", text: String(m.content || "").slice(0, 6000) }],
+      }));
+
+    // The user’s question
+    content.push({ type: "input_text", text: question });
+
     const inputPayload = [
+      // “instructions” exists, but we keep everything in messages for consistency
+      ...safeHistory,
       {
-        role: "system",
-        content:
-          "You are a professional GCSE tutor. " +
-          "Give clear, exam-style answers. " +
-          "Do NOT use markdown symbols. " +
-          "Do NOT use LaTeX. " +
-          "Write chemical formulas using Unicode subscripts like CO₂. " +
-          "Keep answers concise unless user asks for detailed."
+        role: "user",
+        content,
       },
-      ...(Array.isArray(history) ? history : []),
-      { role: "user", content: userQuestion }
     ];
 
-    // ---------- OPENAI REQUEST ----------
-    const resp = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        input: inputPayload,
-        max_output_tokens: maxOutputTokens,
-        temperature: 0.7
-      })
+    // Call OpenAI
+    const data = await openaiResponses({
+      model,
+      input: inputPayload,
+      maxOutputTokens,
     });
 
-    const data = await resp.json();
-
-    if (!resp.ok) {
-      console.error("OpenAI error:", data);
-      return res.status(500).json({
-        error: data?.error?.message || "OpenAI request failed"
-      });
-    }
-
+    // Extract reply
     const reply =
-      data?.output?.[0]?.content?.[0]?.text ||
+      data?.output?.[0]?.content?.find((c) => c.type === "output_text")?.text ||
+      data?.output_text ||
       "No response generated.";
 
-    const promptTokens = Number(data?.usage?.input_tokens || 0);
-    const completionTokens = Number(data?.usage?.output_tokens || 0);
+    const usage = data?.usage || {};
+    const { inputTextTokens, outputTextTokens, usedFallbackTotals } = getTextTokenCountsFromUsage(usage);
 
-    // ---------- UPDATE USAGE ----------
-    if (role !== "admin") {
-      await supabaseAdmin
-        .from("ai_usage_daily")
-        .update({
-          input_tokens: (usage.input_tokens || 0) + promptTokens,
-          output_tokens: (usage.output_tokens || 0) + completionTokens,
-          updated_at: new Date().toISOString()
-        })
-        .eq("user_id", userId)
-        .eq("day", day);
-    }
+    // If there were attachments, do NOT count their tokens.
+    // We attempt to count text-only tokens; if we had to fallback to totals, we still count totals (safer).
+    const shouldExcludeAttachmentTokens = attachments.length > 0 && !usedFallbackTotals;
+    const countedInput = shouldExcludeAttachmentTokens ? inputTextTokens : Number(usage?.input_tokens || inputTextTokens || 0);
+    const countedOutput = shouldExcludeAttachmentTokens ? outputTextTokens : Number(usage?.output_tokens || outputTextTokens || 0);
 
-    return res.status(200).json({
-      reply,
-      usage: { promptTokens, completionTokens },
-      remaining_tokens:
-        role === "admin"
-          ? "Unlimited"
-          : DAILY_LIMIT - (usedTokens + promptTokens + completionTokens)
+    // Update usage
+    await bumpTokenUsage({
+      userId,
+      role,
+      tz,
+      model,
+      addInput: countedInput,
+      addOutput: countedOutput,
     });
 
+    // Remaining
+    let remaining = "Unlimited";
+    if (role !== "admin") {
+      const { used: usedAfter, limit: limitAfter } = await loadTokenUsage({ userId, role, tz, model });
+      remaining = Math.max(0, Number(limitAfter) - Number(usedAfter));
+    }
+
+    return json(res, 200, {
+      reply,
+      model,
+      usage: {
+        counted_input_tokens: countedInput,
+        counted_output_tokens: countedOutput,
+        raw_input_tokens: Number(usage?.input_tokens || 0),
+        raw_output_tokens: Number(usage?.output_tokens || 0),
+        attachment_tokens_excluded: attachments.length > 0 && !usedFallbackTotals,
+      },
+      remaining_tokens: remaining,
+    });
   } catch (error) {
     console.error("Server error:", error);
-    return res.status(500).json({ error: "Server error" });
+    return json(res, 500, { error: "Server error" });
   }
 };
