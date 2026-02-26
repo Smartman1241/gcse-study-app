@@ -457,6 +457,18 @@
   overflow-y: auto;
   flex: 1;
 }
+/* MOVE MAIN CONTENT WHEN AI OPEN */
+.grid.ai-open{
+  margin-right: 42%;
+  transition: margin-right .35s ease;
+}
+
+/* mobile safety */
+@media (max-width:980px){
+  .grid.ai-open{
+    margin-right:0;
+  }
+}
 /* ===== Footer ===== */
 
 .main-footer{
@@ -2519,7 +2531,8 @@ $("#navContinue")?.addEventListener("change", (e) => {
   window.location.href = "tasks.html";
 });
     $("#dashGoAI")?.addEventListener("click", () => {
-  document.getElementById("aiSidePanel").style.display = "flex";
+  aiPanel.style.display = "flex";
+  mainGrid.classList.add("ai-open");
 });
     $("#dashGoTimer")?.addEventListener("click", () => toast("Timer is on the right →"));
 
@@ -2563,14 +2576,18 @@ const aiPanel = document.getElementById("aiSidePanel");
 const aiToggle = document.getElementById("toggleAiPanel");
 const aiClose = document.getElementById("closeAiPanel");
 
-if (aiPanel && aiToggle && aiClose) {
+if (aiPanel && aiToggle && aiClose && mainGrid) {
+
   aiToggle.addEventListener("click", () => {
-  aiPanel.style.display = "flex";
-});
+    aiPanel.style.display = "flex";
+    mainGrid.classList.add("ai-open");
+  });
 
   aiClose.addEventListener("click", () => {
     aiPanel.style.display = "none";
+    mainGrid.classList.remove("ai-open");
   });
+
 }
   }
 
