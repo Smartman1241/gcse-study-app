@@ -1444,7 +1444,7 @@
     $$("[data-action='deleteTask']").forEach(el => el.onclick = () => deleteTask(el.dataset.id));
   }
 
-  // ---------- Study sets / Cards / MCQ ----------
+  // ---------- Study sets / Cardss / MCQ ----------
   function ensureSetStores(setId){
     if(!state.cardsBySet[setId]) state.cardsBySet[setId] = [];
     if(!state.mcqBySet[setId]) state.mcqBySet[setId] = [];
