@@ -1,16 +1,13 @@
 // =====================================
-// ReviseFlow GLOBAL THEME SYSTEM
-// ONLY FILE REQUIRED ON ALL PAGES
+// REVISEFLOW GLOBAL THEME SYSTEM
+// Runs BEFORE page finishes loading
 // =====================================
 
 (function () {
 
-  const STORAGE_KEY = "reviseflow_theme";
+  const KEY = "reviseflow_theme";
 
-  // ----------------------------
-  // APPLY THEME
-  // ----------------------------
-  function applyTheme(theme) {
+  function apply(theme) {
     if (!theme) return;
 
     document.documentElement.setAttribute(
@@ -19,49 +16,46 @@
     );
   }
 
-  // ----------------------------
-  // LOAD IMMEDIATELY
-  // ----------------------------
+  // ---- LOAD IMMEDIATELY ----
   try {
-
-    const saved =
-      localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(KEY);
 
     if (saved) {
-      applyTheme(saved);
+      apply(saved);
     }
-
   } catch (e) {}
 
-  // ----------------------------
-  // GLOBAL SETTER
-  // ----------------------------
+  // ---- GLOBAL FUNCTION ----
   window.setTheme = function (theme) {
 
-    applyTheme(theme);
+    apply(theme);
 
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        theme
-      );
+      localStorage.setItem(KEY, theme);
     } catch (e) {}
 
   };
 
-  // ----------------------------
-  // SYNC OTHER OPEN TABS
-  // ----------------------------
+  // ---- PAGE NAVIGATION FIX ----
+  document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+      const saved =
+        localStorage.getItem(KEY);
+
+      if (saved) apply(saved);
+
+    }
+  );
+
+  // ---- TAB SYNC ----
   window.addEventListener(
     "storage",
-    function (event) {
+    function (e) {
 
-      if (
-        event.key === STORAGE_KEY
-      ) {
-        applyTheme(
-          event.newValue
-        );
+      if (e.key === KEY) {
+        apply(e.newValue);
       }
 
     }
