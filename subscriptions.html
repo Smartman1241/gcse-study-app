@@ -1125,13 +1125,16 @@
       : null;
 
     let currentUserId = null;
+    let currentAccessToken = null;
 
     async function loadUser(){
       if(!supabaseClient) return null;
       const { data, error } = await supabaseClient.auth.getSession();
       if(error) return null;
-      const user = data?.session?.user || null;
+      const session = data?.session || null;
+      const user = session?.user || null;
       currentUserId = user?.id || null;
+      currentAccessToken = session?.access_token || null;
       return currentUserId;
     }
 
@@ -1465,7 +1468,10 @@
       try{
         const res = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type":"application/json" },
+          headers: {
+            "Content-Type":"application/json",
+            ...(currentAccessToken ? { "Authorization": `Bearer ${currentAccessToken}` } : {})
+          },
           body: JSON.stringify(body),
           signal: controller.signal
         });
@@ -1522,7 +1528,6 @@
         plan: selectedPlan,
         cycle: selectedCycle,
         waiveConfirmed: true,
-        userId: currentUserId,
         idempotencyKey: (crypto?.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + "_" + String(Date.now())),
         client: {
           nonce: makeClientNonce(),

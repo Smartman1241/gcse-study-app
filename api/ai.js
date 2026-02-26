@@ -34,6 +34,18 @@ function json(res, code, obj) {
   return res.status(code).json(obj);
 }
 
+function safeTimezone(tz) {
+  const fallback = "UTC";
+  const candidate = String(tz || "").trim();
+  if (!candidate) return fallback;
+  try {
+    Intl.DateTimeFormat("en-US", { timeZone: candidate }).format(new Date());
+    return candidate;
+  } catch {
+    return fallback;
+  }
+}
+
 function normalizeRole(role) {
   const r = String(role || "free").toLowerCase().trim();
   if (["admin", "pro", "plus", "free", "user"].includes(r)) {
@@ -108,7 +120,7 @@ async function getAuthUser(req) {
 async function getUserSettings(userId) {
   const { data: settings, error } = await supabaseAdmin
     .from("user_settings")
-    .select("role, timezone")
+    .select("role, tier, timezone")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -117,7 +129,7 @@ async function getUserSettings(userId) {
     return { role: "free", timezone: "UTC" };
   }
   return {
-    role: normalizeRole(settings?.role),
+    role: normalizeRole(settings?.role || settings?.tier),
     timezone: settings?.timezone || "UTC",
   };
 }
@@ -391,7 +403,7 @@ module.exports = async function handler(req, res) {
     // --------- SETTINGS ----------
     const settings = await getUserSettings(userId);
     const role = settings.role;
-    const tz = (req.body?.timezone || settings.timezone || "UTC").trim();
+    const tz = safeTimezone(req.body?.timezone || settings.timezone || "UTC");
 
     // --------- ROUTING ----------
     // action: "chat" (default) | "image"

@@ -1,8 +1,14 @@
 const Stripe = require("stripe");
+const { createClient } = require("@supabase/supabase-js");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
 });
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /*
   Price Mapping (Single Source of Truth)
@@ -17,10 +23,40 @@ const PRICE_MAP = {
   price_1T46qbRzC23qaxzMC9TWNVsK: { plan: "pro", cycle: "annual" }
 };
 
+async function getAuthUser(req) {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) return { error: "Missing auth token" };
+
+  const accessToken = authHeader.slice(7).trim();
+  const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
+  if (error || !data?.user) return { error: "Invalid session" };
+
+  return { user: data.user };
+}
+
+function resolveOrigin(req) {
+  const origin = String(req.headers.origin || "").trim();
+  if (origin.startsWith("https://") || origin.startsWith("http://localhost")) {
+    return origin;
+  }
+
+  const host = String(req.headers.host || "").trim();
+  if (!host) return null;
+
+  const proto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
+  const safeProto = proto === "http" || proto === "https" ? proto : "https";
+  return `${safeProto}://${host}`;
+}
+
 module.exports = async (req, res) => {
   try {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    const auth = await getAuthUser(req);
+    if (auth.error) {
+      return res.status(401).json({ error: auth.error });
     }
 
     const { priceId, waiveConfirmed } = req.body || {};
@@ -41,17 +77,12 @@ module.exports = async (req, res) => {
     const { plan, cycle } = PRICE_MAP[priceId];
 
     // 🔒 4. Determine base URL safely
-    const origin =
-      req.headers.origin ||
-      (req.headers.host ? `https://${req.headers.host}` : null);
-
+    const origin = resolveOrigin(req);
     if (!origin) {
       return res.status(400).json({ error: "Unable to determine base URL" });
     }
 
-    // 🔒 5. Optional: Attach user email if logged in
-    // (If you store it in req.user from auth middleware)
-    const customerEmail = req.user?.email || undefined;
+    const customerEmail = auth.user.email || undefined;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -68,6 +99,7 @@ module.exports = async (req, res) => {
       customer_email: customerEmail,
 
       metadata: {
+        user_id: auth.user.id,
         plan,
         cycle,
         waive_confirmed: "true"
@@ -75,18 +107,18 @@ module.exports = async (req, res) => {
 
       subscription_data: {
         metadata: {
+          user_id: auth.user.id,
           plan,
           cycle,
           waive_confirmed: "true"
         }
       },
 
-      success_url: `${origin}/billing-success.html?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/account.html?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/subscriptions.html?canceled=1`
     });
 
     return res.status(200).json({ url: session.url });
-
   } catch (err) {
     console.error("Checkout error:", err);
     return res.status(500).json({
