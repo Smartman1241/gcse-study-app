@@ -278,6 +278,18 @@ async function consumeImageQuota({ userId, tz, model, limit, inc = 1 }) {
   return { allowed: !!row?.allowed, count: Number(row?.used || 0) };
 }
 
+async function adjustImageQuota({ userId, tz, model, delta }) {
+  const day = todayInTimezone(tz);
+  const { error } = await supabaseAdmin.rpc("adjust_image_quota", {
+    p_user_id: userId,
+    p_day: day,
+    p_model: model,
+    p_delta: Number(delta || 0),
+  });
+
+  if (error) throw new Error(`adjust_image_quota failed: ${error.message}`);
+}
+
 function estimateInputTokens(question, history = []) {
   const q = String(question || "");
   const historyText = history
@@ -387,6 +399,8 @@ module.exports = async function handler(req, res) {
       const limits = IMAGE_LIMITS[role] || IMAGE_LIMITS.free;
       const limit = limits[dalle] ?? 0;
 
+      let imageQuotaReserved = false;
+
       if (role !== "admin") {
         const quota = await consumeImageQuota({ userId, tz, model: dalle, limit, inc: 1 });
         if (!quota.allowed) {
@@ -397,27 +411,39 @@ module.exports = async function handler(req, res) {
                 : "Daily image limit reached.",
           });
         }
+        imageQuotaReserved = true;
       }
 
-      // enforce your requested sizes
-      const size = "1024x1024";
+      try {
+        // enforce your requested sizes
+        const size = "1024x1024";
 
-      const result = await openaiDalleGenerate({
-        model: dalle,
-        prompt,
-        size,
-      });
+        const result = await openaiDalleGenerate({
+          model: dalle,
+          prompt,
+          size,
+        });
 
-      if (!result.url) {
-        return json(res, 500, { error: "Image generated but no URL returned." });
+        if (!result.url) {
+          throw new Error("Image generated but no URL returned.");
+        }
+
+        return json(res, 200, {
+          image_url: result.url,
+          revised_prompt: result.revised_prompt || undefined,
+          model: dalle,
+          size,
+        });
+      } catch (imageErr) {
+        if (imageQuotaReserved) {
+          try {
+            await adjustImageQuota({ userId, tz, model: dalle, delta: -1 });
+          } catch (rollbackErr) {
+            console.error("Image quota rollback failed:", rollbackErr?.message || "unknown");
+          }
+        }
+        return json(res, 500, { error: imageErr?.message || "Image generation failed." });
       }
-
-      return json(res, 200, {
-        image_url: result.url,
-        revised_prompt: result.revised_prompt || undefined,
-        model: dalle,
-        size,
-      });
     }
 
     // =========================================================

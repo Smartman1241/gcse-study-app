@@ -89,11 +89,16 @@ module.exports = async (req, res) => {
 
     const key = normalizeIdempotencyKey(idempotencyKey, userId, priceId);
 
-    const { data: existingMap } = await supabaseAdmin
+    const { data: existingMap, error: mapErr } = await supabaseAdmin
       .from("billing_customer_map")
       .select("stripe_customer_id")
       .eq("user_id", userId)
       .maybeSingle();
+
+    if (mapErr) {
+      console.error("Customer map lookup failed:", mapErr.message);
+      return json(res, 500, { error: "Unable to prepare checkout" });
+    }
 
     const customerId = existingMap?.stripe_customer_id || undefined;
 

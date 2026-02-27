@@ -30,6 +30,11 @@ create table if not exists public.stripe_webhook_events (
   processed_at timestamptz not null default now()
 );
 
+alter table public.stripe_webhook_events
+  add column if not exists status text not null default 'processing',
+  add column if not exists last_error text,
+  add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists stripe_webhook_events_type_idx
   on public.stripe_webhook_events (event_type, processed_at desc);
 
@@ -147,5 +152,39 @@ begin
   else
     return query select true, v_used;
   end if;
+end;
+$$;
+
+
+create unique index if not exists ai_usage_daily_user_day_model_uidx
+  on public.ai_usage_daily (user_id, day, model);
+
+create unique index if not exists ai_usage_monthly_user_month_model_uidx
+  on public.ai_usage_monthly (user_id, month, model);
+
+create unique index if not exists image_usage_daily_user_day_model_uidx
+  on public.image_usage_daily (user_id, day, model);
+
+
+create or replace function public.adjust_image_quota(
+  p_user_id uuid,
+  p_day text,
+  p_model text,
+  p_delta integer
+)
+returns table(used bigint)
+language plpgsql
+security definer
+as $$
+declare
+  v_used bigint;
+begin
+  update public.image_usage_daily
+  set count = greatest(0, count + p_delta),
+      updated_at = now()
+  where user_id = p_user_id and day = p_day and model = p_model
+  returning count::bigint into v_used;
+
+  return query select coalesce(v_used, 0)::bigint;
 end;
 $$;

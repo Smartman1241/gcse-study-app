@@ -15,14 +15,40 @@ function json(res, code, payload) {
   return res.status(code).json(payload);
 }
 
+function roleFromPlan(plan) {
+  const normalized = String(plan || "").toLowerCase();
+  if (normalized === "pro") return "pro";
+  if (normalized === "plus") return "plus";
+  return "free";
+}
+
 async function markEventProcessing(event) {
+  const now = new Date().toISOString();
   const { error } = await supabaseAdmin
     .from("stripe_webhook_events")
-    .insert({ event_id: event.id, event_type: event.type });
+    .insert({
+      event_id: event.id,
+      event_type: event.type,
+      status: "processing",
+      processed_at: now,
+      updated_at: now,
+      last_error: null
+    });
 
   if (!error) return { duplicate: false };
   if (error.code === "23505") return { duplicate: true };
   throw new Error(`Webhook idempotency insert failed: ${error.message}`);
+}
+
+async function updateEventStatus(eventId, status, lastError = null) {
+  await supabaseAdmin
+    .from("stripe_webhook_events")
+    .update({
+      status,
+      last_error: lastError,
+      updated_at: new Date().toISOString()
+    })
+    .eq("event_id", eventId);
 }
 
 async function resolveUserId({ explicitUserId, stripeCustomerId, stripeSubscriptionId }) {
@@ -76,6 +102,7 @@ async function handleCheckoutCompleted(session) {
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const plan = subscription.metadata?.plan || session.metadata?.plan || "free";
+  const role = roleFromPlan(plan);
 
   await supabaseAdmin.from("billing_customer_map").upsert({
     user_id: userId,
@@ -97,13 +124,24 @@ async function handleCheckoutCompleted(session) {
     .upsert({
       user_id: userId,
       tier: plan,
+      role,
       stripe_subscription_id: subscriptionId,
       updated_at: new Date().toISOString()
     });
 }
 
-async function handleSubscriptionDowngrade(subscriptionLike) {
-  const subscriptionId = String(subscriptionLike.id || subscriptionLike.subscription || "");
+function getDowngradeSubscriptionId(eventType, object) {
+  if (eventType === "invoice.payment_failed") {
+    return String(object.subscription || "");
+  }
+  if (eventType === "customer.subscription.deleted") {
+    return String(object.id || "");
+  }
+  return "";
+}
+
+async function handleSubscriptionDowngrade(eventType, subscriptionLike) {
+  const subscriptionId = getDowngradeSubscriptionId(eventType, subscriptionLike);
   const stripeCustomerId = String(subscriptionLike.customer || "");
 
   if (!subscriptionId && !stripeCustomerId) return;
@@ -115,7 +153,7 @@ async function handleSubscriptionDowngrade(subscriptionLike) {
   });
 
   if (!userId) {
-    console.warn("Unable to resolve user for downgrade event", { subscriptionId });
+    console.warn("Unable to resolve user for downgrade event", { subscriptionId, eventType });
     return;
   }
 
@@ -123,6 +161,7 @@ async function handleSubscriptionDowngrade(subscriptionLike) {
     .from("user_settings")
     .update({
       tier: "free",
+      role: "free",
       stripe_subscription_id: null,
       updated_at: new Date().toISOString()
     })
@@ -166,34 +205,30 @@ async function handler(req, res) {
     return json(res, 400, { error: "Invalid signature" });
   }
 
-  let acquiredEventLock = false;
-
   try {
     const idem = await markEventProcessing(event);
     if (idem.duplicate) {
       return json(res, 200, { received: true, duplicate: true });
     }
-    acquiredEventLock = true;
 
     switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(event.data.object);
         break;
       case "customer.subscription.deleted":
-        await handleSubscriptionDowngrade(event.data.object);
+        await handleSubscriptionDowngrade(event.type, event.data.object);
         break;
       case "invoice.payment_failed":
-        await handleSubscriptionDowngrade(event.data.object);
+        await handleSubscriptionDowngrade(event.type, event.data.object);
         break;
       default:
         break;
     }
 
+    await updateEventStatus(event.id, "processed", null);
     return json(res, 200, { received: true });
   } catch (err) {
-    if (acquiredEventLock) {
-      await supabaseAdmin.from("stripe_webhook_events").delete().eq("event_id", event.id);
-    }
+    await updateEventStatus(event.id, "failed", String(err?.message || "unknown").slice(0, 500));
     console.error("Webhook processing error:", err?.message || "unknown");
     return json(res, 500, { error: "Webhook handler failed" });
   }

@@ -6,8 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Exam Mode – GCSE Focus</title>
 
-<link rel="stylesheet" href="/css/styles.css">
-
 <style>
 body {
   background: #f8f8f8;
@@ -128,7 +126,6 @@ body {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/js/navbar.js"></script>
 
 <script>
 let currentQuestion = "";
@@ -170,7 +167,23 @@ Write it exactly how it would appear on a real exam paper.
     body: JSON.stringify({ question: prompt })
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
+
+  if(response.status === 401){
+    document.getElementById("resultBox").innerText = "Session expired. Please log in again.";
+    window.location.href = "auth.html";
+    return;
+  }
+
+  if(response.status === 429){
+    document.getElementById("resultBox").innerText = data?.error || "AI usage limit reached.";
+    return;
+  }
+
+  if(!response.ok || !data?.reply){
+    document.getElementById("resultBox").innerText = data?.error || "Could not generate question.";
+    return;
+  }
 
   currentQuestion = data.reply;
   document.getElementById("questionBox").innerText = currentQuestion;
@@ -216,7 +229,23 @@ Return:
     body: JSON.stringify({ question: prompt })
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
+
+  if(response.status === 401){
+    document.getElementById("resultBox").innerText = "Session expired. Please log in again.";
+    window.location.href = "auth.html";
+    return;
+  }
+
+  if(response.status === 429){
+    document.getElementById("resultBox").innerText = data?.error || "AI usage limit reached.";
+    return;
+  }
+
+  if(!response.ok || !data?.reply){
+    document.getElementById("resultBox").innerText = data?.error || "Could not mark answer.";
+    return;
+  }
 
   document.getElementById("resultBox").innerText = data.reply;
 }
