@@ -2,12 +2,6 @@ const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
 const { buffer } = require("micro");
 
-export const config = {
-  api: {
-    bodyParser: false
-  }
-};
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
 });
@@ -17,7 +11,21 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-module.exports = async (req, res) => {
+async function upsertUserRole(userId, role, subscriptionId) {
+  const normalizedRole = String(role || "free").toLowerCase();
+  const payload = {
+    user_id: userId,
+    role: normalizedRole,
+    tier: normalizedRole,
+    stripe_subscription_id: subscriptionId || null,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await supabaseAdmin.from("user_settings").upsert(payload);
+  if (error) throw error;
+}
+
+const handler = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).send("Method not allowed");
   }
@@ -44,65 +52,39 @@ module.exports = async (req, res) => {
 
   try {
     switch (event.type) {
-
-      // ✅ SUBSCRIPTION CREATED VIA CHECKOUT
       case "checkout.session.completed": {
         const session = event.data.object;
-
         if (session.mode !== "subscription") break;
 
         const subscriptionId = session.subscription;
-        const metadataUserId = session.metadata?.user_id;
+        if (!subscriptionId) break;
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const plan = subscription.metadata?.plan || "free";
+        const userId =
+          subscription.metadata?.user_id ||
+          session.metadata?.user_id ||
+          null;
 
-        let userId = metadataUserId;
-
-        // Fallback: find by email if metadata missing
         if (!userId) {
-          const email = session.customer_details?.email;
-          if (!email) break;
-
-          const { data: users } = await supabaseAdmin.auth.admin.listUsers();
-          const matched = users?.users?.find(u => u.email === email);
-          if (!matched) break;
-
-          userId = matched.id;
+          console.warn("Stripe webhook: missing metadata user_id for checkout.session.completed");
+          break;
         }
 
-        await supabaseAdmin
-          .from("user_settings")
-          .upsert({
-            user_id: userId,
-            tier: plan,
-            stripe_subscription_id: subscriptionId,
-            updated_at: new Date().toISOString()
-          });
-
+        await upsertUserRole(userId, plan, subscriptionId);
         break;
       }
 
-      // ❌ SUBSCRIPTION CANCELLED
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
         const userId = subscription.metadata?.user_id;
 
         if (!userId) break;
 
-        await supabaseAdmin
-          .from("user_settings")
-          .update({
-            tier: "free",
-            stripe_subscription_id: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq("user_id", userId);
-
+        await upsertUserRole(userId, "free", null);
         break;
       }
 
-      // 💳 PAYMENT FAILED
       case "invoice.payment_failed": {
         const invoice = event.data.object;
         const subscriptionId = invoice.subscription;
@@ -114,14 +96,7 @@ module.exports = async (req, res) => {
 
         if (!userId) break;
 
-        await supabaseAdmin
-          .from("user_settings")
-          .update({
-            tier: "free",
-            updated_at: new Date().toISOString()
-          })
-          .eq("user_id", userId);
-
+        await upsertUserRole(userId, "free", subscriptionId);
         break;
       }
 
@@ -130,9 +105,15 @@ module.exports = async (req, res) => {
     }
 
     return res.status(200).json({ received: true });
-
   } catch (err) {
     console.error("Webhook processing error:", err);
     return res.status(500).json({ error: "Webhook handler failed" });
+  }
+};
+
+module.exports = handler;
+module.exports.config = {
+  api: {
+    bodyParser: false
   }
 };

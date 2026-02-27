@@ -201,6 +201,17 @@ function updateTierOptions(){
   }
 }
 
+
+function safeExternalLink(url){
+  try{
+    const u = new URL(String(url || ""), window.location.origin);
+    if(u.protocol !== "https:") return null;
+    return u.href;
+  }catch{
+    return null;
+  }
+}
+
 async function findPaper(){
 
   const subject = document.getElementById("subject").value;
@@ -226,11 +237,32 @@ async function findPaper(){
     return;
   }
 
-  results.innerHTML = `
-    <h3>${year} ${subject} - ${paper_type} (${tier})</h3>
-    <a href="${data.question_link}" target="_blank">📄 View Official Paper</a>
-    <a href="${data.markscheme_link}" target="_blank">📝 View Mark Scheme</a>
-  `;
+  const questionLink = safeExternalLink(data.question_link);
+  const markschemeLink = safeExternalLink(data.markscheme_link);
+
+  if(!questionLink || !markschemeLink){
+    results.textContent = "Paper found, but one or more links are invalid.";
+    return;
+  }
+
+  results.replaceChildren();
+
+  const title = document.createElement("h3");
+  title.textContent = `${year} ${subject} - ${paper_type} (${tier})`;
+
+  const paperA = document.createElement("a");
+  paperA.href = questionLink;
+  paperA.target = "_blank";
+  paperA.rel = "noopener noreferrer";
+  paperA.textContent = "📄 View Official Paper";
+
+  const markA = document.createElement("a");
+  markA.href = markschemeLink;
+  markA.target = "_blank";
+  markA.rel = "noopener noreferrer";
+  markA.textContent = "📝 View Mark Scheme";
+
+  results.append(title, paperA, markA);
 }
 
 updatePaperOptions();
