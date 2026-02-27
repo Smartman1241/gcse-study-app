@@ -2,12 +2,6 @@ const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
 const { buffer } = require("micro");
 
-export const config = {
-  api: {
-    bodyParser: false
-  }
-};
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
 });
@@ -17,122 +11,197 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-module.exports = async (req, res) => {
+function json(res, code, payload) {
+  return res.status(code).json(payload);
+}
+
+async function markEventProcessing(event) {
+  const { error } = await supabaseAdmin
+    .from("stripe_webhook_events")
+    .insert({ event_id: event.id, event_type: event.type });
+
+  if (!error) return { duplicate: false };
+  if (error.code === "23505") return { duplicate: true };
+  throw new Error(`Webhook idempotency insert failed: ${error.message}`);
+}
+
+async function resolveUserId({ explicitUserId, stripeCustomerId, stripeSubscriptionId }) {
+  if (explicitUserId) return explicitUserId;
+
+  if (stripeSubscriptionId) {
+    const { data: subMap } = await supabaseAdmin
+      .from("billing_subscription_map")
+      .select("user_id")
+      .eq("stripe_subscription_id", stripeSubscriptionId)
+      .maybeSingle();
+
+    if (subMap?.user_id) return subMap.user_id;
+  }
+
+  if (stripeCustomerId) {
+    const { data: customerMap } = await supabaseAdmin
+      .from("billing_customer_map")
+      .select("user_id")
+      .eq("stripe_customer_id", stripeCustomerId)
+      .maybeSingle();
+
+    if (customerMap?.user_id) return customerMap.user_id;
+  }
+
+  return null;
+}
+
+async function handleCheckoutCompleted(session) {
+  if (session.mode !== "subscription") return;
+
+  const subscriptionId = String(session.subscription || "");
+  const stripeCustomerId = String(session.customer || "");
+  const explicitUserId = String(session.client_reference_id || "") || null;
+
+  if (!subscriptionId || !stripeCustomerId) {
+    console.warn("checkout.session.completed missing subscription/customer");
+    return;
+  }
+
+  const userId = await resolveUserId({
+    explicitUserId,
+    stripeCustomerId,
+    stripeSubscriptionId: subscriptionId
+  });
+
+  if (!userId) {
+    console.warn("Unable to resolve user for checkout.session.completed", { subscriptionId });
+    return;
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const plan = subscription.metadata?.plan || session.metadata?.plan || "free";
+
+  await supabaseAdmin.from("billing_customer_map").upsert({
+    user_id: userId,
+    stripe_customer_id: stripeCustomerId,
+    updated_at: new Date().toISOString()
+  });
+
+  await supabaseAdmin.from("billing_subscription_map").upsert({
+    stripe_subscription_id: subscriptionId,
+    user_id: userId,
+    stripe_customer_id: stripeCustomerId,
+    status: subscription.status || "active",
+    plan,
+    updated_at: new Date().toISOString()
+  });
+
+  await supabaseAdmin
+    .from("user_settings")
+    .upsert({
+      user_id: userId,
+      tier: plan,
+      stripe_subscription_id: subscriptionId,
+      updated_at: new Date().toISOString()
+    });
+}
+
+async function handleSubscriptionDowngrade(subscriptionLike) {
+  const subscriptionId = String(subscriptionLike.id || subscriptionLike.subscription || "");
+  const stripeCustomerId = String(subscriptionLike.customer || "");
+
+  if (!subscriptionId && !stripeCustomerId) return;
+
+  const userId = await resolveUserId({
+    explicitUserId: null,
+    stripeCustomerId,
+    stripeSubscriptionId: subscriptionId
+  });
+
+  if (!userId) {
+    console.warn("Unable to resolve user for downgrade event", { subscriptionId });
+    return;
+  }
+
+  await supabaseAdmin
+    .from("user_settings")
+    .update({
+      tier: "free",
+      stripe_subscription_id: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("user_id", userId);
+
+  if (subscriptionId) {
+    await supabaseAdmin
+      .from("billing_subscription_map")
+      .upsert({
+        stripe_subscription_id: subscriptionId,
+        user_id: userId,
+        stripe_customer_id: stripeCustomerId || null,
+        status: "canceled",
+        plan: "free",
+        updated_at: new Date().toISOString()
+      });
+  }
+}
+
+async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).send("Method not allowed");
+    return json(res, 405, { error: "Method not allowed" });
   }
 
   const sig = req.headers["stripe-signature"];
   if (!sig) {
-    return res.status(400).send("Missing Stripe signature");
+    return json(res, 400, { error: "Missing Stripe signature" });
   }
 
   let event;
 
   try {
     const rawBody = await buffer(req);
-
     event = stripe.webhooks.constructEvent(
       rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
-    return res.status(400).send("Invalid signature");
+    console.error("Webhook signature verification failed:", err?.message || "unknown");
+    return json(res, 400, { error: "Invalid signature" });
   }
 
+  let acquiredEventLock = false;
+
   try {
+    const idem = await markEventProcessing(event);
+    if (idem.duplicate) {
+      return json(res, 200, { received: true, duplicate: true });
+    }
+    acquiredEventLock = true;
+
     switch (event.type) {
-
-      // ✅ SUBSCRIPTION CREATED VIA CHECKOUT
-      case "checkout.session.completed": {
-        const session = event.data.object;
-
-        if (session.mode !== "subscription") break;
-
-        const subscriptionId = session.subscription;
-        const metadataUserId = session.metadata?.user_id;
-
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        const plan = subscription.metadata?.plan || "free";
-
-        let userId = metadataUserId;
-
-        // Fallback: find by email if metadata missing
-        if (!userId) {
-          const email = session.customer_details?.email;
-          if (!email) break;
-
-          const { data: users } = await supabaseAdmin.auth.admin.listUsers();
-          const matched = users?.users?.find(u => u.email === email);
-          if (!matched) break;
-
-          userId = matched.id;
-        }
-
-        await supabaseAdmin
-          .from("user_settings")
-          .upsert({
-            user_id: userId,
-            tier: plan,
-            stripe_subscription_id: subscriptionId,
-            updated_at: new Date().toISOString()
-          });
-
+      case "checkout.session.completed":
+        await handleCheckoutCompleted(event.data.object);
         break;
-      }
-
-      // ❌ SUBSCRIPTION CANCELLED
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object;
-        const userId = subscription.metadata?.user_id;
-
-        if (!userId) break;
-
-        await supabaseAdmin
-          .from("user_settings")
-          .update({
-            tier: "free",
-            stripe_subscription_id: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq("user_id", userId);
-
+      case "customer.subscription.deleted":
+        await handleSubscriptionDowngrade(event.data.object);
         break;
-      }
-
-      // 💳 PAYMENT FAILED
-      case "invoice.payment_failed": {
-        const invoice = event.data.object;
-        const subscriptionId = invoice.subscription;
-
-        if (!subscriptionId) break;
-
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        const userId = subscription.metadata?.user_id;
-
-        if (!userId) break;
-
-        await supabaseAdmin
-          .from("user_settings")
-          .update({
-            tier: "free",
-            updated_at: new Date().toISOString()
-          })
-          .eq("user_id", userId);
-
+      case "invoice.payment_failed":
+        await handleSubscriptionDowngrade(event.data.object);
         break;
-      }
-
       default:
         break;
     }
 
-    return res.status(200).json({ received: true });
-
+    return json(res, 200, { received: true });
   } catch (err) {
-    console.error("Webhook processing error:", err);
-    return res.status(500).json({ error: "Webhook handler failed" });
+    if (acquiredEventLock) {
+      await supabaseAdmin.from("stripe_webhook_events").delete().eq("event_id", event.id);
+    }
+    console.error("Webhook processing error:", err?.message || "unknown");
+    return json(res, 500, { error: "Webhook handler failed" });
+  }
+}
+
+module.exports = handler;
+module.exports.config = {
+  api: {
+    bodyParser: false
   }
 };

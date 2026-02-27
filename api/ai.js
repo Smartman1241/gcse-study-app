@@ -194,7 +194,6 @@ async function loadTokenUsage({ userId, role, tz, model }) {
     return { used, limit, periodKey: day, table: "ai_usage_daily" };
   }
 
-  // monthly
   const month = monthInTimezone(tz);
   const { data, error } = await supabaseAdmin
     .from("ai_usage_monthly")
@@ -210,112 +209,84 @@ async function loadTokenUsage({ userId, role, tz, model }) {
   return { used, limit, periodKey: month, table: "ai_usage_monthly" };
 }
 
-async function bumpTokenUsage({ userId, role, tz, model, addInput, addOutput }) {
-  if (role === "admin") return;
+async function reserveTokenUsage({ userId, role, tz, model, reserveInput, reserveOutput }) {
+  if (role === "admin") return { allowed: true, used: 0, limit: Infinity, reservation: { reserveInput: 0, reserveOutput: 0 } };
 
-  const plan = TOKEN_LIMITS[role] || TOKEN_LIMITS.free;
-
-  if (plan.period === "daily") {
-    const day = todayInTimezone(tz);
-
-    const { data: existing, error: selErr } = await supabaseAdmin
-      .from("ai_usage_daily")
-      .select("input_tokens, output_tokens")
-      .eq("user_id", userId)
-      .eq("day", day)
-      .eq("model", model)
-      .maybeSingle();
-
-    if (selErr) throw new Error(`Select ai_usage_daily failed: ${selErr.message}`);
-
-    const nextIn = (existing?.input_tokens || 0) + addInput;
-    const nextOut = (existing?.output_tokens || 0) + addOutput;
-
-    const { error: upErr } = await supabaseAdmin
-      .from("ai_usage_daily")
-      .upsert({
-        user_id: userId,
-        day,
-        model,
-        input_tokens: nextIn,
-        output_tokens: nextOut,
-        updated_at: new Date().toISOString(),
-      });
-
-    if (upErr) throw new Error(`Upsert ai_usage_daily failed: ${upErr.message}`);
-    return;
+  const info = await loadTokenUsage({ userId, role, tz, model });
+  if (info.limit <= 0) {
+    return { allowed: false, used: info.used, limit: info.limit, reservation: { reserveInput: 0, reserveOutput: 0 } };
   }
 
-  // monthly
-  const month = monthInTimezone(tz);
+  const addInput = Math.max(0, Number(reserveInput || 0));
+  const addOutput = Math.max(0, Number(reserveOutput || 0));
 
-  const { data: existing, error: selErr } = await supabaseAdmin
-    .from("ai_usage_monthly")
-    .select("input_tokens, output_tokens")
-    .eq("user_id", userId)
-    .eq("month", month)
-    .eq("model", model)
-    .maybeSingle();
+  const { data, error } = await supabaseAdmin.rpc("consume_ai_tokens", {
+    p_table: info.table,
+    p_user_id: userId,
+    p_period_key: info.periodKey,
+    p_model: model,
+    p_add_input: addInput,
+    p_add_output: addOutput,
+    p_limit: info.limit,
+  });
 
-  if (selErr) throw new Error(`Select ai_usage_monthly failed: ${selErr.message}`);
+  if (error) throw new Error(`consume_ai_tokens failed: ${error.message}`);
 
-  const nextIn = (existing?.input_tokens || 0) + addInput;
-  const nextOut = (existing?.output_tokens || 0) + addOutput;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.allowed) return { allowed: false, used: info.used, limit: info.limit, reservation: { reserveInput: addInput, reserveOutput: addOutput } };
 
-  const { error: upErr } = await supabaseAdmin
-    .from("ai_usage_monthly")
-    .upsert({
-      user_id: userId,
-      month,
-      model,
-      input_tokens: nextIn,
-      output_tokens: nextOut,
-      updated_at: new Date().toISOString(),
-    });
-
-  if (upErr) throw new Error(`Upsert ai_usage_monthly failed: ${upErr.message}`);
+  return {
+    allowed: true,
+    used: Number(row.used || 0),
+    limit: info.limit,
+    table: info.table,
+    periodKey: info.periodKey,
+    reservation: { reserveInput: addInput, reserveOutput: addOutput },
+  };
 }
 
-async function loadImageUsage({ userId, tz, model }) {
-  const day = todayInTimezone(tz);
-  const { data, error } = await supabaseAdmin
-    .from("image_usage_daily")
-    .select("count")
-    .eq("user_id", userId)
-    .eq("day", day)
-    .eq("model", model)
-    .maybeSingle();
+async function adjustTokenUsage({ role, table, userId, periodKey, model, deltaInput, deltaOutput }) {
+  if (role === "admin") return;
 
-  if (error) throw new Error(`Load image_usage_daily failed: ${error.message}`);
-  return { day, count: data?.count || 0 };
+  const { error } = await supabaseAdmin.rpc("adjust_ai_tokens", {
+    p_table: table,
+    p_user_id: userId,
+    p_period_key: periodKey,
+    p_model: model,
+    p_delta_input: Number(deltaInput || 0),
+    p_delta_output: Number(deltaOutput || 0),
+  });
+
+  if (error) throw new Error(`adjust_ai_tokens failed: ${error.message}`);
 }
 
-async function bumpImageUsage({ userId, tz, model, inc = 1 }) {
+async function consumeImageQuota({ userId, tz, model, limit, inc = 1 }) {
+  if (!Number.isFinite(limit)) return { allowed: true };
+
   const day = todayInTimezone(tz);
+  const { data, error } = await supabaseAdmin.rpc("consume_image_quota", {
+    p_user_id: userId,
+    p_day: day,
+    p_model: model,
+    p_inc: Math.max(0, Number(inc || 0)),
+    p_limit: Number(limit),
+  });
 
-  const { data: existing, error: selErr } = await supabaseAdmin
-    .from("image_usage_daily")
-    .select("count")
-    .eq("user_id", userId)
-    .eq("day", day)
-    .eq("model", model)
-    .maybeSingle();
+  if (error) throw new Error(`consume_image_quota failed: ${error.message}`);
 
-  if (selErr) throw new Error(`Select image_usage_daily failed: ${selErr.message}`);
+  const row = Array.isArray(data) ? data[0] : data;
+  return { allowed: !!row?.allowed, count: Number(row?.used || 0) };
+}
 
-  const next = (existing?.count || 0) + inc;
+function estimateInputTokens(question, history = []) {
+  const q = String(question || "");
+  const historyText = history
+    .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+    .map((m) => String(m.content || ""))
+    .join("\n");
 
-  const { error: upErr } = await supabaseAdmin
-    .from("image_usage_daily")
-    .upsert({
-      user_id: userId,
-      day,
-      model,
-      count: next,
-      updated_at: new Date().toISOString(),
-    });
-
-  if (upErr) throw new Error(`Upsert image_usage_daily failed: ${upErr.message}`);
+  const chars = q.length + historyText.length;
+  return clampInt(Math.ceil(chars / 4), 80, 6000);
 }
 
 // ---------- OPENAI CALLS ----------
@@ -381,6 +352,8 @@ module.exports = async function handler(req, res) {
     return json(res, 405, { error: "Method not allowed" });
   }
 
+  let reservationContext = null;
+
   try {
     // --------- AUTH ----------
     const auth = await getAuthUser(req);
@@ -415,8 +388,8 @@ module.exports = async function handler(req, res) {
       const limit = limits[dalle] ?? 0;
 
       if (role !== "admin") {
-        const { count } = await loadImageUsage({ userId, tz, model: dalle });
-        if (!(limit === Infinity) && count >= limit) {
+        const quota = await consumeImageQuota({ userId, tz, model: dalle, limit, inc: 1 });
+        if (!quota.allowed) {
           return json(res, 429, {
             error:
               role === "plus"
@@ -438,9 +411,6 @@ module.exports = async function handler(req, res) {
       if (!result.url) {
         return json(res, 500, { error: "Image generated but no URL returned." });
       }
-
-      // bump usage
-      if (role !== "admin") await bumpImageUsage({ userId, tz, model: dalle, inc: 1 });
 
       return json(res, 200, {
         image_url: result.url,
@@ -481,24 +451,48 @@ module.exports = async function handler(req, res) {
     let maxOutputTokens = 450;
     if (isDetailedPrompt(question)) maxOutputTokens = 900;
 
-    // quota check
-    const { used, limit } = await loadTokenUsage({ userId, role, tz, model });
+    const estimatedInputTokens = estimateInputTokens(question, history);
+    let tokenReservation = { reservation: { reserveInput: 0, reserveOutput: 0 }, table: null, periodKey: null };
 
     if (role !== "admin") {
-      if (limit <= 0) {
-        return json(res, 403, { error: "Your plan doesn’t include token usage for this model." });
+      let reserveAttempt = await reserveTokenUsage({
+        userId,
+        role,
+        tz,
+        model,
+        reserveInput: estimatedInputTokens,
+        reserveOutput: maxOutputTokens,
+      });
+
+      if (!reserveAttempt.allowed && maxOutputTokens === 900) {
+        maxOutputTokens = 450;
+        reserveAttempt = await reserveTokenUsage({
+          userId,
+          role,
+          tz,
+          model,
+          reserveInput: estimatedInputTokens,
+          reserveOutput: maxOutputTokens,
+        });
       }
 
-      // quick pre-check: ensure they can at least afford the max output
-      // (we’ll do a stricter “after” check too)
-      if (used + maxOutputTokens > limit) {
-        // try downgrade output
-        if (maxOutputTokens === 900 && used + 450 <= limit) {
-          maxOutputTokens = 450;
-        } else {
-          return json(res, 429, { error: "Sorry, you have run out of AI usage for this period." });
+      if (!reserveAttempt.allowed) {
+        if (Number(reserveAttempt.limit || 0) <= 0) {
+          return json(res, 403, { error: "Your plan doesn’t include token usage for this model." });
         }
+        return json(res, 429, { error: "Sorry, you have run out of AI usage for this period." });
       }
+
+      tokenReservation = reserveAttempt;
+      reservationContext = {
+        role,
+        table: tokenReservation.table,
+        userId,
+        periodKey: tokenReservation.periodKey,
+        model,
+        reservedInput: Number(tokenReservation.reservation?.reserveInput || 0),
+        reservedOutput: Number(tokenReservation.reservation?.reserveOutput || 0),
+      };
     }
 
     // Build Responses API input array
@@ -555,7 +549,10 @@ module.exports = async function handler(req, res) {
     content.push({ type: "input_text", text: question });
 
     const inputPayload = [
-      // “instructions” exists, but we keep everything in messages for consistency
+      {
+        role: "system",
+        content: [{ type: "input_text", text: system }],
+      },
       ...safeHistory,
       {
         role: "user",
@@ -585,15 +582,25 @@ module.exports = async function handler(req, res) {
     const countedInput = shouldExcludeAttachmentTokens ? inputTextTokens : Number(usage?.input_tokens || inputTextTokens || 0);
     const countedOutput = shouldExcludeAttachmentTokens ? outputTextTokens : Number(usage?.output_tokens || outputTextTokens || 0);
 
-    // Update usage
-    await bumpTokenUsage({
-      userId,
-      role,
-      tz,
-      model,
-      addInput: countedInput,
-      addOutput: countedOutput,
-    });
+    if (role !== "admin") {
+      const reservedInput = Number(tokenReservation.reservation?.reserveInput || 0);
+      const reservedOutput = Number(tokenReservation.reservation?.reserveOutput || 0);
+      const deltaInput = countedInput - reservedInput;
+      const deltaOutput = countedOutput - reservedOutput;
+
+      if (deltaInput !== 0 || deltaOutput !== 0) {
+        await adjustTokenUsage({
+          role,
+          table: tokenReservation.table,
+          userId,
+          periodKey: tokenReservation.periodKey,
+          model,
+          deltaInput,
+          deltaOutput,
+        });
+      }
+      reservationContext = null;
+    }
 
     // Remaining
     let remaining = "Unlimited";
@@ -615,7 +622,23 @@ module.exports = async function handler(req, res) {
       remaining_tokens: remaining,
     });
   } catch (error) {
-    console.error("Server error:", error);
+    if (reservationContext) {
+      try {
+        await adjustTokenUsage({
+          role: reservationContext.role,
+          table: reservationContext.table,
+          userId: reservationContext.userId,
+          periodKey: reservationContext.periodKey,
+          model: reservationContext.model,
+          deltaInput: -reservationContext.reservedInput,
+          deltaOutput: -reservationContext.reservedOutput,
+        });
+      } catch (rollbackErr) {
+        console.error("AI quota rollback failed:", rollbackErr?.message || "unknown");
+      }
+    }
+
+    console.error("Server error:", error?.message || "unknown");
     return json(res, 500, { error: "Server error" });
   }
 };
