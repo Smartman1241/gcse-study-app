@@ -167,6 +167,17 @@ const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+function safeHttpsUrl(value){
+  try{
+    const u = new URL(String(value || ""));
+    if(u.protocol !== "https:") return null;
+    return u;
+  }catch{
+    return null;
+  }
+}
+
+
 function updatePaperOptions(){
   const subject = document.getElementById("subject").value;
   const paperSelect = document.getElementById("paper");
@@ -226,11 +237,34 @@ async function findPaper(){
     return;
   }
 
-  results.innerHTML = `
-    <h3>${year} ${subject} - ${paper_type} (${tier})</h3>
-    <a href="${data.question_link}" target="_blank">📄 View Official Paper</a>
-    <a href="${data.markscheme_link}" target="_blank">📝 View Mark Scheme</a>
-  `;
+  const qUrl = safeHttpsUrl(data.question_link);
+  const mUrl = safeHttpsUrl(data.markscheme_link);
+
+  if(!qUrl || !mUrl){
+    results.textContent = "Paper found but links are invalid.";
+    return;
+  }
+
+  results.innerHTML = "";
+
+  const title = document.createElement("h3");
+  title.textContent = `${year} ${subject} - ${paper_type} (${tier})`;
+
+  const qLink = document.createElement("a");
+  qLink.href = qUrl.href;
+  qLink.target = "_blank";
+  qLink.rel = "noopener noreferrer";
+  qLink.textContent = "📄 View Official Paper";
+
+  const mLink = document.createElement("a");
+  mLink.href = mUrl.href;
+  mLink.target = "_blank";
+  mLink.rel = "noopener noreferrer";
+  mLink.textContent = "📝 View Mark Scheme";
+
+  results.appendChild(title);
+  results.appendChild(qLink);
+  results.appendChild(mLink);
 }
 
 updatePaperOptions();

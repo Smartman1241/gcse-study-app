@@ -6,8 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Exam Mode – GCSE Focus</title>
 
-<link rel="stylesheet" href="/css/styles.css">
-
 <style>
 body {
   background: #f8f8f8;
@@ -80,7 +78,6 @@ body {
 
 <body>
 
-<div id="navbar"></div>
 
 <div class="exam-container">
 
@@ -127,10 +124,24 @@ body {
 
 </div>
 
-<script src="/js/navbar.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 let currentQuestion = "";
+
+const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function getAccessToken(){
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(!session?.access_token){
+    window.location.href = "auth.html";
+    return null;
+  }
+  return session.access_token;
+}
+
 
 async function generateQuestion() {
   const subject = document.getElementById("subject").value;
@@ -143,16 +154,35 @@ Do not include the answer.
 Write it exactly how it would appear on a real exam paper.
   `;
 
+  const accessToken = await getAccessToken();
+  if(!accessToken) return;
+
   const response = await fetch("/api/ai", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("access_token")
+      "Authorization": "Bearer " + accessToken
     },
     body: JSON.stringify({ question: prompt })
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
+
+  if(response.status === 401){
+    document.getElementById("resultBox").innerText = "Session expired. Please log in again.";
+    window.location.href = "auth.html";
+    return;
+  }
+
+  if(response.status === 429){
+    document.getElementById("resultBox").innerText = data?.error || "AI usage limit reached.";
+    return;
+  }
+
+  if(!response.ok || !data?.reply){
+    document.getElementById("resultBox").innerText = data?.error || "Could not generate question.";
+    return;
+  }
 
   currentQuestion = data.reply;
   document.getElementById("questionBox").innerText = currentQuestion;
@@ -186,16 +216,35 @@ Return:
 - A full-mark model answer
   `;
 
+  const accessToken = await getAccessToken();
+  if(!accessToken) return;
+
   const response = await fetch("/api/ai", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("access_token")
+      "Authorization": "Bearer " + accessToken
     },
     body: JSON.stringify({ question: prompt })
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
+
+  if(response.status === 401){
+    document.getElementById("resultBox").innerText = "Session expired. Please log in again.";
+    window.location.href = "auth.html";
+    return;
+  }
+
+  if(response.status === 429){
+    document.getElementById("resultBox").innerText = data?.error || "AI usage limit reached.";
+    return;
+  }
+
+  if(!response.ok || !data?.reply){
+    document.getElementById("resultBox").innerText = data?.error || "Could not mark answer.";
+    return;
+  }
 
   document.getElementById("resultBox").innerText = data.reply;
 }

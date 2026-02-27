@@ -21,6 +21,6 @@ async function redirectIfLoggedIn() {
   const { data: { session } } = await supabaseClient.auth.getSession();
 
   if (session) {
-    window.location.replace("home.html");
+    window.location.replace("index.html");
   }
 }
