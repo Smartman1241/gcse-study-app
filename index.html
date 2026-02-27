@@ -2348,35 +2348,24 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
         return;
       }
 
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ question: input, timezone })
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (res.status === 429) {
-        out.textContent = data?.error || "Daily AI limit reached.";
+      const result = window.rfRequestAI ? await window.rfRequestAI(input) : null;
+      if (!result) {
+        out.textContent = "AI service unavailable.";
         return;
       }
 
-      if (res.status === 401) {
+      if (result.status === 429) {
+        out.textContent = result.data?.error || "Daily AI limit reached.";
+        return;
+      }
+
+      if (result.status === 401) {
         out.textContent = "Session expired. Please log in again.";
         window.location.href = "auth.html";
         return;
       }
 
-      if (res.ok && data?.reply) {
-        out.textContent = data.reply;
-      } else {
-        out.textContent = data?.error || "Something went wrong.";
-      }
+      out.textContent = result.data?.reply || result.data?.error || "Something went wrong.";
 
     } catch (e) {
       console.error("AI request error:", e);
@@ -2713,13 +2702,13 @@ setupDashboardTasksRealtime();
       .from("user_settings")
       .select("username")
       .eq("user_id", currentUser.id)
-      .single();
+      .maybeSingle();
 
-    const username = settings?.username || currentUser.email;
+    const username = settings?.username || "User";
 
     $("#navUsername").textContent = username;
     $("#dropdownUsername").textContent = username;
-    $("#accountEmail").textContent = currentUser.email;
+    $("#accountEmail").textContent = username;
 
     bindEvents();
     bootUI();
@@ -2745,5 +2734,6 @@ setupDashboardTasksRealtime();
   </div>
 </footer>
 
+<script src="ai-sidebar.js"></script>
 </body>
 </html>

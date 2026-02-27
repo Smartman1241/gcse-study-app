@@ -1207,7 +1207,7 @@
           user_id: userId,
           tier: "Free",
           // pro defaults false in DB ideally; if not, it remains null/false.
-          // preferred_theme defaults handled in UI.
+          // theme defaults handled in UI.
         })
         .select("*")
         .maybeSingle();
@@ -1366,7 +1366,7 @@
       $("#subBadge").className = pro ? "badge good" : "badge warn";
 
       // Theme select (if column exists)
-      const preferredTheme = row?.preferred_theme || "auto";
+      const preferredTheme = row?.theme || "auto";
       $("#themeSelect").value = preferredTheme;
       setTheme(preferredTheme);
 
@@ -1477,7 +1477,7 @@
         if(!currentUser) return;
         const value = e.target.value;
         setTheme(value);
-        const ok = await updateUserSettings(currentUser.id, { preferred_theme: value });
+        const ok = await updateUserSettings(currentUser.id, { theme: value });
         if(ok) toast("Theme saved", value);
       });
 
@@ -1603,5 +1603,6 @@
     showPanel("profile");
     loadAll();
   </script>
+<script src="ai-sidebar.js"></script>
 </body>
 </html>

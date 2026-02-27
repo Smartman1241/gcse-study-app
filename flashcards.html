@@ -427,7 +427,7 @@
         <a class="btn ghost" href="index.html">Dashboard</a>
         <a class="btn ghost" href="studysets.html">Sets</a>
         <a class="btn ghost" href="tasks.html">Tasks</a>
-        <a class="btn ghost" href="focus.html">Focus</a>
+        <a class="btn ghost" href="exam.html">Exam</a>
         <a class="btn ghost" href="account.html">Settings</a>
         <button class="btn danger" id="logoutBtn">Logout</button>
       </div>
@@ -479,6 +479,9 @@
             <button class="btn" id="shuffleBtn">Shuffle</button>
             <button class="btn" id="toggleOnlyDueBtn">Only due: Off</button>
             <button class="btn" id="restartBtn">Restart</button>
+            <button class="btn" id="modeLearnBtn">Learn Mode</button>
+            <button class="btn" id="modeTestBtn">Test Mode</button>
+            <button class="btn" id="modeExamBtn">Exam Mode</button>
           </div>
         </div>
 
@@ -595,7 +598,8 @@
     showingBack: false,
     onlyDue: false,
 
-    session: { startedAt: Date.now(), flips:0, knows:0, agains:0, starsToggled:0 }
+    session: { startedAt: Date.now(), flips:0, knows:0, agains:0, starsToggled:0 },
+    mode: "learn"
   };
 
   function escapeHTML(str) {
@@ -662,7 +666,7 @@
     const { data, error } = await sb
       .from("study_sets")
       .select("id,name,subject,description,created_at,updated_at,user_id")
-      .eq("user_id", state.user.id)
+      .or(`user_id.eq.${state.user.id},is_public.eq.true`)
       .order("updated_at", { ascending:false });
 
     if(error){
@@ -957,6 +961,7 @@
     if(!c) return;
 
     state.session.agains += 1;
+    if(state.mode === "test"){ setStatus("Scored: Again", "muted"); }
 
     const lapses = Number(c.p?.lapses ?? 0) + 1;
     const reps = Number(c.p?.reps ?? 0) + 1;
@@ -988,6 +993,7 @@
     if(!c) return;
 
     state.session.knows += 1;
+    if(state.mode === "test"){ setStatus("Scored: Correct", "ok"); }
 
     const reps = Number(c.p?.reps ?? 0) + 1;
     const lapses = Number(c.p?.lapses ?? 0);
@@ -1151,39 +1157,35 @@ Stars toggled: ${s.starsToggled}`;
         return;
       }
 
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ question: input, timezone })
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if(res.status === 429){
-        out.textContent = data?.error || "Daily AI limit reached.";
+      const result = window.rfRequestAI ? await window.rfRequestAI(input) : null;
+      if (!result) {
+        out.textContent = "AI service unavailable.";
         return;
       }
 
-      if(res.status === 401){
+      if(result.status === 429){
+        out.textContent = result.data?.error || "Daily AI limit reached.";
+        return;
+      }
+
+      if(result.status === 401){
         out.textContent = "Session expired. Please log in again.";
         window.location.href = "auth.html";
         return;
       }
 
-      if(res.ok && data?.reply){
-        out.textContent = data.reply;
-      }else{
-        out.textContent = data?.error || "Something went wrong.";
-      }
+      out.textContent = result.data?.reply || result.data?.error || "Something went wrong.";
     }catch(e){
       console.error("AI error:", e);
       out.textContent = "Error contacting AI service.";
     }
+  }
+
+
+
+  function setMode(mode){
+    state.mode = mode;
+    setStatus(`Mode: ${mode[0].toUpperCase()+mode.slice(1)}`, "ok");
   }
 
   /* ===== Events ===== */
@@ -1202,6 +1204,9 @@ Stars toggled: ${s.starsToggled}`;
 
     $("shuffleBtn").addEventListener("click", () => { shuffleDeck(); setStatus("Shuffled ✅", "ok"); });
     $("restartBtn").addEventListener("click", () => { restartSession(); setStatus("Restarted ✅", "ok"); });
+    $("modeLearnBtn").addEventListener("click", () => setMode("learn"));
+    $("modeTestBtn").addEventListener("click", () => setMode("test"));
+    $("modeExamBtn").addEventListener("click", () => { setMode("exam"); window.location.href = "exam.html"; });
 
     $("toggleOnlyDueBtn").addEventListener("click", () => {
       state.onlyDue = !state.onlyDue;
@@ -1262,7 +1267,8 @@ Stars toggled: ${s.starsToggled}`;
     if(!session) return;
 
     state.user = session.user;
-    $("whoBox").textContent = state.user.email || "";
+    const { data: settings } = await sb.from("user_settings").select("username").eq("user_id", state.user.id).maybeSingle();
+    $("whoBox").textContent = settings?.username || "User";
 
     await loadSets();
 
@@ -1278,5 +1284,6 @@ Stars toggled: ${s.starsToggled}`;
 
 })();
 </script>
+<script src="ai-sidebar.js"></script>
 </body>
-</html>s
+</html>

@@ -322,6 +322,11 @@
         <div style="font-size:16px;font-weight:900;">Add card</div>
         <div class="muted" style="margin-top:6px;">Add a term + definition. It saves instantly.</div>
 
+        <label class="muted" style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+          <input id="setPublic" type="checkbox" /> Public set
+        </label>
+        <button class="btn" id="btnSaveVisibility" style="margin-top:10px;">Save visibility</button>
+
         <input id="newTerm" placeholder="Term (e.g. Mitosis)" maxlength="200" />
         <textarea id="newDef" placeholder="Definition (e.g. Cell division that produces two identical cells…)" maxlength="4000"></textarea>
 
@@ -463,35 +468,24 @@
         return;
       }
 
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ question: input, timezone })
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if(res.status === 429){
-        out.textContent = data?.error || "Daily AI limit reached.";
+      const result = window.rfRequestAI ? await window.rfRequestAI(input) : null;
+      if (!result) {
+        out.textContent = "AI service unavailable.";
         return;
       }
 
-      if(res.status === 401){
+      if(result.status === 429){
+        out.textContent = result.data?.error || "Daily AI limit reached.";
+        return;
+      }
+
+      if(result.status === 401){
         out.textContent = "Session expired. Please log in again.";
         window.location.href = "auth.html";
         return;
       }
 
-      if(res.ok && data?.reply){
-        out.textContent = data.reply;
-      }else{
-        out.textContent = data?.error || "Something went wrong.";
-      }
+      out.textContent = result.data?.reply || result.data?.error || "Something went wrong.";
     }catch(e){
       console.error("AI error:", e);
       out.textContent = "Error contacting AI service.";
@@ -527,6 +521,7 @@
     // Cards
     $("btnAdd").addEventListener("click", addCard);
     $("btnDeleteSet").addEventListener("click", deleteSet);
+    $("btnSaveVisibility").addEventListener("click", saveVisibility);
     $("search").addEventListener("input", renderCards);
 
     // CSV
@@ -566,7 +561,7 @@
   async function loadSet(){
     const { data, error } = await supabaseClient
       .from("study_sets")
-      .select("id,name,subject,description,created_at,updated_at,user_id")
+      .select("id,name,subject,description,created_at,updated_at,user_id,is_public")
       .eq("id", setId)
       .eq("user_id", currentUser.id)
       .single();
@@ -583,6 +578,7 @@
     const subject = (data.subject || "General").trim();
     $("setMeta").textContent = `${subject}${data.description ? " • " + data.description : ""}`;
 
+    $("setPublic").checked = !!data.is_public;
     document.title = `ReviseFlow — ${data.name}`;
   }
 
@@ -752,6 +748,20 @@
 
     setStatus("Card deleted.");
     await loadCards();
+  }
+
+  async function saveVisibility(){
+    const { error } = await supabaseClient
+      .from("study_sets")
+      .update({ is_public: !!$("setPublic").checked })
+      .eq("id", setId)
+      .eq("user_id", currentUser.id);
+    if(error){
+      console.error(error);
+      setStatus("Could not update visibility.", true);
+      return;
+    }
+    setStatus("Visibility updated ✅");
   }
 
   async function deleteSet(){
@@ -929,5 +939,6 @@
 
 })();
 </script>
+<script src="ai-sidebar.js"></script>
 </body>
 </html>

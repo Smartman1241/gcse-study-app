@@ -290,7 +290,7 @@
       </div>
 
       <div class="toolbar">
-        <a class="btn" href="dashboard.html">← Dashboard</a>
+        <a class="btn" href="index.html">← Dashboard</a>
         <a class="btn" href="tasks.html">Tasks</a>
         <a class="btn" href="flashcards.html">Flashcards</a>
         <button class="btn danger" id="btnLogout">Logout</button>
@@ -326,6 +326,12 @@
           <div class="field">
             <div class="label">Description (optional)</div>
             <textarea id="setDesc" placeholder="What’s inside this set?" maxlength="500"></textarea>
+          </div>
+
+          <div class="row" style="margin-top:6px;">
+            <label class="muted small" style="display:flex;align-items:center;gap:8px;">
+              <input id="setPublic" type="checkbox" /> Make set public
+            </label>
           </div>
 
           <div class="row" style="margin-top:12px;">
@@ -435,7 +441,12 @@
     if(!session) return;
 
     currentUser = session.user;
-    $("who").textContent = currentUser.email || "Signed in";
+    const { data: userSettings } = await window.supabaseClient
+      .from("user_settings")
+      .select("username")
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+    $("who").textContent = userSettings?.username || "User";
 
     window.supabaseClient.auth.onAuthStateChange((_event, sess) => {
       if(!sess) window.location.href = "auth.html";
@@ -466,6 +477,7 @@
     $("setName").value = "";
     $("setSubject").value = "";
     $("setDesc").value = "";
+    $("setPublic").checked = false;
     clearMsg();
     $("setName").focus();
   }
@@ -477,7 +489,7 @@
     const { data, error } = await window.supabaseClient
       .from("study_sets")
       .select("*")
-      .eq("user_id", currentUser.id)
+      .or(`user_id.eq.${currentUser.id},is_public.eq.true`)
       .order("updated_at", { ascending:false });
 
     $("btnRefresh").disabled = false;
@@ -527,21 +539,21 @@
 
         <div class="actions">
           <button class="btn primary small" data-fc="${set.id}">🃏 Revise as flashcards</button>
-          <button class="btn small" data-edit="${set.id}">Edit</button>
-          <button class="btn danger small" data-del="${set.id}">Delete</button>
+          ${set.user_id === currentUser.id ? `<button class="btn small" data-edit="${set.id}">Edit</button><button class="btn danger small" data-del="${set.id}">Delete</button>` : ``}
         </div>
       `;
 
-      // ✅ This was missing in your version
       card.querySelector("[data-fc]").onclick = () => {
         window.location.href = `flashcards.html?set=${encodeURIComponent(set.id)}`;
       };
 
-      card.querySelector("[data-edit]").onclick = () => {
+      const editBtn = card.querySelector("[data-edit]");
+      if (editBtn) editBtn.onclick = () => {
         window.location.href = `editset.html?id=${encodeURIComponent(set.id)}`;
       };
 
-      card.querySelector("[data-del]").onclick = () => {
+      const delBtn = card.querySelector("[data-del]");
+      if (delBtn) delBtn.onclick = () => {
         deleteSet(set.id);
       };
 
@@ -570,7 +582,8 @@
         user_id: currentUser.id,
         name,
         subject: subject || "General",
-        description: desc || ""
+        description: desc || "",
+        is_public: !!$("setPublic").checked
       });
 
     $("btnCreate").disabled = false;
@@ -606,5 +619,6 @@
 
   init();
 </script>
+<script src="ai-sidebar.js"></script>
 </body>
 </html>
