@@ -7,6 +7,7 @@
 <title>ReviseFlow • Tasks</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="ai-sidebar.js"></script>
 <!-- Drag & drop -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
@@ -395,6 +396,11 @@
       .replaceAll('"',"&quot;").replaceAll("'","&#39;");
   }
 
+  async function getUsername(userId){
+    const { data } = await sb.from("user_settings").select("username").eq("user_id", userId).maybeSingle();
+    return data?.username || null;
+  }
+
   async function requireSession(){
     const { data: { session } } = await sb.auth.getSession();
     if(!session){
@@ -658,7 +664,8 @@
     const sess = await requireSession();
     if(!sess) return;
 
-    $("#who").textContent = sess.user.email;
+    const uname = await getUsername(sess.user.id);
+    $("#who").textContent = uname || "Signed in";
 
     $("#backBtn").addEventListener("click", () => window.location.href = "index.html");
     $("#logoutBtn").addEventListener("click", async () => {

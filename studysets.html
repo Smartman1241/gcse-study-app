@@ -7,6 +7,7 @@
   <title>ReviseFlow — Study Sets</title>
   <meta name="description" content="ReviseFlow Study Sets — create, search, and manage revision sets. Saved to your account." />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="ai-sidebar.js"></script>
 
   <style>
     :root{
@@ -290,7 +291,7 @@
       </div>
 
       <div class="toolbar">
-        <a class="btn" href="dashboard.html">← Dashboard</a>
+        <a class="btn" href="index.html">← Dashboard</a>
         <a class="btn" href="tasks.html">Tasks</a>
         <a class="btn" href="flashcards.html">Flashcards</a>
         <button class="btn danger" id="btnLogout">Logout</button>
@@ -327,6 +328,11 @@
             <div class="label">Description (optional)</div>
             <textarea id="setDesc" placeholder="What’s inside this set?" maxlength="500"></textarea>
           </div>
+
+          <label class="muted small" style="display:flex;gap:8px;align-items:center;">
+            <input id="setPublic" type="checkbox" />
+            Make this set public (visible to other signed-in users)
+          </label>
 
           <div class="row" style="margin-top:12px;">
             <button class="btn primary" id="btnCreate">Create set</button>
@@ -406,6 +412,15 @@
     box.textContent = "";
   }
 
+  async function getUsername(userId){
+    const { data } = await window.supabaseClient
+      .from("user_settings")
+      .select("username")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return data?.username || null;
+  }
+
   async function requireSession(){
     const { data:{ session }, error } = await window.supabaseClient.auth.getSession();
     if (error) console.error(error);
@@ -435,7 +450,8 @@
     if(!session) return;
 
     currentUser = session.user;
-    $("who").textContent = currentUser.email || "Signed in";
+    const uname = await getUsername(currentUser.id);
+    $("who").textContent = uname || "Signed in";
 
     window.supabaseClient.auth.onAuthStateChange((_event, sess) => {
       if(!sess) window.location.href = "auth.html";
@@ -466,6 +482,7 @@
     $("setName").value = "";
     $("setSubject").value = "";
     $("setDesc").value = "";
+    $("setPublic").checked = false;
     clearMsg();
     $("setName").focus();
   }
@@ -477,7 +494,7 @@
     const { data, error } = await window.supabaseClient
       .from("study_sets")
       .select("*")
-      .eq("user_id", currentUser.id)
+      .or(`user_id.eq.${currentUser.id},is_public.eq.true`)
       .order("updated_at", { ascending:false });
 
     $("btnRefresh").disabled = false;
@@ -522,13 +539,13 @@
             <div class="set-name">${name}</div>
             ${desc ? `<div class="desc">${escapeHtml(desc)}</div>` : ``}
           </div>
-          <span class="badge">${subject}</span>
+          <span class="badge">${subject}${set.is_public ? " • Public" : ""}</span>
         </div>
 
         <div class="actions">
           <button class="btn primary small" data-fc="${set.id}">🃏 Revise as flashcards</button>
-          <button class="btn small" data-edit="${set.id}">Edit</button>
-          <button class="btn danger small" data-del="${set.id}">Delete</button>
+          ${set.user_id === currentUser.id ? `<button class="btn small" data-edit="${set.id}">Edit</button>
+          <button class="btn danger small" data-del="${set.id}">Delete</button>` : `<span class="muted small">Public set</span>`}
         </div>
       `;
 
@@ -537,11 +554,13 @@
         window.location.href = `flashcards.html?set=${encodeURIComponent(set.id)}`;
       };
 
-      card.querySelector("[data-edit]").onclick = () => {
+      const editBtn = card.querySelector("[data-edit]");
+      if (editBtn) editBtn.onclick = () => {
         window.location.href = `editset.html?id=${encodeURIComponent(set.id)}`;
       };
 
-      card.querySelector("[data-del]").onclick = () => {
+      const delBtn = card.querySelector("[data-del]");
+      if (delBtn) delBtn.onclick = () => {
         deleteSet(set.id);
       };
 
@@ -555,6 +574,7 @@
     const name = $("setName").value.trim();
     const subject = $("setSubject").value.trim();
     const desc = $("setDesc").value.trim();
+    const isPublic = !!$("setPublic").checked;
 
     if(!name){
       showMsg("Enter a set name.", true);
@@ -570,7 +590,8 @@
         user_id: currentUser.id,
         name,
         subject: subject || "General",
-        description: desc || ""
+        description: desc || "",
+        is_public: isPublic
       });
 
     $("btnCreate").disabled = false;

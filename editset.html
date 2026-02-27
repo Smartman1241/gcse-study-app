@@ -330,6 +330,11 @@
           <button class="btn btn-danger" id="btnDeleteSet">Delete set</button>
         </div>
 
+        <label class="muted" style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+          <input type="checkbox" id="setPublic" />
+          Public set (other signed-in users can revise this set)
+        </label>
+
         <div class="status" id="status"></div>
 
         <input type="file" id="fileInput" accept=".csv,text/csv" style="display:none;" />
@@ -529,6 +534,8 @@
     $("btnDeleteSet").addEventListener("click", deleteSet);
     $("search").addEventListener("input", renderCards);
 
+    $("setPublic").addEventListener("change", updateSetVisibility);
+
     // CSV
     $("btnExport").addEventListener("click", exportCSV);
     $("btnImport").addEventListener("click", () => $("fileInput").click());
@@ -566,7 +573,7 @@
   async function loadSet(){
     const { data, error } = await supabaseClient
       .from("study_sets")
-      .select("id,name,subject,description,created_at,updated_at,user_id")
+      .select("id,name,subject,description,created_at,updated_at,user_id,is_public")
       .eq("id", setId)
       .eq("user_id", currentUser.id)
       .single();
@@ -581,7 +588,8 @@
     $("setTitle").textContent = data.name;
 
     const subject = (data.subject || "General").trim();
-    $("setMeta").textContent = `${subject}${data.description ? " • " + data.description : ""}`;
+    $("setMeta").textContent = `${subject}${data.description ? " • " + data.description : ""}${data.is_public ? " • Public" : ""}`;
+    $("setPublic").checked = !!data.is_public;
 
     document.title = `ReviseFlow — ${data.name}`;
   }
@@ -657,6 +665,29 @@
 
       $("cards").appendChild(div);
     }
+  }
+
+
+  async function updateSetVisibility(){
+    if(!setRow) return;
+    const isPublic = !!$("setPublic").checked;
+    const { error } = await supabaseClient
+      .from("study_sets")
+      .update({ is_public: isPublic })
+      .eq("id", setId)
+      .eq("user_id", currentUser.id);
+
+    if(error){
+      console.error(error);
+      setStatus("Could not update visibility.", true);
+      $("setPublic").checked = !isPublic;
+      return;
+    }
+
+    setRow.is_public = isPublic;
+    const subject = (setRow.subject || "General").trim();
+    $("setMeta").textContent = `${subject}${setRow.description ? " • " + setRow.description : ""}${setRow.is_public ? " • Public" : ""}`;
+    setStatus("Visibility updated.");
   }
 
   async function addCard(){

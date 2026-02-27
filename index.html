@@ -2722,6 +2722,12 @@ setupDashboardTasksRealtime();
     $("#accountEmail").textContent = currentUser.email;
 
     bindEvents();
+    const tabParam = new URLSearchParams(window.location.search).get("tab");
+    const allowedTabs = new Set(["dashboard","tasks","studysets","flashcards","learn","test","revision","stats","ai"]);
+    if (tabParam && allowedTabs.has(tabParam)) {
+      state.activeTab = tabParam;
+    }
+
     bootUI();
   }
 

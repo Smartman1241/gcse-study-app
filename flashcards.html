@@ -427,7 +427,10 @@
         <a class="btn ghost" href="index.html">Dashboard</a>
         <a class="btn ghost" href="studysets.html">Sets</a>
         <a class="btn ghost" href="tasks.html">Tasks</a>
-        <a class="btn ghost" href="focus.html">Focus</a>
+        <a class="btn ghost" href="index.html?tab=learn">Learn mode</a>
+        <a class="btn ghost" href="index.html?tab=test">Test mode</a>
+        <a class="btn ghost" href="exam.html">Exam mode</a>
+        <a class="btn ghost" href="index.html?tab=timer">Focus</a>
         <a class="btn ghost" href="account.html">Settings</a>
         <button class="btn danger" id="logoutBtn">Logout</button>
       </div>
@@ -655,14 +658,19 @@
     window.location.href = "auth.html";
   }
 
+  async function getUsername(userId){
+    const { data } = await sb.from("user_settings").select("username").eq("user_id", userId).maybeSingle();
+    return data?.username || null;
+  }
+
   /* ===== Sets ===== */
   async function loadSets(){
     setStatus("Loading your sets…");
 
     const { data, error } = await sb
       .from("study_sets")
-      .select("id,name,subject,description,created_at,updated_at,user_id")
-      .eq("user_id", state.user.id)
+      .select("id,name,subject,description,created_at,updated_at,user_id,is_public")
+      .or(`user_id.eq.${state.user.id},is_public.eq.true`)
       .order("updated_at", { ascending:false });
 
     if(error){
@@ -690,9 +698,8 @@
 
     let res = await sb
       .from("study_terms")
-      .select("set_id,user_id")
-      .in("set_id", ids)
-      .eq("user_id", state.user.id);
+      .select("set_id")
+      .in("set_id", ids);
 
     if(res.error && String(res.error.message || "").toLowerCase().includes("user_id")){
       res = await sb
@@ -732,6 +739,7 @@
 
     for(const s of filtered){
       const count = state.setCounts.get(s.id) || 0;
+      const visibility = s.is_public ? " • Public" : "";
 
       const div = document.createElement("div");
       div.className = "setCard";
@@ -739,7 +747,7 @@
         <div class="setTitle">${escapeHTML(s.name || "Untitled set")}</div>
         <div class="setDesc">${escapeHTML((s.description || "").trim() || "No description.")}</div>
         <div class="setMeta">
-          <span class="badge">${escapeHTML(s.subject || "General")}</span>
+          <span class="badge">${escapeHTML((s.subject || "General") + visibility)}</span>
           <span class="pill">${count} card${count===1?"":"s"}</span>
           <span class="pill">Updated: ${s.updated_at ? fmtShortDate(s.updated_at) : "—"}</span>
         </div>
@@ -757,7 +765,6 @@
       .from("study_terms")
       .select("id,set_id,term,definition,created_at,updated_at,user_id")
       .eq("set_id", setId)
-      .eq("user_id", state.user.id)
       .order("created_at", { ascending:true });
 
     if(res.error && String(res.error.message || "").toLowerCase().includes("user_id")){
@@ -1262,7 +1269,8 @@ Stars toggled: ${s.starsToggled}`;
     if(!session) return;
 
     state.user = session.user;
-    $("whoBox").textContent = state.user.email || "";
+    const uname = await getUsername(state.user.id);
+    $("whoBox").textContent = uname || "";
 
     await loadSets();
 

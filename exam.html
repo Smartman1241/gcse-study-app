@@ -107,6 +107,9 @@ body {
     </select>
 
     <button onclick="generateQuestion()">Generate Question</button>
+    <button type="button" onclick="startExamTimer()">Start 15m Timer</button>
+    <button type="button" onclick="resetExamTimer()">Reset Timer</button>
+    <span id="examTimer" style="font-weight:700;">15:00</span>
   </div>
 
   <div class="question-box" id="questionBox">
@@ -125,13 +128,43 @@ body {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="ai-sidebar.js"></script>
 
 <script>
 let currentQuestion = "";
+let examTimerId = null;
+let examSecondsLeft = 15 * 60;
+
+function renderExamTimer(){
+  const m = String(Math.floor(examSecondsLeft / 60)).padStart(2, "0");
+  const s = String(examSecondsLeft % 60).padStart(2, "0");
+  document.getElementById("examTimer").textContent = `${m}:${s}`;
+}
+
+function startExamTimer(){
+  if (examTimerId) return;
+  examTimerId = setInterval(() => {
+    examSecondsLeft = Math.max(0, examSecondsLeft - 1);
+    renderExamTimer();
+    if (examSecondsLeft === 0) {
+      clearInterval(examTimerId);
+      examTimerId = null;
+      alert("Time is up.");
+    }
+  }, 1000);
+}
+
+function resetExamTimer(){
+  if (examTimerId) clearInterval(examTimerId);
+  examTimerId = null;
+  examSecondsLeft = 15 * 60;
+  renderExamTimer();
+}
 
 const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+renderExamTimer();
 
 async function getAccessToken(){
   const { data: { session } } = await supabaseClient.auth.getSession();
