@@ -236,50 +236,69 @@ const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const els = {
+  signin: document.getElementById("signin"),
+  signup: document.getElementById("signup"),
+  reset: document.getElementById("reset"),
+  email: document.getElementById("email"),
+  password: document.getElementById("password"),
+  signupUsername: document.getElementById("signupUsername"),
+  signupEmail: document.getElementById("signupEmail"),
+  signupPassword: document.getElementById("signupPassword"),
+  resetEmail: document.getElementById("resetEmail"),
+  signinMsg: document.getElementById("signinMsg"),
+  signupMsg: document.getElementById("signupMsg"),
+  resetMsg: document.getElementById("resetMsg")
+};
+
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) window.location.href = "index.html";
+
+  const mode = new URLSearchParams(window.location.search).get("mode");
+  if (mode === "signup") showSignup();
+  if (mode === "reset") showReset();
 });
 
 function showSignup(){
-  signin.classList.add("hidden");
-  reset.classList.add("hidden");
-  signup.classList.remove("hidden");
+  els.signin.classList.add("hidden");
+  els.reset.classList.add("hidden");
+  els.signup.classList.remove("hidden");
 }
 
 function showSignin(){
-  signup.classList.add("hidden");
-  reset.classList.add("hidden");
-  signin.classList.remove("hidden");
+  els.signup.classList.add("hidden");
+  els.reset.classList.add("hidden");
+  els.signin.classList.remove("hidden");
 }
 
 function showReset(){
-  signin.classList.add("hidden");
-  signup.classList.add("hidden");
-  reset.classList.remove("hidden");
+  els.signin.classList.add("hidden");
+  els.signup.classList.add("hidden");
+  els.reset.classList.remove("hidden");
 }
 
 async function signIn(){
-  signinMsg.textContent="";
+  els.signinMsg.textContent="";
   const { error } = await supabaseClient.auth.signInWithPassword({
-    email: email.value.trim(),
-    password: password.value
+    email: els.email.value.trim(),
+    password: els.password.value
   });
   if(error){
-    signinMsg.textContent=error.message;
+    els.signinMsg.textContent=error.message;
   } else {
     window.location.href="index.html";
   }
 }
 
 async function signUp(){
-  signupMsg.textContent="";
-  const username=signupUsername.value.trim();
-  const emailVal=signupEmail.value.trim();
-  const passwordVal=signupPassword.value;
+  els.signupMsg.textContent="";
+  const username=els.signupUsername.value.trim();
+  const emailVal=els.signupEmail.value.trim();
+  const passwordVal=els.signupPassword.value;
 
   if(!username){
-    signupMsg.textContent="Please choose a username.";
+    els.signupMsg.textContent="Please choose a username.";
     return;
   }
 
@@ -290,12 +309,12 @@ async function signUp(){
     .maybeSingle();
 
   if(usernameErr){
-    signupMsg.textContent="Could not verify username. Try again.";
+    els.signupMsg.textContent="Could not verify username. Try again.";
     return;
   }
 
   if(existing){
-    signupMsg.textContent="Username already taken.";
+    els.signupMsg.textContent="Username already taken.";
     return;
   }
 
@@ -305,7 +324,7 @@ async function signUp(){
   });
 
   if(error){
-    signupMsg.textContent=error.message;
+    els.signupMsg.textContent=error.message;
     return;
   }
 
@@ -318,21 +337,21 @@ async function signUp(){
     });
   }
 
-  signupMsg.classList.add("success");
-  signupMsg.textContent="Account created. You can now sign in.";
+  els.signupMsg.classList.add("success");
+  els.signupMsg.textContent="Account created. You can now sign in.";
 }
 
 async function resetPassword(){
-  resetMsg.textContent="";
+  els.resetMsg.textContent="";
   const { error } = await supabaseClient.auth.resetPasswordForEmail(
-    resetEmail.value.trim(),
+    els.resetEmail.value.trim(),
     { redirectTo: window.location.origin + "/index.html" }
   );
   if(error){
-    resetMsg.textContent=error.message;
+    els.resetMsg.textContent=error.message;
   } else {
-    resetMsg.classList.add("success");
-    resetMsg.textContent="Reset email sent.";
+    els.resetMsg.classList.add("success");
+    els.resetMsg.textContent="Reset email sent.";
   }
 }
 

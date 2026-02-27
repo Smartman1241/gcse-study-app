@@ -2,6 +2,7 @@
 // ReviseFlow unified AI endpoint: chat + DALL·E image generation
 
 const { createClient } = require("@supabase/supabase-js");
+const { getClientIp, isAllowedBrowserOrigin, hasSaneUserAgent, enforceContentLength, rateLimit } = require("./_request-guards");
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -374,6 +375,17 @@ module.exports = async function handler(req, res) {
     return json(res, 405, { error: "Method not allowed" });
   }
 
+  const sizeCheck = enforceContentLength(req, 200_000);
+  if (!sizeCheck.ok) return json(res, 413, { error: sizeCheck.error });
+
+  if (!isAllowedBrowserOrigin(req)) {
+    return json(res, 403, { error: "Invalid request origin" });
+  }
+
+  if (!hasSaneUserAgent(req)) {
+    return json(res, 400, { error: "Invalid client" });
+  }
+
   if (!supabaseAdmin || !OPENAI_API_KEY) {
     return json(res, 500, { error: "AI service is not configured" });
   }
@@ -384,6 +396,22 @@ module.exports = async function handler(req, res) {
     // --------- AUTH ----------
     const auth = await getAuthUser(req);
     if (auth.error) return json(res, 401, { error: auth.error });
+
+    const ip = getClientIp(req);
+    const ipLimit = rateLimit({ key: `ai:ip:${ip}`, limit: 30, windowMs: 60_000 });
+    if (!ipLimit.allowed) {
+      return json(res, 429, { error: "Too many requests. Please slow down." });
+    }
+
+    const userBurst = rateLimit({ key: `ai:user:${auth.user.id}`, limit: 20, windowMs: 60_000 });
+    if (!userBurst.allowed) {
+      return json(res, 429, { error: "Rate limit reached. Please try again shortly." });
+    }
+
+    const userCooldown = rateLimit({ key: `ai:cooldown:${auth.user.id}`, limit: 1, windowMs: 1200 });
+    if (!userCooldown.allowed) {
+      return json(res, 429, { error: "Please wait a moment before sending another request." });
+    }
 
     const userId = auth.user.id;
 

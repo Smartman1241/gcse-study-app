@@ -1,6 +1,7 @@
 const Stripe = require("stripe");
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
+const { getClientIp, isAllowedBrowserOrigin, hasSaneUserAgent, enforceContentLength, rateLimit } = require("./_request-guards");
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
@@ -80,6 +81,23 @@ module.exports = async (req, res) => {
       return json(res, 405, { error: "Method not allowed" });
     }
 
+    const sizeCheck = enforceContentLength(req, 50_000);
+    if (!sizeCheck.ok) return json(res, 413, { error: sizeCheck.error });
+
+    if (!isAllowedBrowserOrigin(req)) {
+      return json(res, 403, { error: "Invalid request origin" });
+    }
+
+    if (!hasSaneUserAgent(req)) {
+      return json(res, 400, { error: "Invalid client" });
+    }
+
+    const ip = getClientIp(req);
+    const ipLimit = rateLimit({ key: `checkout:ip:${ip}`, limit: 8, windowMs: 60_000 });
+    if (!ipLimit.allowed) {
+      return json(res, 429, { error: "Too many checkout attempts. Please wait a minute." });
+    }
+
     if (!stripe || !supabaseAdmin) {
       return json(res, 500, { error: "Billing service is not configured" });
     }
@@ -101,6 +119,11 @@ module.exports = async (req, res) => {
 
     const { plan, cycle } = PRICE_MAP[priceId];
     const userId = auth.user.id;
+
+    const userLimit = rateLimit({ key: `checkout:user:${userId}`, limit: 5, windowMs: 10 * 60_000 });
+    if (!userLimit.allowed) {
+      return json(res, 429, { error: "Too many attempts for this account. Please try again later." });
+    }
     const userEmail = auth.user.email || undefined;
 
     const origin = deriveOrigin(req);

@@ -1,6 +1,7 @@
 const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
 const { buffer } = require("micro");
+const { getClientIp, enforceContentLength, rateLimit } = require("./_request-guards");
 
 const WEBHOOK_PROCESSING_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -258,6 +259,13 @@ async function handler(req, res) {
     return json(res, 405, { error: "Method not allowed" });
   }
 
+  const sizeCheck = enforceContentLength(req, 300_000);
+  if (!sizeCheck.ok) return json(res, 413, { error: sizeCheck.error });
+
+  const ip = getClientIp(req);
+  const ipLimit = rateLimit({ key: `stripe:ip:${ip}`, limit: 120, windowMs: 60_000 });
+  if (!ipLimit.allowed) return json(res, 429, { error: "Too many webhook requests" });
+
   const sig = req.headers["stripe-signature"];
   if (!sig) {
     return json(res, 400, { error: "Missing Stripe signature" });
@@ -280,6 +288,13 @@ async function handler(req, res) {
   let trackingEnabled = true;
 
   try {
+    if (Number(event.created || 0) > 0) {
+      const ageMs = Date.now() - (Number(event.created) * 1000);
+      if (ageMs > 3 * 24 * 60 * 60 * 1000) {
+        return json(res, 200, { received: true, ignored: true, reason: "stale_event" });
+      }
+    }
+
     const idem = await markEventProcessing(event);
     if (idem.duplicate) {
       return json(res, 200, { received: true, duplicate: true });
