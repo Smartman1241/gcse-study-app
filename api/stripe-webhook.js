@@ -1,5 +1,5 @@
 const Stripe = require("stripe");
-const { createClient } = require("@supabase/supabase-js");
+const { createClient: supabaseFactory } = require("@supabase/supabase-js");
 const { buffer } = require("micro");
 
 export const config = {
@@ -12,7 +12,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
 });
 
-const supabaseAdmin = createClient(
+const supabaseAdmin = supabaseFactory(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );

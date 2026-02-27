@@ -8,6 +8,7 @@
   <meta name="description" content="Upgrade to Plus or Pro to unlock more study power." />
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
   <style>
     :root{
@@ -1117,12 +1118,7 @@
     // =========================
     // IMPORTANT: Use your real Supabase anon key (NOT Stripe keys).
     // If you already set these globally, it will reuse them.
-    const SUPABASE_URL = window.SUPABASE_URL || "https://mgpwknnbhaljsscsvucm.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-
-    const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
-      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-      : null;
+    const supabaseClient = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 
     let currentUserId = null;
 
@@ -1693,5 +1689,6 @@
       updateCheckoutEnabled();
     })();
   </script>
+<script src="ai-sidebar.js"></script>
 </body>
 </html>

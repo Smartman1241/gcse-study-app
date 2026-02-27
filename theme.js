@@ -1,64 +1,92 @@
-// =====================================
-// REVISEFLOW GLOBAL THEME SYSTEM
-// Runs BEFORE page finishes loading
-// =====================================
-
 (function () {
-
   const KEY = "reviseflow_theme";
-
-  function apply(theme) {
-    if (!theme) return;
-
-    document.documentElement.setAttribute(
-      "data-theme",
-      theme
-    );
+  function normalizeTheme(theme) {
+    return theme === "light" ? "light" : "dark";
   }
 
-  // ---- LOAD IMMEDIATELY ----
-  try {
-    const saved = localStorage.getItem(KEY);
+  function applyTheme(theme) {
+    if (!theme) return;
+    document.documentElement.setAttribute("data-theme", normalizeTheme(theme));
+  }
 
-    if (saved) {
-      apply(saved);
-    }
-  } catch (e) {}
+  function getSupabaseClient() {
+    if (window.supabaseClient) return window.supabaseClient;
+    if (window.getSupabaseClient) return window.getSupabaseClient();
+    return null;
+  }
 
-  // ---- GLOBAL FUNCTION ----
-  window.setTheme = function (theme) {
-
-    apply(theme);
-
+  function getLocalTheme() {
     try {
-      localStorage.setItem(KEY, theme);
-    } catch (e) {}
-
-  };
-
-  // ---- PAGE NAVIGATION FIX ----
-  document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-      const saved =
-        localStorage.getItem(KEY);
-
-      if (saved) apply(saved);
-
+      return localStorage.getItem(KEY);
+    } catch (_) {
+      return null;
     }
-  );
+  }
 
-  // ---- TAB SYNC ----
-  window.addEventListener(
-    "storage",
-    function (e) {
+  function setLocalTheme(theme) {
+    try {
+      localStorage.setItem(KEY, normalizeTheme(theme));
+    } catch (_) {}
+  }
 
-      if (e.key === KEY) {
-        apply(e.newValue);
+  async function loadThemeFromSupabase() {
+    try {
+      const sb = getSupabaseClient();
+      if (!sb) return;
+
+      const { data: { session } } = await sb.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) return;
+
+      const { data } = await sb
+        .from("user_settings")
+        .select("theme")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (data?.theme) {
+        applyTheme(data.theme);
+        setLocalTheme(data.theme);
       }
+    } catch (_) {}
+  }
 
+  async function saveThemeToSupabase(theme) {
+    try {
+      const sb = getSupabaseClient();
+      if (!sb) return;
+
+      const { data: { session } } = await sb.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) return;
+
+      await sb.from("user_settings").upsert({
+        user_id: userId,
+        theme: normalizeTheme(theme),
+        updated_at: new Date().toISOString()
+      });
+    } catch (_) {}
+  }
+
+  function setTheme(theme) {
+    const next = normalizeTheme(theme);
+    applyTheme(next);
+    setLocalTheme(next);
+    saveThemeToSupabase(next);
+  }
+
+  const initialTheme = getLocalTheme();
+  if (initialTheme) applyTheme(initialTheme);
+
+  window.setTheme = setTheme;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    loadThemeFromSupabase();
+  });
+
+  window.addEventListener("storage", function (event) {
+    if (event.key === KEY && event.newValue) {
+      applyTheme(event.newValue);
     }
-  );
-
+  });
 })();

@@ -7,6 +7,7 @@
 <title>GCSE Focus – AQA Past Papers</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
 <style>
 :root{
@@ -163,9 +164,7 @@ a{
 </div>
 
 <script>
-const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 
 function updatePaperOptions(){
   const subject = document.getElementById("subject").value;
@@ -237,5 +236,6 @@ updatePaperOptions();
 updateTierOptions();
 </script>
 
+<script src="ai-sidebar.js"></script>
 </body>
 </html>

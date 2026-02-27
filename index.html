@@ -7,6 +7,7 @@
 <title>ReviseFlow</title>
 <meta name="description" content="ReviseFlow — tasks, study sets, flashcards, learn, test, revision, past papers, pomodoro, stats, AI. Securely saved and synced." />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5736403210223254"
      crossorigin="anonymous"></script>
 <style>
@@ -1056,9 +1057,7 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 (() => {
   "use strict";
 
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const supabaseClient = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 
   let currentUser = null;
 
@@ -2348,35 +2347,24 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
         return;
       }
 
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ question: input, timezone })
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (res.status === 429) {
-        out.textContent = data?.error || "Daily AI limit reached.";
+      const result = window.rfRequestAI ? await window.rfRequestAI(input) : null;
+      if (!result) {
+        out.textContent = "AI service unavailable.";
         return;
       }
 
-      if (res.status === 401) {
+      if (result.status === 429) {
+        out.textContent = result.data?.error || "Daily AI limit reached.";
+        return;
+      }
+
+      if (result.status === 401) {
         out.textContent = "Session expired. Please log in again.";
         window.location.href = "auth.html";
         return;
       }
 
-      if (res.ok && data?.reply) {
-        out.textContent = data.reply;
-      } else {
-        out.textContent = data?.error || "Something went wrong.";
-      }
+      out.textContent = result.data?.reply || result.data?.error || "Something went wrong.";
 
     } catch (e) {
       console.error("AI request error:", e);
@@ -2711,15 +2699,15 @@ setupDashboardTasksRealtime();
     // Fetch username
     const { data: settings } = await supabaseClient
       .from("user_settings")
-      .select("username")
+      .select("username,tier,theme")
       .eq("user_id", currentUser.id)
-      .single();
+      .maybeSingle();
 
-    const username = settings?.username || currentUser.email;
+    const username = settings?.username || "User";
 
     $("#navUsername").textContent = username;
     $("#dropdownUsername").textContent = username;
-    $("#accountEmail").textContent = currentUser.email;
+    $("#accountEmail").textContent = username;
 
     bindEvents();
     bootUI();
@@ -2745,5 +2733,6 @@ setupDashboardTasksRealtime();
   </div>
 </footer>
 
+<script src="ai-sidebar.js"></script>
 </body>
 </html>

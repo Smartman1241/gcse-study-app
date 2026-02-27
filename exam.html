@@ -6,7 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Exam Mode – GCSE Focus</title>
 
-<link rel="stylesheet" href="/css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
 <style>
 body {
@@ -80,7 +81,6 @@ body {
 
 <body>
 
-<div id="navbar"></div>
 
 <div class="exam-container">
 
@@ -127,10 +127,38 @@ body {
 
 </div>
 
-<script src="/js/navbar.js"></script>
 
 <script>
+const supabaseClient = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 let currentQuestion = "";
+
+async function getAccessToken(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  if(!session){
+    alert("Please sign in first.");
+    window.location.href = "auth.html";
+    return null;
+  }
+  return session.access_token;
+}
+
+
+
+async function postAiQuestion(question) {
+  const token = await getAccessToken();
+  if(!token) return null;
+
+  const response = await fetch("/api/ai", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({ question })
+  });
+
+  return response.json();
+}
 
 async function generateQuestion() {
   const subject = document.getElementById("subject").value;
@@ -143,16 +171,8 @@ Do not include the answer.
 Write it exactly how it would appear on a real exam paper.
   `;
 
-  const response = await fetch("/api/ai", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("access_token")
-    },
-    body: JSON.stringify({ question: prompt })
-  });
-
-  const data = await response.json();
+  const data = await postAiQuestion(prompt);
+  if(!data) return;
 
   currentQuestion = data.reply;
   document.getElementById("questionBox").innerText = currentQuestion;
@@ -186,20 +206,13 @@ Return:
 - A full-mark model answer
   `;
 
-  const response = await fetch("/api/ai", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("access_token")
-    },
-    body: JSON.stringify({ question: prompt })
-  });
-
-  const data = await response.json();
+  const data = await postAiQuestion(prompt);
+  if(!data) return;
 
   document.getElementById("resultBox").innerText = data.reply;
 }
 </script>
 
+<script src="ai-sidebar.js"></script>
 </body>
 </html>

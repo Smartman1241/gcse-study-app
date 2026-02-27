@@ -7,6 +7,7 @@
   <title>Account • ReviseFlow</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
   <style>
     /* ============================================================
@@ -1012,9 +1013,7 @@
       NOTE: Keep using your anon key for frontend.
       Service role key must NEVER be in HTML.
     ============================================================ */
-    const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 
     /* ============================================================
       State
@@ -1207,7 +1206,7 @@
           user_id: userId,
           tier: "Free",
           // pro defaults false in DB ideally; if not, it remains null/false.
-          // preferred_theme defaults handled in UI.
+          // theme defaults handled in UI.
         })
         .select("*")
         .maybeSingle();
@@ -1225,8 +1224,7 @@
 
       const r = await supabaseClient
         .from("user_settings")
-        .update(patch)
-        .eq("user_id", userId);
+        .upsert({ user_id: userId, ...patch });
 
       if(r.error){
         lastError = r.error;
@@ -1366,7 +1364,7 @@
       $("#subBadge").className = pro ? "badge good" : "badge warn";
 
       // Theme select (if column exists)
-      const preferredTheme = row?.preferred_theme || "auto";
+      const preferredTheme = row?.theme || "auto";
       $("#themeSelect").value = preferredTheme;
       setTheme(preferredTheme);
 
@@ -1477,7 +1475,7 @@
         if(!currentUser) return;
         const value = e.target.value;
         setTheme(value);
-        const ok = await updateUserSettings(currentUser.id, { preferred_theme: value });
+        const ok = await updateUserSettings(currentUser.id, { theme: value });
         if(ok) toast("Theme saved", value);
       });
 
@@ -1603,5 +1601,6 @@
     showPanel("profile");
     loadAll();
   </script>
+<script src="ai-sidebar.js"></script>
 </body>
 </html>
