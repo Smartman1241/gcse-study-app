@@ -25,13 +25,7 @@
 
   function getSupabaseClient(){
     if (window.supabaseClient) return window.supabaseClient;
-    if (window.supabase) {
-      window.supabaseClient = window.supabase.createClient(
-        'https://mgpwknnbhaljsscsvucm.supabase.co',
-        'sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs'
-      );
-      return window.supabaseClient;
-    }
+    if (window.getSupabaseClient) return window.getSupabaseClient();
     return null;
   }
 

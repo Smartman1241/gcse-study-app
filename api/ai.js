@@ -1,9 +1,9 @@
 // /api/ai.js
 // ReviseFlow unified AI endpoint: chat + DALL·E image generation
 
-const { createClient } = require("@supabase/supabase-js");
+const { createClient: supabaseFactory } = require("@supabase/supabase-js");
 
-const supabaseAdmin = createClient(
+const supabaseAdmin = supabaseFactory(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );

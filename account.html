@@ -7,6 +7,7 @@
   <title>Account • ReviseFlow</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
   <style>
     /* ============================================================
@@ -1012,9 +1013,7 @@
       NOTE: Keep using your anon key for frontend.
       Service role key must NEVER be in HTML.
     ============================================================ */
-    const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 
     /* ============================================================
       State
@@ -1225,8 +1224,7 @@
 
       const r = await supabaseClient
         .from("user_settings")
-        .update(patch)
-        .eq("user_id", userId);
+        .upsert({ user_id: userId, ...patch });
 
       if(r.error){
         lastError = r.error;

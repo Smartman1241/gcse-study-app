@@ -7,6 +7,7 @@
 <title>ReviseFlow • Tasks</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <!-- Drag & drop -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
@@ -360,10 +361,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const sb = window.supabase.createClient(
-    "https://mgpwknnbhaljsscsvucm.supabase.co",
-    "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
-  );
+  const sb = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 
   const $ = (s, r=document) => r.querySelector(s);
 

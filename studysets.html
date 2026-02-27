@@ -7,6 +7,7 @@
   <title>ReviseFlow — Study Sets</title>
   <meta name="description" content="ReviseFlow Study Sets — create, search, and manage revision sets. Saved to your account." />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
   <style>
     :root{
@@ -376,13 +377,8 @@
   </div>
 
 <script>
-  // Supabase client (same keys you used)
-  if (!window.supabaseClient) {
-    window.supabaseClient = window.supabase.createClient(
-      "https://mgpwknnbhaljsscsvucm.supabase.co",
-      "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
-    );
-  }
+  const supabaseFromWindow = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
+  if (supabaseFromWindow) window.supabaseClient = supabaseFromWindow;
 
   let currentUser = null;
   let allSets = [];

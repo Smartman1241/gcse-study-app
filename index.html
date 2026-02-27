@@ -7,6 +7,7 @@
 <title>ReviseFlow</title>
 <meta name="description" content="ReviseFlow — tasks, study sets, flashcards, learn, test, revision, past papers, pomodoro, stats, AI. Securely saved and synced." />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5736403210223254"
      crossorigin="anonymous"></script>
 <style>
@@ -1056,9 +1057,7 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 (() => {
   "use strict";
 
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const supabaseClient = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 
   let currentUser = null;
 
@@ -2700,7 +2699,7 @@ setupDashboardTasksRealtime();
     // Fetch username
     const { data: settings } = await supabaseClient
       .from("user_settings")
-      .select("username")
+      .select("username,tier,theme")
       .eq("user_id", currentUser.id)
       .maybeSingle();
 

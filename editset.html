@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ReviseFlow — Edit Set</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
   <style>
     :root{
@@ -399,13 +400,7 @@
   /* =========================
      SAFE SUPABASE INIT
   ========================== */
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-
-  if (!window.supabaseClient) {
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  }
-  const supabaseClient = window.supabaseClient;
+  const supabaseClient = window.getSupabaseClient ? window.getSupabaseClient() : window.supabaseClient;
 
   const $ = (id) => document.getElementById(id);
 
