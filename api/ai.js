@@ -3,10 +3,13 @@
 
 const { createClient } = require("@supabase/supabase-js");
 
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+
+const supabaseAdmin = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 function todayInTimezone(tz) {
   const dtf = new Intl.DateTimeFormat("en-CA", {
@@ -95,6 +98,7 @@ function safeBase64DataUrl(mime, base64) {
 }
 
 async function getAuthUser(req) {
+  if (!supabaseAdmin) return { error: "Server auth is not configured" };
   const authHeader = req.headers.authorization || "";
   if (!authHeader.startsWith("Bearer ")) return { error: "Missing auth token" };
 
@@ -245,19 +249,25 @@ async function reserveTokenUsage({ userId, role, tz, model, reserveInput, reserv
   };
 }
 
-async function adjustTokenUsage({ role, table, userId, periodKey, model, deltaInput, deltaOutput }) {
+async function adjustTokenUsage({ role, table, userId, periodKey, model, deltaInput, deltaOutput, limit = null }) {
   if (role === "admin") return;
 
-  const { error } = await supabaseAdmin.rpc("adjust_ai_tokens", {
+  const { data, error } = await supabaseAdmin.rpc("adjust_ai_tokens", {
     p_table: table,
     p_user_id: userId,
     p_period_key: periodKey,
     p_model: model,
     p_delta_input: Number(deltaInput || 0),
     p_delta_output: Number(deltaOutput || 0),
+    p_limit: Number.isFinite(Number(limit)) ? Number(limit) : null,
   });
 
   if (error) throw new Error(`adjust_ai_tokens failed: ${error.message}`);
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.applied) {
+    throw new Error("Quota adjustment rejected by limit guard");
+  }
 }
 
 async function consumeImageQuota({ userId, tz, model, limit, inc = 1 }) {
@@ -307,7 +317,7 @@ async function openaiResponses({ model, input, maxOutputTokens }) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
       model,
@@ -343,7 +353,7 @@ async function openaiDalleGenerate({ model, prompt, size }) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify(body),
   });
@@ -362,6 +372,10 @@ async function openaiDalleGenerate({ model, prompt, size }) {
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return json(res, 405, { error: "Method not allowed" });
+  }
+
+  if (!supabaseAdmin || !OPENAI_API_KEY) {
+    return json(res, 500, { error: "AI service is not configured" });
   }
 
   let reservationContext = null;
@@ -457,6 +471,7 @@ module.exports = async function handler(req, res) {
     const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments : [];
 
     if (!question) return json(res, 400, { error: "No question provided" });
+    if (question.length > 12000) return json(res, 400, { error: "Question is too long." });
 
     // model selection
     const requestedModel = String(req.body?.model || "").trim();
@@ -622,6 +637,7 @@ module.exports = async function handler(req, res) {
           model,
           deltaInput: deltaTotal,
           deltaOutput: 0,
+          limit: tokenReservation.limit,
         });
       }
       reservationContext = null;
@@ -657,6 +673,7 @@ module.exports = async function handler(req, res) {
           model: reservationContext.model,
           deltaInput: -reservationContext.reservedInput,
           deltaOutput: -reservationContext.reservedOutput,
+          limit: null,
         });
       } catch (rollbackErr) {
         console.error("AI quota rollback failed:", rollbackErr?.message || "unknown");

@@ -2,14 +2,17 @@ const Stripe = require("stripe");
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16"
-});
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const stripe = STRIPE_SECRET_KEY
+  ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" })
+  : null;
+
+const supabaseAdmin = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 const PRICE_MAP = {
   price_1T46nyRzC23qaxzMIu41ccnt: { plan: "plus", cycle: "monthly" },
@@ -58,6 +61,7 @@ function normalizeIdempotencyKey(raw, userId, priceId) {
 }
 
 async function requireAuthUser(req) {
+  if (!supabaseAdmin) return { error: "Server auth is not configured" };
   const authHeader = String(req.headers.authorization || "");
   if (!authHeader.startsWith("Bearer ")) return { error: "Missing auth token" };
 
@@ -74,6 +78,10 @@ module.exports = async (req, res) => {
   try {
     if (req.method !== "POST") {
       return json(res, 405, { error: "Method not allowed" });
+    }
+
+    if (!stripe || !supabaseAdmin) {
+      return json(res, 500, { error: "Billing service is not configured" });
     }
 
     const auth = await requireAuthUser(req);
@@ -97,7 +105,7 @@ module.exports = async (req, res) => {
 
     const origin = deriveOrigin(req);
     if (!origin) {
-      return json(res, 400, { error: "Unable to determine base URL" });
+      return json(res, 400, { error: "Unable to determine base URL (set APP_BASE_URL)" });
     }
 
     const key = normalizeIdempotencyKey(idempotencyKey, userId, priceId);

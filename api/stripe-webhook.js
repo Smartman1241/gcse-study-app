@@ -24,6 +24,11 @@ function roleFromPlan(plan) {
   return "free";
 }
 
+function isSchemaMissingError(error) {
+  const code = String(error?.code || "");
+  return code === "42P01" || code === "42703";
+}
+
 async function markEventProcessing(event) {
   const nowIso = new Date().toISOString();
 
@@ -34,6 +39,10 @@ async function markEventProcessing(event) {
     .maybeSingle();
 
   if (selectErr) {
+    if (isSchemaMissingError(selectErr)) {
+      console.warn("Webhook idempotency table not ready; proceeding without dedupe");
+      return { duplicate: false, tracking: false };
+    }
     throw new Error(`Webhook idempotency read failed: ${selectErr.message}`);
   }
 
@@ -58,10 +67,14 @@ async function markEventProcessing(event) {
         .eq("event_id", event.id);
 
       if (reclaimErr) {
+        if (isSchemaMissingError(reclaimErr)) {
+          console.warn("Webhook idempotency columns not ready during reclaim; proceeding without dedupe");
+          return { duplicate: false, tracking: false };
+        }
         throw new Error(`Webhook idempotency reclaim failed: ${reclaimErr.message}`);
       }
 
-      return { duplicate: false, recovered: true };
+      return { duplicate: false, recovered: true, tracking: true };
     }
 
     return { duplicate: true };
@@ -79,11 +92,15 @@ async function markEventProcessing(event) {
     });
 
   if (insertErr) {
-    if (insertErr.code === "23505") return { duplicate: true };
+    if (insertErr.code === "23505") return { duplicate: true, tracking: true };
+    if (isSchemaMissingError(insertErr)) {
+      console.warn("Webhook idempotency schema not ready; proceeding without dedupe");
+      return { duplicate: false, tracking: false };
+    }
     throw new Error(`Webhook idempotency insert failed: ${insertErr.message}`);
   }
 
-  return { duplicate: false };
+  return { duplicate: false, tracking: true };
 }
 
 async function updateEventStatus(eventId, status, lastError = null) {
@@ -97,6 +114,10 @@ async function updateEventStatus(eventId, status, lastError = null) {
     .eq("event_id", eventId);
 
   if (error) {
+    if (isSchemaMissingError(error)) {
+      console.warn("Webhook status columns not ready; skipping status update");
+      return;
+    }
     console.error("Webhook status update failed:", error.message);
     throw new Error(`Webhook status update failed: ${error.message}`);
   }
@@ -256,11 +277,14 @@ async function handler(req, res) {
     return json(res, 400, { error: "Invalid signature" });
   }
 
+  let trackingEnabled = true;
+
   try {
     const idem = await markEventProcessing(event);
     if (idem.duplicate) {
       return json(res, 200, { received: true, duplicate: true });
     }
+    trackingEnabled = idem.tracking !== false;
 
     switch (event.type) {
       case "checkout.session.completed":
@@ -276,11 +300,15 @@ async function handler(req, res) {
         break;
     }
 
-    await updateEventStatus(event.id, "processed", null);
+    if (trackingEnabled) {
+      await updateEventStatus(event.id, "processed", null);
+    }
     return json(res, 200, { received: true });
   } catch (err) {
     try {
-      await updateEventStatus(event.id, "failed", String(err?.message || "unknown").slice(0, 500));
+      if (typeof trackingEnabled !== "undefined" && trackingEnabled) {
+        await updateEventStatus(event.id, "failed", String(err?.message || "unknown").slice(0, 500));
+      }
     } catch (statusErr) {
       console.error("Failed to persist webhook failure status:", statusErr?.message || "unknown");
     }

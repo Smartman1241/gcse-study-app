@@ -92,9 +92,10 @@ create or replace function public.adjust_ai_tokens(
   p_period_key text,
   p_model text,
   p_delta_input integer,
-  p_delta_output integer
+  p_delta_output integer,
+  p_limit bigint default null
 )
-returns table(used bigint)
+returns table(applied boolean, used bigint)
 language plpgsql
 security definer
 as $$
@@ -115,12 +116,18 @@ begin
          output_tokens = greatest(0, output_tokens + $5),
          updated_at = now()
      where user_id = $1 and %I = $2 and model = $3
+       and ($6 is null or $4 + $5 <= 0 or (input_tokens + output_tokens + $4 + $5) <= $6)
      returning (input_tokens + output_tokens)::bigint',
     p_table, v_period_col
   );
 
-  execute v_sql into v_used using p_user_id, p_period_key, p_model, p_delta_input, p_delta_output;
-  return query select v_used;
+  execute v_sql into v_used using p_user_id, p_period_key, p_model, p_delta_input, p_delta_output, p_limit;
+
+  if v_used is null then
+    return query select false, null::bigint;
+  else
+    return query select true, v_used;
+  end if;
 end;
 $$;
 
@@ -191,11 +198,11 @@ $$;
 
 -- Restrict execution of security definer RPCs
 revoke all on function public.consume_ai_tokens(text, uuid, text, text, integer, integer, bigint) from public;
-revoke all on function public.adjust_ai_tokens(text, uuid, text, text, integer, integer) from public;
+revoke all on function public.adjust_ai_tokens(text, uuid, text, text, integer, integer, bigint) from public;
 revoke all on function public.consume_image_quota(uuid, text, text, integer, bigint) from public;
 revoke all on function public.adjust_image_quota(uuid, text, text, integer) from public;
 
 grant execute on function public.consume_ai_tokens(text, uuid, text, text, integer, integer, bigint) to service_role;
-grant execute on function public.adjust_ai_tokens(text, uuid, text, text, integer, integer) to service_role;
+grant execute on function public.adjust_ai_tokens(text, uuid, text, text, integer, integer, bigint) to service_role;
 grant execute on function public.consume_image_quota(uuid, text, text, integer, bigint) to service_role;
 grant execute on function public.adjust_image_quota(uuid, text, text, integer) to service_role;
