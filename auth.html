@@ -283,11 +283,16 @@ async function signUp(){
     return;
   }
 
-  const { data: existing } = await supabaseClient
+  const { data: existing, error: usernameErr } = await supabaseClient
     .from("user_settings")
-    .select("id")
+    .select("user_id")
     .eq("username", username)
     .maybeSingle();
+
+  if(usernameErr){
+    signupMsg.textContent="Could not verify username. Try again.";
+    return;
+  }
 
   if(existing){
     signupMsg.textContent="Username already taken.";

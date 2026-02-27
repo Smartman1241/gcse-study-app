@@ -2,6 +2,8 @@ const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
 const { buffer } = require("micro");
 
+const WEBHOOK_PROCESSING_TIMEOUT_MS = 10 * 60 * 1000;
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
 });
@@ -23,25 +25,69 @@ function roleFromPlan(plan) {
 }
 
 async function markEventProcessing(event) {
-  const now = new Date().toISOString();
-  const { error } = await supabaseAdmin
+  const nowIso = new Date().toISOString();
+
+  const { data: existing, error: selectErr } = await supabaseAdmin
+    .from("stripe_webhook_events")
+    .select("event_id, status, updated_at")
+    .eq("event_id", event.id)
+    .maybeSingle();
+
+  if (selectErr) {
+    throw new Error(`Webhook idempotency read failed: ${selectErr.message}`);
+  }
+
+  if (existing) {
+    const status = String(existing.status || "").toLowerCase();
+    const updatedAtMs = Date.parse(existing.updated_at || "") || 0;
+    const staleProcessing = status === "processing" && (Date.now() - updatedAtMs) > WEBHOOK_PROCESSING_TIMEOUT_MS;
+
+    if (status === "processed") {
+      return { duplicate: true };
+    }
+
+    if (status === "failed" || staleProcessing) {
+      const { error: reclaimErr } = await supabaseAdmin
+        .from("stripe_webhook_events")
+        .update({
+          status: "processing",
+          last_error: null,
+          updated_at: nowIso,
+          processed_at: nowIso
+        })
+        .eq("event_id", event.id);
+
+      if (reclaimErr) {
+        throw new Error(`Webhook idempotency reclaim failed: ${reclaimErr.message}`);
+      }
+
+      return { duplicate: false, recovered: true };
+    }
+
+    return { duplicate: true };
+  }
+
+  const { error: insertErr } = await supabaseAdmin
     .from("stripe_webhook_events")
     .insert({
       event_id: event.id,
       event_type: event.type,
       status: "processing",
-      processed_at: now,
-      updated_at: now,
+      processed_at: nowIso,
+      updated_at: nowIso,
       last_error: null
     });
 
-  if (!error) return { duplicate: false };
-  if (error.code === "23505") return { duplicate: true };
-  throw new Error(`Webhook idempotency insert failed: ${error.message}`);
+  if (insertErr) {
+    if (insertErr.code === "23505") return { duplicate: true };
+    throw new Error(`Webhook idempotency insert failed: ${insertErr.message}`);
+  }
+
+  return { duplicate: false };
 }
 
 async function updateEventStatus(eventId, status, lastError = null) {
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("stripe_webhook_events")
     .update({
       status,
@@ -49,6 +95,11 @@ async function updateEventStatus(eventId, status, lastError = null) {
       updated_at: new Date().toISOString()
     })
     .eq("event_id", eventId);
+
+  if (error) {
+    console.error("Webhook status update failed:", error.message);
+    throw new Error(`Webhook status update failed: ${error.message}`);
+  }
 }
 
 async function resolveUserId({ explicitUserId, stripeCustomerId, stripeSubscriptionId }) {
@@ -228,7 +279,11 @@ async function handler(req, res) {
     await updateEventStatus(event.id, "processed", null);
     return json(res, 200, { received: true });
   } catch (err) {
-    await updateEventStatus(event.id, "failed", String(err?.message || "unknown").slice(0, 500));
+    try {
+      await updateEventStatus(event.id, "failed", String(err?.message || "unknown").slice(0, 500));
+    } catch (statusErr) {
+      console.error("Failed to persist webhook failure status:", statusErr?.message || "unknown");
+    }
     console.error("Webhook processing error:", err?.message || "unknown");
     return json(res, 500, { error: "Webhook handler failed" });
   }

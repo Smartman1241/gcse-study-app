@@ -25,11 +25,24 @@ function json(res, code, payload) {
 }
 
 function deriveOrigin(req) {
+  const envBase = String(process.env.APP_BASE_URL || "").trim();
+  if (envBase) {
+    try {
+      const u = new URL(envBase);
+      if (u.protocol === "https:" || u.protocol === "http:") {
+        return `${u.protocol}//${u.host}`;
+      }
+    } catch {
+      // ignore invalid APP_BASE_URL and fallback to localhost-only host check
+    }
+  }
+
   const host = String(req.headers.host || "").trim().toLowerCase();
-  if (!host) return null;
-  if (!/^[a-z0-9.-]+(?::\d+)?$/.test(host)) return null;
-  const proto = host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
-  return `${proto}://${host}`;
+  if (host.startsWith("localhost") || host.startsWith("127.0.0.1")) {
+    return `http://${host}`;
+  }
+
+  return null;
 }
 
 function normalizeIdempotencyKey(raw, userId, priceId) {
@@ -97,10 +110,9 @@ module.exports = async (req, res) => {
 
     if (mapErr) {
       console.error("Customer map lookup failed:", mapErr.message);
-      return json(res, 500, { error: "Unable to prepare checkout" });
     }
 
-    const customerId = existingMap?.stripe_customer_id || undefined;
+    const customerId = mapErr ? undefined : (existingMap?.stripe_customer_id || undefined);
 
     const sessionParams = {
       mode: "subscription",

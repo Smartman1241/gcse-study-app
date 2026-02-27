@@ -188,3 +188,14 @@ begin
   return query select coalesce(v_used, 0)::bigint;
 end;
 $$;
+
+-- Restrict execution of security definer RPCs
+revoke all on function public.consume_ai_tokens(text, uuid, text, text, integer, integer, bigint) from public;
+revoke all on function public.adjust_ai_tokens(text, uuid, text, text, integer, integer) from public;
+revoke all on function public.consume_image_quota(uuid, text, text, integer, bigint) from public;
+revoke all on function public.adjust_image_quota(uuid, text, text, integer) from public;
+
+grant execute on function public.consume_ai_tokens(text, uuid, text, text, integer, integer, bigint) to service_role;
+grant execute on function public.adjust_ai_tokens(text, uuid, text, text, integer, integer) to service_role;
+grant execute on function public.consume_image_quota(uuid, text, text, integer, bigint) to service_role;
+grant execute on function public.adjust_image_quota(uuid, text, text, integer) to service_role;

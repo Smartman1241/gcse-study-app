@@ -298,7 +298,7 @@ function estimateInputTokens(question, history = []) {
     .join("\n");
 
   const chars = q.length + historyText.length;
-  return clampInt(Math.ceil(chars / 4), 80, 6000);
+  return clampInt(Math.ceil(chars / 3) + 300, 200, 9000);
 }
 
 // ---------- OPENAI CALLS ----------
@@ -486,8 +486,8 @@ module.exports = async function handler(req, res) {
         role,
         tz,
         model,
-        reserveInput: estimatedInputTokens,
-        reserveOutput: maxOutputTokens,
+        reserveInput: estimatedInputTokens + maxOutputTokens,
+        reserveOutput: 0,
       });
 
       if (!reserveAttempt.allowed && maxOutputTokens === 900) {
@@ -497,8 +497,8 @@ module.exports = async function handler(req, res) {
           role,
           tz,
           model,
-          reserveInput: estimatedInputTokens,
-          reserveOutput: maxOutputTokens,
+          reserveInput: estimatedInputTokens + maxOutputTokens,
+          reserveOutput: 0,
         });
       }
 
@@ -610,19 +610,18 @@ module.exports = async function handler(req, res) {
 
     if (role !== "admin") {
       const reservedInput = Number(tokenReservation.reservation?.reserveInput || 0);
-      const reservedOutput = Number(tokenReservation.reservation?.reserveOutput || 0);
-      const deltaInput = countedInput - reservedInput;
-      const deltaOutput = countedOutput - reservedOutput;
+      const actualTotal = Number(countedInput || 0) + Number(countedOutput || 0);
+      const deltaTotal = actualTotal - reservedInput;
 
-      if (deltaInput !== 0 || deltaOutput !== 0) {
+      if (deltaTotal !== 0) {
         await adjustTokenUsage({
           role,
           table: tokenReservation.table,
           userId,
           periodKey: tokenReservation.periodKey,
           model,
-          deltaInput,
-          deltaOutput,
+          deltaInput: deltaTotal,
+          deltaOutput: 0,
         });
       }
       reservationContext = null;
