@@ -433,15 +433,12 @@
 }
 /* ===== AI FULL RIGHT PANEL ===== */
 
+/* ===== AI PANEL REAL LAYOUT ===== */
+
 .ai-panel{
 
-  width:420px;
-  min-width:420px;
-
-  height:calc(100vh - 120px);
-
-  position:sticky;
-  top:100px;
+  width:45%;
+  min-width:520px;
 
   background:var(--panel);
 
@@ -450,6 +447,23 @@
   display:none;
   flex-direction:column;
 
+}
+
+/* MAIN AREA SHRINKS WHEN AI OPEN */
+body.ai-active #mainGrid{
+
+  display:grid;
+  grid-template-columns: 1fr 45%;
+
+  gap:18px;
+
+}
+
+/* dashboard expands normally */
+#mainGrid{
+  display:grid;
+  grid-template-columns:1fr;
+  transition:.35s ease;
 }
 
 
@@ -514,9 +528,7 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 
 <body>
 
-<a href="checkout.html" class="checkout-icon" title="Checkout">
-  💳
-</a>
+
 
 <div class="wrap">
   <header>
@@ -2635,8 +2647,11 @@ $("#btnGenerateImage")?.addEventListener(
   window.location.href = "tasks.html";
 });
     $("#dashGoAI")?.addEventListener("click", () => {
+
   aiPanel.style.display = "flex";
-  
+
+  document.body.classList.add("ai-active");
+
 });
     $("#dashGoTimer")?.addEventListener("click", () => toast("Timer is on the right →"));
 
@@ -2680,27 +2695,23 @@ const aiPanel = document.getElementById("aiSidePanel");
 const aiToggle = document.getElementById("toggleAiPanel");
 const aiClose = document.getElementById("closeAiPanel");
 
-if (aiPanel && aiToggle && aiClose && mainGrid) {
+if (aiPanel && aiToggle && aiClose) {
 
   aiToggle.addEventListener("click", () => {
 
-  aiPanel.style.display = "flex";
+    aiPanel.style.display = "flex";
 
-});
+    document.body.classList.add("ai-active");
 
-aiClose.addEventListener("click", () => {
-
-  aiPanel.style.display = "none";
-
-});
+  });
 
   aiClose.addEventListener("click", () => {
 
-  aiPanel.style.display = "none";
+    aiPanel.style.display = "none";
 
-  document.body.classList.remove("ai-active");
+    document.body.classList.remove("ai-active");
 
-});
+  });
 
 }
   }
