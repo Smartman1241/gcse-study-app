@@ -148,7 +148,7 @@
   }
 
   // -----------------------------
-  // After Page Load → Sync DB
+  // After Paage Load → Sync DB
   // -----------------------------
   document.addEventListener(
     "DOMContentLoaded",
