@@ -111,9 +111,13 @@ if (profileError) {
   console.error("Profile fetch error:", profileError);
 }
 
+// ===============================
+// Get or create Stripe customer (mode-safe)
+// ===============================
+
 let customerId = profile?.stripe_customer_id || null;
 
-if (!customerId) {
+async function createCustomer() {
 
   const customer = await stripe.customers.create({
     metadata: {
@@ -121,18 +125,26 @@ if (!customerId) {
     }
   });
 
-  customerId = customer.id;
-
-  const { error: updateError } = await supabaseAdmin
+  await supabaseAdmin
     .from("profiles")
     .update({
-      stripe_customer_id: customerId
+      stripe_customer_id: customer.id
     })
     .eq("id", userId);
 
-  if (updateError) {
-    console.error("Failed saving stripe customer:", updateError);
+  return customer.id;
+}
+
+// If customer exists, verify it belongs to this Stripe mode
+if (customerId) {
+  try {
+    await stripe.customers.retrieve(customerId);
+  } catch (err) {
+    console.log("Customer invalid for this Stripe mode — recreating");
+    customerId = await createCustomer();
   }
+} else {
+  customerId = await createCustomer();
 }
     if (userErr || !userId) {
       return res.status(401).json({ error: "Invalid session" });
