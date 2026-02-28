@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
 <script src="theme.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Exam Mode – GCSE Focus</title>
-
-<link rel="stylesheet" href="/css/styles.css">
 
 <style>
 body {
@@ -80,8 +79,6 @@ body {
 
 <body>
 
-<div id="navbar"></div>
-
 <div class="exam-container">
 
   <div class="exam-header">
@@ -127,47 +124,82 @@ body {
 
 </div>
 
-<script src="/js/navbar.js"></script>
-
 <script>
 let currentQuestion = "";
 
-async function generateQuestion() {
-  const subject = document.getElementById("subject").value;
-  const tier = document.getElementById("tier").value;
-  const marks = document.getElementById("marks").value;
+const supabaseClient = window.supabase?.createClient
+  ? window.supabase.createClient(
+      "https://mgpwknnbhaljsscsvucm.supabase.co",
+      "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+    )
+  : null;
 
-  const prompt = `
+async function getAccessToken() {
+  if (!supabaseClient) {
+    alert("Auth service unavailable. Please refresh and try again.");
+    return null;
+  }
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session?.access_token) {
+    window.location.href = "auth.html";
+    return null;
+  }
+  return session.access_token;
+}
+
+async function generateQuestion() {
+  try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) return;
+
+    const subject = document.getElementById("subject").value;
+    const tier = document.getElementById("tier").value;
+    const marks = document.getElementById("marks").value;
+
+    const prompt = `
 Generate one GCSE ${subject} ${tier} tier exam-style question worth ${marks} marks.
 Do not include the answer.
 Write it exactly how it would appear on a real exam paper.
-  `;
+    `;
 
-  const response = await fetch("/api/ai", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("access_token")
-    },
-    body: JSON.stringify({ question: prompt })
-  });
+    const response = await fetch("/api/ai", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + accessToken
+      },
+      body: JSON.stringify({ question: prompt })
+    });
 
-  const data = await response.json();
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      alert(data?.error || "Failed to generate question.");
+      return;
+    }
 
-  currentQuestion = data.reply;
-  document.getElementById("questionBox").innerText = currentQuestion;
-  document.getElementById("resultBox").innerText = "";
+    currentQuestion = data.reply || "No question generated.";
+    document.getElementById("questionBox").innerText = currentQuestion;
+    document.getElementById("resultBox").innerText = "";
+  } catch (error) {
+    console.error("Generate question failed:", error);
+    alert("Unable to reach AI service. Please try again.");
+  }
 }
 
 async function markAnswer() {
-  const answer = document.getElementById("studentAnswer").value;
+  try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) return;
 
-  if (!answer || !currentQuestion) {
-    alert("Generate a question and write an answer first.");
-    return;
-  }
+    const answer = document.getElementById("studentAnswer").value;
 
-  const prompt = `
+    if (!answer || !currentQuestion) {
+      alert("Generate a question and write an answer first.");
+      return;
+    }
+
+    const prompt = `
 You are a GCSE science examiner.
 
 Question:
@@ -184,20 +216,28 @@ Return:
 - What student got correct
 - What student missed
 - A full-mark model answer
-  `;
+    `;
 
-  const response = await fetch("/api/ai", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("access_token")
-    },
-    body: JSON.stringify({ question: prompt })
-  });
+    const response = await fetch("/api/ai", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + accessToken
+      },
+      body: JSON.stringify({ question: prompt })
+    });
 
-  const data = await response.json();
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      alert(data?.error || "Failed to mark answer.");
+      return;
+    }
 
-  document.getElementById("resultBox").innerText = data.reply;
+    document.getElementById("resultBox").innerText = data.reply || "No feedback generated.";
+  } catch (error) {
+    console.error("Mark answer failed:", error);
+    alert("Unable to reach AI service. Please try again.");
+  }
 }
 </script>
 

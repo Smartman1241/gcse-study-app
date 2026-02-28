@@ -1,12 +1,13 @@
 const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
-const { buffer } = require("micro");
 
-export const config = {
-  api: {
-    bodyParser: false
+async function readRawBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-};
+  return Buffer.concat(chunks);
+}
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
@@ -17,7 +18,22 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-module.exports = async (req, res) => {
+function missingEnv() {
+  const required = [
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY"
+  ];
+  return required.filter((k) => !process.env[k]);
+}
+
+const handler = async (req, res) => {
+  const missing = missingEnv();
+  if (missing.length) {
+    return res.status(500).json({ error: `Server misconfigured: missing ${missing.join(", ")}` });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).send("Method not allowed");
   }
@@ -30,7 +46,7 @@ module.exports = async (req, res) => {
   let event;
 
   try {
-    const rawBody = await buffer(req);
+    const rawBody = await readRawBody(req);
 
     event = stripe.webhooks.constructEvent(
       rawBody,
@@ -136,3 +152,11 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: "Webhook handler failed" });
   }
 };
+
+handler.config = {
+  api: {
+    bodyParser: false
+  }
+};
+
+module.exports = handler;
