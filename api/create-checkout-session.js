@@ -1,8 +1,25 @@
 const Stripe = require("stripe");
+const { createClient } = require("@supabase/supabase-js");
+
+// Fail fast if env is missing (prevents confusing production errors)
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("Missing STRIPE_SECRET_KEY env var");
+}
+if (!process.env.SUPABASE_URL) {
+  throw new Error("Missing SUPABASE_URL env var");
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY env var");
+}
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
 });
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /*
   Price Mapping (Single Source of Truth)
@@ -17,43 +34,115 @@ const PRICE_MAP = {
   price_1T46qbRzC23qaxzMC9TWNVsK: { plan: "pro", cycle: "annual" }
 };
 
-module.exports = async (req, res) => {
+function safeString(v) {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+function getOrigin(req) {
+  // Prefer Origin header (browser requests). Otherwise fall back to host.
+  const origin = safeString(req.headers.origin);
+  if (origin) return origin;
+
+  const host = safeString(req.headers.host);
+  if (!host) return null;
+
+  // Best-effort: assume HTTPS in production
+  return `https://${host}`;
+}
+
+function getBearerToken(req) {
+  const authHeader = safeString(req.headers.authorization) || "";
+  if (!authHeader.toLowerCase().startsWith("bearer ")) return null;
+  return safeString(authHeader.slice(7));
+}
+
+module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const { priceId, waiveConfirmed } = req.body || {};
+    const body = req.body || {};
+    const priceId = safeString(body.priceId);
+    const waiveConfirmed = body.waiveConfirmed;
 
-    // 🔒 1. Validate priceId strictly
+    // 🔒 Validate priceId strictly
     if (!priceId || !PRICE_MAP[priceId]) {
       return res.status(400).json({ error: "Invalid price ID" });
     }
 
-    // 🔒 2. Enforce waiver confirmation (LEGAL PROTECTION)
+    // 🔒 Enforce waiver confirmation (LEGAL PROTECTION)
     if (waiveConfirmed !== true) {
       return res.status(400).json({
         error: "You must agree to immediate access and waive cancellation rights."
       });
     }
 
-    // 🔒 3. Derive plan & cycle server-side only
     const { plan, cycle } = PRICE_MAP[priceId];
 
-    // 🔒 4. Determine base URL safely
-    const origin =
-      req.headers.origin ||
-      (req.headers.host ? `https://${req.headers.host}` : null);
-
+    // 🔒 Determine base URL safely
+    const origin = getOrigin(req);
     if (!origin) {
       return res.status(400).json({ error: "Unable to determine base URL" });
     }
 
-    // 🔒 5. Optional: Attach user email if logged in
-    // (If you store it in req.user from auth middleware)
-    const customerEmail = req.user?.email || undefined;
+    // 🔒 Verify user from Supabase session (never trust frontend userId)
+    const accessToken = getBearerToken(req);
+    if (!accessToken) {
+      return res.status(401).json({ error: "Missing auth token" });
+    }
 
+    const { data: userData, error: userErr } =
+      await supabaseAdmin.auth.getUser(accessToken);
+
+    const userId = userData?.user?.id || null;
+    const customerEmail = userData?.user?.email || null;
+// ===============================
+// Get or create Stripe customer
+// ===============================
+
+const { data: profile, error: profileError } =
+  await supabaseAdmin
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", userId)
+    .single();
+
+if (profileError) {
+  console.error("Profile fetch error:", profileError);
+}
+
+let customerId = profile?.stripe_customer_id || null;
+
+if (!customerId) {
+
+  const customer = await stripe.customers.create({
+    email: customerEmail || undefined,
+    metadata: {
+      user_id: userId
+    }
+  });
+
+  customerId = customer.id;
+
+  const { error: updateError } = await supabaseAdmin
+    .from("profiles")
+    .update({
+      stripe_customer_id: customerId
+    })
+    .eq("id", userId);
+
+  if (updateError) {
+    console.error("Failed saving stripe customer:", updateError);
+  }
+}
+    if (userErr || !userId) {
+      return res.status(401).json({ error: "Invalid session" });
+    }
+
+    // ✅ Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
+customer: customerId,
       mode: "subscription",
       payment_method_types: ["card"],
       allow_promotion_codes: true,
@@ -65,11 +154,14 @@ module.exports = async (req, res) => {
         }
       ],
 
-      customer_email: customerEmail,
+      // customer_email is optional, but helpful for receipts / recovery flows
+      ...(customerEmail ? { customer_email: customerEmail } : {}),
 
+      // ✅ Metadata for webhook mapping (checkout + subscription lifecycle)
       metadata: {
         plan,
         cycle,
+        user_id: userId,
         waive_confirmed: "true"
       },
 
@@ -77,11 +169,13 @@ module.exports = async (req, res) => {
         metadata: {
           plan,
           cycle,
+          user_id: userId,
           waive_confirmed: "true"
         }
       },
 
-      success_url: `${origin}/billing-success.html?session_id={CHECKOUT_SESSION_ID}`,
+      // ✅ Existing route (prevents 404 after payment)
+      success_url: `${origin}/subscriptions.html?success=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/subscriptions.html?canceled=1`
     });
 
@@ -89,8 +183,6 @@ module.exports = async (req, res) => {
 
   } catch (err) {
     console.error("Checkout error:", err);
-    return res.status(500).json({
-      error: "Unable to create checkout session"
-    });
+    return res.status(500).json({ error: "Unable to create checkout session" });
   }
 };

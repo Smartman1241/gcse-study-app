@@ -442,12 +442,15 @@
   </div>
 
   <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
+  document.getElementById("year").textContent =
+    new Date().getFullYear();
 
-    // 🚪 Redirect logged-in users away from landing page
-    document.addEventListener("DOMContentLoaded", () => {
-      redirectIfLoggedIn();
-    });
-  </script>
+  // 🚪 Redirect logged-in users safely
+  document.addEventListener("DOMContentLoaded", () => {
+    if (typeof window.redirectIfLoggedIn === "function") {
+      window.redirectIfLoggedIn();
+    }
+  });
+</script>
 </body>
 </html>

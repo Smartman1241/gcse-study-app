@@ -234,7 +234,10 @@ footer span{
 <script>
 const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+window.supabaseClient =
+  supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const supabaseClient = window.supabaseClient;
 
 const els = {
   signin: document.getElementById("signin"),
@@ -304,11 +307,24 @@ async function signUp(){
     return;
   }
 
-  const { data: existing } = await supabaseClient
+  const { data: existing, error: checkError } =
+  await supabaseClient
     .from("user_settings")
     .select("user_id")
     .ilike("username", username)
     .maybeSingle();
+
+if (checkError) {
+  els.signupMsg.textContent =
+    "Unable to verify username right now.";
+  return;
+}
+
+if (existing) {
+  els.signupMsg.textContent =
+    "Username already taken.";
+  return;
+}
 
   if(existing){
     els.signupMsg.textContent="Username already taken.";
@@ -350,7 +366,7 @@ async function resetPassword(){
   const { error } =
     await supabaseClient.auth.resetPasswordForEmail(
       els.resetEmail.value.trim(),
-      { redirectTo: window.location.origin + "/index.html" }
+      { redirectTo: window.location.origin + "/index.html" + "/index.html" }
     );
 
   if(error){
