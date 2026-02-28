@@ -96,7 +96,6 @@ module.exports = async function handler(req, res) {
       await supabaseAdmin.auth.getUser(accessToken);
 
     const userId = userData?.user?.id || null;
-    const customerEmail = userData?.user?.email || null;
 // ===============================
 // Get or create Stripe customer
 // ===============================
@@ -117,7 +116,6 @@ let customerId = profile?.stripe_customer_id || null;
 if (!customerId) {
 
   const customer = await stripe.customers.create({
-    email: customerEmail || undefined,
     metadata: {
       user_id: userId
     }
@@ -155,7 +153,6 @@ customer: customerId,
       ],
 
       // customer_email is optional, but helpful for receipts / recovery flows
-      ...(customerEmail ? { customer_email: customerEmail } : {}),
 
       // ✅ Metadata for webhook mapping (checkout + subscription lifecycle)
       metadata: {
