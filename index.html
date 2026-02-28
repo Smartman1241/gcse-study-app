@@ -62,14 +62,14 @@
   .panel, .card, .item, .toast { opacity:1; filter:none; }
 
   .wrap{
-  max-width:1400px;
-  margin-left:40px;
-  margin-right:auto;
-  padding:22px 16px 44px;
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:22px 40px 44px;
 }
 
   header{
-    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:nowrap;
     margin-bottom:14px;
   }
 
@@ -434,13 +434,9 @@
 /* ===== AI FULL RIGHT PANEL ===== */
 
 .ai-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100vh;
-  width: 42%;
-  min-width: 420px;
-  max-width: 650px;
+  width:420px;
+  min-width:420px;
+  max-width:420px;
 
   background: var(--bg); /* solid background */
   border-left: 1px solid var(--border);
@@ -463,9 +459,12 @@
   flex: 1;
 }
 /* MOVE MAIN CONTENT WHEN AI OPEN */
+.grid{
+  transition: transform .35s ease;
+}
+
 .grid.ai-open{
-  margin-right: 42%;
-  transition: margin-right .35s ease;
+  transform: translateX(-420px);
 }
 
 /* mobile safety */
@@ -2687,14 +2686,22 @@ const aiClose = document.getElementById("closeAiPanel");
 if (aiPanel && aiToggle && aiClose && mainGrid) {
 
   aiToggle.addEventListener("click", () => {
-    aiPanel.style.display = "flex";
-    mainGrid.classList.add("ai-open");
-  });
+
+  aiPanel.style.display = "flex";
+
+  document.body.classList.add("ai-active");
+  mainGrid.classList.add("ai-open");
+
+});
 
   aiClose.addEventListener("click", () => {
-    aiPanel.style.display = "none";
-    mainGrid.classList.remove("ai-open");
-  });
+
+  aiPanel.style.display = "none";
+
+  document.body.classList.remove("ai-active");
+  mainGrid.classList.remove("ai-open");
+
+});
 
 }
   }
