@@ -1,19 +1,24 @@
 // =====================================
 // REVISEFLOW GLOBAL THEME SYSTEM
-// Production Safe Version
+// ULTRA STABLE PRODUCTION VERSION
 // =====================================
 
 (function () {
 
+  "use strict";
+
   const KEY = "reviseflow_theme";
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+
+  const SUPABASE_URL =
+    "https://mgpwknnbhaljsscsvucm.supabase.co";
+
   const SUPABASE_ANON =
     "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
   // -----------------------------
   // Normalize
   // -----------------------------
-  function normalizeTheme(theme) {
+  function normalize(theme) {
     return theme === "light" ? "light" : "dark";
   }
 
@@ -23,150 +28,173 @@
   function applyTheme(theme) {
     document.documentElement.setAttribute(
       "data-theme",
-      normalizeTheme(theme)
+      normalize(theme)
     );
   }
 
   // -----------------------------
-  // Local Storage
+  // Local Storage Safe Access
   // -----------------------------
   function getLocalTheme() {
     try {
       return localStorage.getItem(KEY);
-    } catch (_) {
+    } catch {
       return null;
     }
   }
 
   function setLocalTheme(theme) {
     try {
-      localStorage.setItem(KEY, normalizeTheme(theme));
-    } catch (_) {}
+      localStorage.setItem(KEY, normalize(theme));
+    } catch {}
   }
 
-  // -----------------------------
-  // Supabase Client
-  // -----------------------------
-  function getSupabaseClient() {
+  // =====================================================
+  // SINGLE GLOBAL SUPABASE CLIENT (CRITICAL FIX)
+  // =====================================================
+  function getSupabase() {
 
+    // already exists → reuse
     if (window.supabaseClient)
       return window.supabaseClient;
 
-    if (!window.supabase) return null;
-
-    window.supabaseClient =
-      window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON
-      );
-
-    return window.supabaseClient;
-  }
-
-  // -----------------------------
-  // Load From Supabase
-  // -----------------------------
-  async function loadThemeFromSupabase() {
+    // SDK not loaded
+    if (!window.supabase?.createClient)
+      return null;
 
     try {
 
-      const sb = getSupabaseClient();
-      if (!sb) return;
+      window.supabaseClient =
+        window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_ANON,
+          {
+            auth: {
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true
+            }
+          }
+        );
 
-      const { data: { session } } =
-        await sb.auth.getSession();
+      return window.supabaseClient;
 
-      const userId = session?.user?.id;
-      if (!userId) return;
-
-      const { data } = await sb
-        .from("user_settings")
-        .select("theme")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (data?.theme) {
-        applyTheme(data.theme);
-        setLocalTheme(data.theme);
-      }
-
-    } catch (_) {
-      // silent fail
+    } catch {
+      return null;
     }
   }
 
   // -----------------------------
-  // Save To Supabase
+  // Load Theme From DB
   // -----------------------------
-  async function saveThemeToSupabase(theme) {
+  async function loadThemeFromDB() {
 
     try {
 
-      const sb = getSupabaseClient();
+      const sb = getSupabase();
       if (!sb) return;
 
-      const { data: { session } } =
-        await sb.auth.getSession();
+      const sessionResult =
+        await sb.auth.getSession()
+          .catch(() => null);
 
-      const userId = session?.user?.id;
-      if (!userId) return;
+      const session =
+        sessionResult?.data?.session;
+
+      if (!session?.user?.id)
+        return;
+
+      const { data } = await sb
+        .from("user_settings")
+        .select("theme")
+        .eq("user_id", session.user.id)
+        .maybeSingle()
+        .catch(() => ({ data: null }));
+
+      if (!data?.theme) return;
+
+      applyTheme(data.theme);
+      setLocalTheme(data.theme);
+
+    } catch {
+      // never crash page
+    }
+  }
+
+  // -----------------------------
+  // Save Theme
+  // -----------------------------
+  async function saveTheme(theme) {
+
+    try {
+
+      const sb = getSupabase();
+      if (!sb) return;
+
+      const sessionResult =
+        await sb.auth.getSession()
+          .catch(() => null);
+
+      const session =
+        sessionResult?.data?.session;
+
+      if (!session?.user?.id)
+        return;
 
       await sb
         .from("user_settings")
         .upsert({
-          user_id: userId,
-          theme: normalizeTheme(theme),
+          user_id: session.user.id,
+          theme: normalize(theme),
           updated_at: new Date().toISOString()
-        });
+        })
+        .catch(() => {});
 
-    } catch (_) {}
+    } catch {}
   }
 
   // -----------------------------
-  // Public Setter
+  // Public API
   // -----------------------------
   function setTheme(theme) {
 
-    const next = normalizeTheme(theme);
+    const next = normalize(theme);
 
     applyTheme(next);
     setLocalTheme(next);
 
-    // async save (non blocking)
-    saveThemeToSupabase(next);
+    // async background save
+    saveTheme(next);
   }
 
   // expose ONE global only
   window.setTheme = setTheme;
 
-  // -----------------------------
-  // Instant Load (NO FLASH)
-  // -----------------------------
-  const initialTheme = getLocalTheme();
-  if (initialTheme) {
-    applyTheme(initialTheme);
-  }
+  // =====================================================
+  // INSTANT LOAD (PREVENT FLASH)
+  // =====================================================
+  const cached = getLocalTheme();
+  if (cached) applyTheme(cached);
 
-  // -----------------------------
-  // After Paage Load → Sync DB
-  // -----------------------------
-  document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-      loadThemeFromSupabase();
-    }
-  );
+  // =====================================================
+  // AFTER PAGE LOAD
+  // =====================================================
+  window.addEventListener("DOMContentLoaded", () => {
 
-  // -----------------------------
-  // Cross Tab Sync
-  // -----------------------------
-  window.addEventListener(
-    "storage",
-    (e) => {
-      if (e.key === KEY && e.newValue) {
-        applyTheme(e.newValue);
-      }
+    // delay slightly → prevents auth race
+    setTimeout(loadThemeFromDB, 150);
+
+  });
+
+  // =====================================================
+  // CROSS TAB SYNC
+  // =====================================================
+  window.addEventListener("storage", (e) => {
+
+    if (e.key === KEY && e.newValue) {
+      applyTheme(e.newValue);
     }
-  );
+
+  });
 
 })();
