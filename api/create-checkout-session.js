@@ -30,7 +30,7 @@ const PRICE_MAP = {
   price_1T46nyRzC23qaxzM2apXOsNE: { plan: "plus", cycle: "quarterly" },
   price_1T46nyRzC23qaxzMsuQppAj6: { plan: "plus", cycle: "annual" },
   price_1T46qbRzC23qaxzM2ebMn3o6: { plan: "pro", cycle: "monthly" },
-  price_1T46qbRzC23qaxzMh15YdWfh: { plan: "pro", cycle: "quarterly" },
+  price_1T5v9oRzC23qaxzMWkfmzc1l: { plan: "pro", cycle: "quarterly" },
   price_1T46qbRzC23qaxzMC9TWNVsK: { plan: "pro", cycle: "annual" }
 };
 

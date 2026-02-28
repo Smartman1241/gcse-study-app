@@ -55,13 +55,19 @@ async function findUser(customerId) {
 // ===============================
 // UPDATE USER PLAN
 // ===============================
-async function updateUser(userId, tier, subscriptionId) {
+async function updateUser(
+  userId,
+  tier,
+  subscriptionId,
+  customerId
+) {
 
   const payload = {
     user_id: userId,
     tier: tier,
     role: tier,
     stripe_subscription_id: subscriptionId,
+    stripe_customer_id: customerId,
     updated_at: new Date().toISOString()
   };
 
@@ -107,6 +113,23 @@ module.exports = async function handler(req, res) {
     const signature = req.headers["stripe-signature"];
 
     event = stripe.webhooks.constructEvent(
+// ===============================
+// IDEMPOTENCY PROTECTION
+// ===============================
+const { error: duplicateError } =
+  await supabaseAdmin
+    .from("stripe_webhook_events")
+    .insert({
+      id: event.id
+    });
+
+if (duplicateError) {
+  console.log("Duplicate webhook ignored:", event.id);
+  return res.status(200).json({
+    received: true,
+    duplicate: true
+  });
+}
       rawBody,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
@@ -179,10 +202,11 @@ module.exports = async function handler(req, res) {
         const tier = resolveTier(subscription);
 
         await updateUser(
-          userId,
-          tier,
-          subscription.id
-        );
+  userId,
+  tier,
+  subscription.id,
+  subscription.customer
+);
 
         break;
       }
@@ -229,7 +253,12 @@ module.exports = async function handler(req, res) {
 
         if (!userId) break;
 
-        await updateUser(userId, "free", null);
+        await updateUser(
+  userId,
+  "free",
+  null,
+  sub.customer
+);
 
         break;
       }

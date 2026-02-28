@@ -1709,7 +1709,29 @@
 
       updateCheckoutEnabled();
     })();
-  </script>
+
+(async () => {
+
+const params = new URLSearchParams(window.location.search);
+const sessionId = params.get("session_id");
+
+if (!sessionId) return;
+
+await fetch("/api/verify-checkout-session", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    sessionId
+  })
+});
+
+location.href = "/dashboard.html";
+
+})();
+</script>
 </body>
-</html>< ! - -   f o r c e   r e d e p l o y   - - >  
- 
+</html>< ! - -   f o r c e   r e d e p l o y   - - > 
+ 
+ 
