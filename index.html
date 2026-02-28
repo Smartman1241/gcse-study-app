@@ -61,7 +61,12 @@
   /* Fix “haze” issue: ensure panels aren’t accidentally inheriting opacity/filters */
   .panel, .card, .item, .toast { opacity:1; filter:none; }
 
-  .wrap{max-width:1180px; margin:0 auto; padding:22px 16px 44px;}
+  .wrap{
+  max-width:1400px;
+  margin-left:40px;
+  margin-right:auto;
+  padding:22px 16px 44px;
+}
 
   header{
     display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
@@ -520,7 +525,6 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <div class="wrap">
   <header>
     <div class="brand">
-      <div class="logo" title="ReviseFlow"></div>
       <div class="titleBlock">
         <h1>ReviseFlow <span class="badgeTiny">GCSE</span></h1>
 
@@ -1027,11 +1031,37 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
     </div>
 
     <div class="row">
-      <button class="btn primary" id="btnAskAI">✨ Explain</button>
-      <button class="btn" id="btnAiClear">Clear</button>
-    </div>
+
+  <button class="btn primary" id="btnAskAI">
+    ✨ Explain
+  </button>
+
+  <button class="btn" id="btnAiClear">
+    Clear
+  </button>
+
+  <label class="btn fileBtn">
+    📎 Upload PDF / Image
+    <input id="aiFileUpload"
+      type="file"
+      accept=".pdf,image/png,image/jpeg,image/webp">
+  </label>
+
+  <button class="btn" id="btnGenerateImage">
+    🎨 Generate Image
+  </button>
+
+</div>
 
     <div class="divider"></div>
+<div class="field full">
+  <span class="label">Image generation prompt</span>
+  <input id="imagePrompt"
+    type="text"
+    placeholder="e.g. labelled diagram of photosynthesis">
+</div>
+
+<div class="divider"></div>
     <div id="aiOutput" class="muted" style="white-space:pre-wrap;">
       Your explanation will appear here.
     </div>
@@ -2356,7 +2386,11 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ question: input, timezone })
+        body: JSON.stringify({
+  question: input,
+  timezone,
+  attachments: aiAttachments
+})
       });
 
       const data = await res.json().catch(() => ({}));
@@ -2383,7 +2417,77 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
       out.textContent = "Error contacting AI service.";
     }
   }
+// IMAGE GENERATION
+async function generateImage(){
 
+  const prompt = ($("#imagePrompt")?.value || "").trim();
+  const out = $("#aiOutput");
+
+  if(!prompt){
+    out.textContent = "Enter an image prompt.";
+    return;
+  }
+
+  out.textContent = "Generating image...";
+
+  const { data:{session} } =
+    await supabaseClient.auth.getSession();
+
+  const res = await fetch("/api/ai",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":`Bearer ${session.access_token}`
+    },
+    body:JSON.stringify({
+      action:"image",
+      prompt
+    })
+  });
+
+  const data = await res.json();
+
+  if(data.image_url){
+    out.innerHTML =
+      `<img src="${data.image_url}"
+       style="width:100%;border-radius:12px;margin-top:10px;">`;
+  }else{
+    out.textContent =
+      data.error || "Image generation failed.";
+  }
+}
+
+
+// FILE UPLOAD
+let aiAttachments = [];
+
+$("#aiFileUpload")?.addEventListener("change", async e => {
+
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+
+    const base64 =
+      reader.result.split(",")[1];
+
+    aiAttachments = [{
+      kind: file.type.includes("pdf")
+        ? "pdf"
+        : "image",
+      filename:file.name,
+      mime:file.type,
+      base64
+    }];
+
+    toast("File ready for AI");
+  };
+
+  reader.readAsDataURL(file);
+
+});
   // ---------- Export / Import / Reset / Theme ----------
   function downloadJSON(obj, filename="reviseflow_export.json") {
     const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
@@ -2515,6 +2619,10 @@ $("#navContinue")?.addEventListener("change", (e) => {
       $("#aiInput").value = "";
       $("#aiOutput").textContent = "Your explanation will appear here.";
     });
+$("#btnGenerateImage")?.addEventListener(
+  "click",
+  generateImage
+);
 
     // Theme / export / import / reset
     $("#btnTheme")?.addEventListener("click", toggleTheme);
