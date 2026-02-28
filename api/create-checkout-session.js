@@ -1,8 +1,23 @@
 const Stripe = require("stripe");
+const { createClient } = require("@supabase/supabase-js");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
 });
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+function missingEnv() {
+  const required = [
+    "STRIPE_SECRET_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY"
+  ];
+  return required.filter((k) => !process.env[k]);
+}
 
 /*
   Price Mapping (Single Source of Truth)
@@ -19,9 +34,28 @@ const PRICE_MAP = {
 
 module.exports = async (req, res) => {
   try {
+    const missing = missingEnv();
+    if (missing.length) {
+      return res.status(500).json({ error: `Server misconfigured: missing ${missing.join(", ")}` });
+    }
+
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method not allowed" });
     }
+
+    const authHeader = req.headers.authorization || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing auth token" });
+    }
+
+    const accessToken = authHeader.slice(7).trim();
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(accessToken);
+    if (userErr || !userData?.user?.id) {
+      return res.status(401).json({ error: "Invalid session" });
+    }
+
+    const userId = userData.user.id;
+    const customerEmail = userData.user.email || undefined;
 
     const { priceId, waiveConfirmed } = req.body || {};
 
@@ -49,10 +83,6 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Unable to determine base URL" });
     }
 
-    // 🔒 5. Optional: Attach user email if logged in
-    // (If you store it in req.user from auth middleware)
-    const customerEmail = req.user?.email || undefined;
-
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -68,6 +98,7 @@ module.exports = async (req, res) => {
       customer_email: customerEmail,
 
       metadata: {
+        user_id: userId,
         plan,
         cycle,
         waive_confirmed: "true"
@@ -75,13 +106,14 @@ module.exports = async (req, res) => {
 
       subscription_data: {
         metadata: {
+          user_id: userId,
           plan,
           cycle,
           waive_confirmed: "true"
         }
       },
 
-      success_url: `${origin}/billing-success.html?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/subscriptions.html?success=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/subscriptions.html?canceled=1`
     });
 
