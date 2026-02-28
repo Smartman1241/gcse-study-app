@@ -1,7 +1,7 @@
 const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
 
-export const config = {
+module.exports.config = {
   api: {
     bodyParser: false
   }
@@ -18,6 +18,10 @@ const supabaseAdmin = createClient(
 
 const ACTIVE = new Set(["active", "trialing"]);
 
+
+// ===============================
+// RAW BODY
+// ===============================
 async function getRawBody(readable) {
   const chunks = [];
 
@@ -32,7 +36,12 @@ async function getRawBody(readable) {
   return Buffer.concat(chunks);
 }
 
+
+// ===============================
+// FIND USER VIA STRIPE CUSTOMER
+// ===============================
 async function findUser(customerId) {
+
   const { data } = await supabaseAdmin
     .from("profiles")
     .select("id")
@@ -42,19 +51,47 @@ async function findUser(customerId) {
   return data?.id || null;
 }
 
+
+// ===============================
+// UPDATE USER PLAN
+// ===============================
 async function updateUser(userId, tier, subscriptionId) {
 
-  await supabaseAdmin
+  const payload = {
+    user_id: userId,
+    tier: tier,
+    role: tier,
+    stripe_subscription_id: subscriptionId,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await supabaseAdmin
     .from("user_settings")
-    .upsert({
-      user_id: userId,
-      tier,
-      role: tier,
-      stripe_subscription_id: subscriptionId,
-      updated_at: new Date().toISOString()
-    });
+    .upsert(payload);
+
+  if (error) {
+    console.error("User update failed:", error);
+    throw error;
+  }
 }
 
+
+// ===============================
+// RESOLVE PLAN
+// ===============================
+function resolveTier(subscription) {
+
+  if (!ACTIVE.has(subscription.status)) {
+    return "free";
+  }
+
+  return subscription.metadata?.plan || "free";
+}
+
+
+// ===============================
+// WEBHOOK
+// ===============================
 module.exports = async function handler(req, res) {
 
   if (req.method !== "POST") {
@@ -78,7 +115,6 @@ module.exports = async function handler(req, res) {
   } catch (err) {
 
     console.error("Webhook signature failed:", err.message);
-
     return res.status(400).send("Invalid signature");
   }
 
@@ -86,6 +122,9 @@ module.exports = async function handler(req, res) {
 
     switch (event.type) {
 
+      // ===============================
+      // FIRST PURCHASE
+      // ===============================
       case "checkout.session.completed": {
 
         const session = event.data.object;
@@ -104,10 +143,7 @@ module.exports = async function handler(req, res) {
 
         if (!userId) break;
 
-        const tier =
-          ACTIVE.has(subscription.status)
-            ? subscription.metadata?.plan || "free"
-            : "free";
+        const tier = resolveTier(subscription);
 
         await updateUser(
           userId,
@@ -118,16 +154,20 @@ module.exports = async function handler(req, res) {
         break;
       }
 
-      case "customer.subscription.updated":
-      case "invoice.paid": {
 
-        const sub = event.data.object;
+      // ===============================
+      // RENEWALS + PLAN CHANGES
+      // ===============================
+      case "invoice.paid":
+      case "customer.subscription.updated": {
+
+        const obj = event.data.object;
 
         const subscription =
-          sub.object === "subscription"
-            ? sub
+          obj.object === "subscription"
+            ? obj
             : await stripe.subscriptions.retrieve(
-                sub.subscription
+                obj.subscription
               );
 
         const userId =
@@ -136,10 +176,7 @@ module.exports = async function handler(req, res) {
 
         if (!userId) break;
 
-        const tier =
-          ACTIVE.has(subscription.status)
-            ? subscription.metadata?.plan || "free"
-            : "free";
+        const tier = resolveTier(subscription);
 
         await updateUser(
           userId,
@@ -150,6 +187,38 @@ module.exports = async function handler(req, res) {
         break;
       }
 
+
+      // ===============================
+      // PAYMENT FAILED
+      // ===============================
+      case "invoice.payment_failed": {
+
+        const invoice = event.data.object;
+
+        const subscription =
+          await stripe.subscriptions.retrieve(
+            invoice.subscription
+          );
+
+        const userId =
+          subscription.metadata?.user_id ||
+          await findUser(subscription.customer);
+
+        if (!userId) break;
+
+        await updateUser(
+          userId,
+          "free",
+          subscription.id
+        );
+
+        break;
+      }
+
+
+      // ===============================
+      // CANCELLED
+      // ===============================
       case "customer.subscription.deleted": {
 
         const sub = event.data.object;
