@@ -1460,21 +1460,38 @@
     }
 
     async function postWithTimeout(url, body, ms){
-      const controller = new AbortController();
-      const t = setTimeout(()=>controller.abort(), ms);
-      try{
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body),
-          signal: controller.signal
-        });
-        const data = await safeJson(res);
-        return { res, data };
-      } finally {
-        clearTimeout(t);
-      }
-    }
+
+  // ✅ get Supabase access token
+  let accessToken = null;
+
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    accessToken = data?.session?.access_token || null;
+  } catch(e){}
+
+  const controller = new AbortController();
+  const t = setTimeout(()=>controller.abort(), ms);
+
+  try{
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json",
+        ...(accessToken ? {
+          "Authorization": `Bearer ${accessToken}`
+        } : {})
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+
+    const data = await safeJson(res);
+    return { res, data };
+
+  } finally {
+    clearTimeout(t);
+  }
+}
 
     // =========================
     // STRIPE CHECKOUT
