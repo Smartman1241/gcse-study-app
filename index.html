@@ -138,9 +138,9 @@
 
   .grid{
   display:grid;
-  grid-template-columns: 1fr;
-  gap:14px;
-  justify-content:center;
+  grid-template-columns: 1fr auto;
+  gap:0;
+  align-items:start;
 }
 
 .grid.with-focus{
@@ -433,46 +433,28 @@
 }
 /* ===== AI FULL RIGHT PANEL ===== */
 
-.ai-panel {
+.ai-panel{
+
   width:420px;
   min-width:420px;
-  max-width:420px;
 
-  background: var(--bg); /* solid background */
-  border-left: 1px solid var(--border);
+  height:calc(100vh - 120px);
 
-  box-shadow: -20px 0 60px rgba(0,0,0,.35);
+  position:sticky;
+  top:100px;
 
-  display: none;
-  flex-direction: column;
-  z-index: 2000;
+  background:var(--panel);
+
+  border-left:1px solid var(--border);
+
+  display:none;
+  flex-direction:column;
+
 }
 
-.ai-panel .panelHeader {
-  border-bottom: 1px solid var(--border);
-  padding: 18px;
-}
-
-.ai-panel .panelBody {
-  padding: 18px;
-  overflow-y: auto;
-  flex: 1;
-}
-/* MOVE MAIN CONTENT WHEN AI OPEN */
-.grid{
-  transition: transform .35s ease;
-}
-
-.grid.ai-open{
-  transform: translateX(-420px);
-}
 
 /* mobile safety */
-@media (max-width:980px){
-  .grid.ai-open{
-    margin-right:0;
-  }
-}
+
 /* ===== Footer ===== */
 
 .main-footer{
@@ -512,6 +494,21 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
 <link rel="apple-touch-icon" href="/favicon-192.png">
 <meta name="theme-color" content="#0b1020">
+.checkout-icon{
+  position:fixed;
+  top:20px;
+  left:20px;
+  z-index:3000;
+
+  background:var(--panel);
+  border:1px solid var(--border);
+
+  padding:10px 12px;
+  border-radius:12px;
+
+  text-decoration:none;
+  font-size:18px;
+}
 </style>
 </head>
 
@@ -1070,7 +1067,7 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <button id="toggleAiPanel" class="btn" style="
   position:fixed;
   right:20px;
-  bottom:80px;
+  bottom:120px;
   z-index:1000;
   border-radius:50px;
 ">
@@ -2639,7 +2636,7 @@ $("#btnGenerateImage")?.addEventListener(
 });
     $("#dashGoAI")?.addEventListener("click", () => {
   aiPanel.style.display = "flex";
-  mainGrid.classList.add("ai-open");
+  
 });
     $("#dashGoTimer")?.addEventListener("click", () => toast("Timer is on the right →"));
 
@@ -2689,8 +2686,11 @@ if (aiPanel && aiToggle && aiClose && mainGrid) {
 
   aiPanel.style.display = "flex";
 
-  document.body.classList.add("ai-active");
-  mainGrid.classList.add("ai-open");
+});
+
+aiClose.addEventListener("click", () => {
+
+  aiPanel.style.display = "none";
 
 });
 
@@ -2699,7 +2699,6 @@ if (aiPanel && aiToggle && aiClose && mainGrid) {
   aiPanel.style.display = "none";
 
   document.body.classList.remove("ai-active");
-  mainGrid.classList.remove("ai-open");
 
 });
 
