@@ -2,10 +2,12 @@
 
 const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
-const { buffer } = require("micro");
 
+// ✅ Required for Stripe signature verification on Vercel
 module.exports.config = {
-  api: { bodyParser: false }
+  api: {
+    bodyParser: false
+  }
 };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -23,7 +25,26 @@ function safe(v) {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
-// lookup using Stripe customer (scales forever)
+// ===============================
+// RAW BODY (replaces micro)
+// ===============================
+async function getRawBody(req) {
+  const chunks = [];
+
+  for await (const chunk of req) {
+    chunks.push(
+      typeof chunk === "string"
+        ? Buffer.from(chunk)
+        : chunk
+    );
+  }
+
+  return Buffer.concat(chunks);
+}
+
+// ===============================
+// Find user via Stripe customer
+// ===============================
 async function findUserByCustomer(customerId) {
   if (!customerId) return null;
 
@@ -31,11 +52,14 @@ async function findUserByCustomer(customerId) {
     .from("profiles")
     .select("id")
     .eq("stripe_customer_id", customerId)
-    .single();
+    .maybeSingle();
 
   return data?.id || null;
 }
 
+// ===============================
+// Update subscription state
+// ===============================
 async function updateUser(userId, tier, subscriptionId) {
 
   await supabaseAdmin
@@ -43,12 +67,15 @@ async function updateUser(userId, tier, subscriptionId) {
     .upsert({
       user_id: userId,
       tier,
-      role: tier, // fixes entitlement drift
+      role: tier,
       stripe_subscription_id: subscriptionId,
       updated_at: new Date().toISOString()
     });
 }
 
+// ===============================
+// WEBHOOK HANDLER
+// ===============================
 module.exports = async function handler(req, res) {
 
   if (req.method !== "POST") {
@@ -59,8 +86,12 @@ module.exports = async function handler(req, res) {
 
   let event;
 
+  // ===============================
+  // Verify Stripe signature
+  // ===============================
   try {
-    const rawBody = await buffer(req);
+
+    const rawBody = await getRawBody(req);
 
     event = stripe.webhooks.constructEvent(
       rawBody,
@@ -69,11 +100,15 @@ module.exports = async function handler(req, res) {
     );
 
   } catch (err) {
-    console.error("Signature failed:", err.message);
+
+    console.error("❌ Signature verification failed:", err.message);
+
     return res.status(400).send("Invalid signature");
   }
 
-  // ✅ idempotency protection
+  // ===============================
+  // Idempotency protection
+  // ===============================
   const { error: dup } = await supabaseAdmin
     .from("stripe_events")
     .insert({ id: event.id });
@@ -86,7 +121,9 @@ module.exports = async function handler(req, res) {
 
     switch (event.type) {
 
-      // PURCHASE COMPLETE
+      // ===============================
+      // Checkout completed
+      // ===============================
       case "checkout.session.completed": {
 
         const session = event.data.object;
@@ -94,14 +131,18 @@ module.exports = async function handler(req, res) {
         if (session.mode !== "subscription") break;
 
         const subscription =
-          await stripe.subscriptions.retrieve(session.subscription);
+          await stripe.subscriptions.retrieve(
+            session.subscription
+          );
 
         let userId =
           safe(subscription.metadata?.user_id) ||
           safe(session.metadata?.user_id);
 
         if (!userId) {
-          userId = await findUserByCustomer(session.customer);
+          userId = await findUserByCustomer(
+            session.customer
+          );
         }
 
         if (!userId) break;
@@ -120,7 +161,9 @@ module.exports = async function handler(req, res) {
         break;
       }
 
-      // PLAN CHANGE / RENEWAL
+      // ===============================
+      // Subscription updated
+      // ===============================
       case "customer.subscription.updated": {
 
         const sub = event.data.object;
@@ -141,7 +184,9 @@ module.exports = async function handler(req, res) {
         break;
       }
 
-      // CANCELLED
+      // ===============================
+      // Subscription cancelled
+      // ===============================
       case "customer.subscription.deleted": {
 
         const sub = event.data.object;
@@ -157,13 +202,17 @@ module.exports = async function handler(req, res) {
         break;
       }
 
-      // PAYMENT FAILED
+      // ===============================
+      // Payment failed
+      // ===============================
       case "invoice.payment_failed": {
 
         const invoice = event.data.object;
 
         const sub =
-          await stripe.subscriptions.retrieve(invoice.subscription);
+          await stripe.subscriptions.retrieve(
+            invoice.subscription
+          );
 
         const userId =
           safe(sub.metadata?.user_id) ||
@@ -176,13 +225,17 @@ module.exports = async function handler(req, res) {
         break;
       }
 
-      // PAYMENT SUCCESS (VERY IMPORTANT)
+      // ===============================
+      // Payment success
+      // ===============================
       case "invoice.paid": {
 
         const invoice = event.data.object;
 
         const sub =
-          await stripe.subscriptions.retrieve(invoice.subscription);
+          await stripe.subscriptions.retrieve(
+            invoice.subscription
+          );
 
         const userId =
           safe(sub.metadata?.user_id) ||
@@ -208,7 +261,7 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
 
-    console.error("Webhook error:", err);
+    console.error("🔥 Webhook processing error:", err);
 
     return res.status(500).json({
       error: "Webhook failed"
