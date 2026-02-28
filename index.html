@@ -137,10 +137,7 @@
   .fileBtn input[type="file"]{position:absolute; inset:0; opacity:0; cursor:pointer;}
 
   .grid{
-  display:grid;
-  grid-template-columns: 1fr auto;
-  gap:0;
-  align-items:start;
+  display:block;
 }
 
 .grid.with-focus{
@@ -431,14 +428,17 @@
   width: 380px;
   z-index: 999;
 }
-/* ===== AI FULL RIGHT PANEL ===== */
-
-/* ===== AI PANEL REAL LAYOUT ===== */
+/* ===== TRUE RIGHT SIDE AI PANEL ===== */
 
 .ai-panel{
 
-  width:45%;
-  min-width:520px;
+  position:fixed;
+
+  top:0;
+  right:0;
+
+  width:45vw;
+  height:100vh;
 
   background:var(--panel);
 
@@ -447,23 +447,36 @@
   display:none;
   flex-direction:column;
 
-}
-
-/* MAIN AREA SHRINKS WHEN AI OPEN */
-body.ai-active #mainGrid{
-
-  display:grid;
-  grid-template-columns: 1fr 45%;
-
-  gap:18px;
+  z-index:2000;
 
 }
 
-/* dashboard expands normally */
-#mainGrid{
-  display:grid;
-  grid-template-columns:1fr;
+/* AI open */
+body.ai-active .ai-panel{
+  display:flex;
+}
+
+/* shrink main app */
+body.ai-active .wrap{
+
+  width:55vw;
+
   transition:.35s ease;
+
+}
+
+/* full normal width */
+.wrap{
+  width:100%;
+  transition:.35s ease;
+}
+
+/* AI scroll area */
+.ai-panel .panelBody{
+
+  overflow-y:auto;
+  flex:1;
+
 }
 
 
@@ -2648,9 +2661,7 @@ $("#btnGenerateImage")?.addEventListener(
 });
     $("#dashGoAI")?.addEventListener("click", () => {
 
-  aiPanel.style.display = "flex";
-
-  document.body.classList.add("ai-active");
+ document.body.classList.add("ai-active");
 
 });
     $("#dashGoTimer")?.addEventListener("click", () => toast("Timer is on the right →"));
