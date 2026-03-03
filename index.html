@@ -536,6 +536,9 @@ link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   text-decoration:none;
   font-size:18px;
 }
+html[data-theme="light"] .ai-panel{
+  background: rgba(255,255,255,.95);
+}
 </style>
 </head>
 
@@ -2709,19 +2712,11 @@ const aiClose = document.getElementById("closeAiPanel");
 if (aiPanel && aiToggle && aiClose) {
 
   aiToggle.addEventListener("click", () => {
-
-    aiPanel.style.display = "flex";
-
-    document.body.classList.add("ai-active");
-
+    document.body.classList.toggle("ai-active");
   });
 
   aiClose.addEventListener("click", () => {
-
-    aiPanel.style.display = "none";
-
     document.body.classList.remove("ai-active");
-
   });
 
 }
