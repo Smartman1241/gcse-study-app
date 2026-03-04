@@ -107,21 +107,37 @@ async function getAuthUser(req) {
 }
 
 async function getUserSettings(userId) {
-  // Read tier first, fallback to role if needed
   const { data, error } = await supabaseAdmin
     .from("user_settings")
     .select("tier, role, timezone")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error || !data) {
-    return { tier: "free", timezone: "UTC" };
+  if (error) {
+    console.error("user_settings read error:", error);
   }
 
-  const tier = normalizeTier(data.tier || data.role || "free");
+  let tier = "free";
+
+  if (data) {
+    // PRIORITY: tier column
+    if (data.tier && String(data.tier).trim() !== "") {
+      tier = String(data.tier).toLowerCase().trim();
+    }
+    // fallback only if tier missing
+    else if (data.role && String(data.role).trim() !== "") {
+      tier = String(data.role).toLowerCase().trim();
+    }
+  }
+
+  // normalize allowed tiers
+  if (!["free", "plus", "pro", "admin"].includes(tier)) {
+    tier = "free";
+  }
+
   return {
     tier,
-    timezone: safeString(data.timezone) || "UTC",
+    timezone: safeString(data?.timezone) || "UTC",
   };
 }
 
