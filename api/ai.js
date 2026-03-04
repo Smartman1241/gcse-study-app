@@ -107,38 +107,41 @@ async function getAuthUser(req) {
 }
 
 async function getUserSettings(userId) {
+
   const { data, error } = await supabaseAdmin
     .from("user_settings")
-    .select("tier, role, timezone")
+    .select("tier, timezone")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
     console.error("user_settings read error:", error);
+    return { tier: "free", timezone: "UTC" };
   }
 
   let tier = "free";
 
-  if (data) {
-    // PRIORITY: tier column
-    if (data.tier && String(data.tier).trim() !== "") {
-      tier = String(data.tier).toLowerCase().trim();
-    }
-    // fallback only if tier missing
-    else if (data.role && String(data.role).trim() !== "") {
-      tier = String(data.role).toLowerCase().trim();
-    }
+  if (data && data.tier) {
+    tier = String(data.tier).toLowerCase().trim();
   }
 
-  // normalize allowed tiers
   if (!["free", "plus", "pro", "admin"].includes(tier)) {
     tier = "free";
   }
 
   return {
     tier,
-    timezone: safeString(data?.timezone) || "UTC",
+    timezone: safeString(data?.timezone) || "UTC"
   };
+if (!data) {
+
+  await supabaseAdmin.from("user_settings").insert({
+    user_id: userId,
+    tier: "free"
+  });
+
+  return { tier: "free", timezone: "UTC" };
+}
 }
 
 /* =========================
