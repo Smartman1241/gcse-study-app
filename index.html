@@ -2406,17 +2406,18 @@ html[data-theme="light"] .ai-panel{
 
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-  question: input,
-  timezone,
-  attachments: aiAttachments
-})
+      const { data: { session } } = await supabaseClient.auth.getSession();
+
+const res = await fetch("/api/ai", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + session.access_token
+  },
+  body: JSON.stringify({
+    question: userQuestion
+  })
+});
       });
 
       const data = await res.json().catch(() => ({}));
