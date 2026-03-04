@@ -1,6 +1,6 @@
 // /api/ai.js
 // ReviseFlow unified AI endpoint: chat + attachments + DALL·E 2 generation
-// Tier rules: free / plus / pro read from public.user_settings.tier (fallback: role)
+// Tier rules read from public.user_settings.tier (lowercased + validated)
 // Monthly token budgets + monthly image budgets + free attachment allowance
 // Production-focused; server-side only.
 
@@ -16,7 +16,12 @@ const SUPABASE_URL = mustEnv("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
 const OPENAI_API_KEY = mustEnv("OPENAI_API_KEY");
 
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+// Optional: allow debug payloads (very useful while you fix auth header issues)
+const ALLOW_DEBUG = String(process.env.ALLOW_DEBUG || "").toLowerCase() === "true";
+
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false },
+});
 
 function json(res, code, obj) {
   return res.status(code).json(obj);
@@ -80,68 +85,96 @@ function upgradeFeatureMessage() {
   ].join(" ");
 }
 
-function badRequest(res, msg) {
-  return json(res, 400, { error: msg });
+function badRequest(res, msg, extra) {
+  return json(res, 400, { error: msg, ...(extra ? { extra } : {}) });
+}
+function forbidden(res, msg, extra) {
+  return json(res, 403, { error: msg, ...(extra ? { extra } : {}) });
+}
+function tooMany(res, msg, extra) {
+  return json(res, 429, { error: msg, ...(extra ? { extra } : {}) });
 }
 
-function forbidden(res, msg) {
-  return json(res, 403, { error: msg });
-}
+/* =========================
+   Auth (with backups)
+   ========================= */
 
-function tooMany(res, msg) {
-  return json(res, 429, { error: msg });
-}
-
-async function getAuthUser(req) {
+function extractBearerFromAuthHeader(req) {
   const authHeader = safeString(req.headers.authorization) || "";
-  if (!authHeader.toLowerCase().startsWith("bearer ")) {
-    return { error: "Missing auth token" };
-  }
-
-  const accessToken = safeString(authHeader.slice(7));
-  if (!accessToken) return { error: "Missing auth token" };
-
-  const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
-  if (error || !data?.user?.id) return { error: "Invalid session" };
-  return { user: data.user, accessToken };
+  if (!authHeader.toLowerCase().startsWith("bearer ")) return null;
+  const token = safeString(authHeader.slice(7));
+  return token || null;
 }
 
-async function getUserSettings(userId) {
+// Backups (sometimes people forget to send Authorization)
+function extractTokenFromBackupHeaders(req) {
+  // You can set these from frontend easily
+  const h1 = safeString(req.headers["x-access-token"]);
+  const h2 = safeString(req.headers["x-supabase-token"]);
+  return h1 || h2 || null;
+}
 
-  const { data, error } = await supabaseAdmin
+function extractTokenFromBody(reqBody) {
+  if (!isObject(reqBody)) return null;
+  return safeString(reqBody.access_token) || null;
+}
+
+async function getAuthUser(req, reqBody) {
+  const token =
+    extractBearerFromAuthHeader(req) ||
+    extractTokenFromBackupHeaders(req) ||
+    extractTokenFromBody(reqBody);
+
+  if (!token) return { error: "Missing auth token" };
+
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data?.user?.id) return { error: "Invalid session" };
+  return { user: data.user, accessToken: token };
+}
+
+/* =========================
+   Tier + Settings (fixed)
+   ========================= */
+
+async function ensureUserSettingsRow(userId) {
+  // Read row
+  const r1 = await supabaseAdmin
     .from("user_settings")
-    .select("tier, timezone")
+    .select("user_id, tier, timezone")
     .eq("user_id", userId)
     .maybeSingle();
 
+  if (r1.error) {
+    // Don’t crash hard – return null and caller will fallback to free
+    return { row: null, error: r1.error };
+  }
+
+  if (r1.data) return { row: r1.data, error: null };
+
+  // Create row if missing (THIS WAS BROKEN IN YOUR FILE)
+  const r2 = await supabaseAdmin
+    .from("user_settings")
+    .insert({ user_id: userId, tier: "free" })
+    .select("user_id, tier, timezone")
+    .maybeSingle();
+
+  if (r2.error) return { row: null, error: r2.error };
+  return { row: r2.data, error: null };
+}
+
+async function getUserSettings(userId) {
+  const { row, error } = await ensureUserSettingsRow(userId);
+
   if (error) {
-    console.error("user_settings read error:", error);
-    return { tier: "free", timezone: "UTC" };
+    console.error("user_settings error:", error);
+    return { tier: "free", timezone: "UTC", _settingsError: error.message || String(error) };
   }
 
-  let tier = "free";
-
-  if (data && data.tier) {
-    tier = String(data.tier).toLowerCase().trim();
-  }
-
-  if (!["free", "plus", "pro", "admin"].includes(tier)) {
-    tier = "free";
-  }
-
+  const tier = normalizeTier(row?.tier || "free");
   return {
     tier,
-    timezone: safeString(data?.timezone) || "UTC"
+    timezone: safeString(row?.timezone) || "UTC",
   };
-if (!data) {
-
-  await supabaseAdmin.from("user_settings").insert({
-    user_id: userId,
-    tier: "free"
-  });
-
-  return { tier: "free", timezone: "UTC" };
-}
 }
 
 /* =========================
@@ -151,7 +184,6 @@ if (!data) {
 const MODELS = {
   CHAT_FREE: "gpt-4o-mini",
   CHAT_PAID: "gpt-5-mini",
-  CHAT_ALT: "gpt-4o-mini",
   VISION: "gpt-5.1",
   DOC_PARSER: "gpt-5-nano",
   IMAGE_MODEL: "dall-e-2",
@@ -159,12 +191,7 @@ const MODELS = {
 
 const PLAN = {
   free: {
-    tokenLimits: {
-      "gpt-4o-mini": 200_000,
-      "gpt-5-mini": 0,
-      "gpt-5.1": 0,
-      "gpt-5-nano": 0,
-    },
+    tokenLimits: { "gpt-4o-mini": 200_000, "gpt-5-mini": 0, "gpt-5.1": 0, "gpt-5-nano": 0 },
     visionBudget: 0,
     freeUploadsPerMonth: 5,
     dalle2PerMonth: 0,
@@ -173,12 +200,7 @@ const PLAN = {
     throttlePerMinute: 10,
   },
   plus: {
-    tokenLimits: {
-      "gpt-4o-mini": 1_000_000,
-      "gpt-5-mini": 1_000_000,
-      "gpt-5.1": 0,
-      "gpt-5-nano": 0,
-    },
+    tokenLimits: { "gpt-4o-mini": 1_000_000, "gpt-5-mini": 1_000_000, "gpt-5.1": 0, "gpt-5-nano": 0 },
     visionBudget: 50_000,
     freeUploadsPerMonth: Infinity,
     dalle2PerMonth: 20,
@@ -187,12 +209,7 @@ const PLAN = {
     throttlePerMinute: 20,
   },
   pro: {
-    tokenLimits: {
-      "gpt-4o-mini": 2_000_000,
-      "gpt-5-mini": 2_000_000,
-      "gpt-5.1": 0,
-      "gpt-5-nano": 0,
-    },
+    tokenLimits: { "gpt-4o-mini": 2_000_000, "gpt-5-mini": 2_000_000, "gpt-5.1": 0, "gpt-5-nano": 0 },
     visionBudget: 100_000,
     freeUploadsPerMonth: Infinity,
     dalle2PerMonth: 50,
@@ -219,8 +236,7 @@ function planForTier(tier) {
 }
 
 function chooseDefaultChatModel(tier) {
-  if (tier === "free") return MODELS.CHAT_FREE;
-  return MODELS.CHAT_PAID;
+  return tier === "free" ? MODELS.CHAT_FREE : MODELS.CHAT_PAID;
 }
 
 function canUseChatModel(tier, model) {
@@ -252,10 +268,10 @@ function usageKey(userId, month, model) {
 
 /* =========================
    Supabase reads/writes
+   (all tolerant: missing rows => 0, missing columns => 0)
    ========================= */
 
 async function loadMonthlyUsage({ userId, month, model }) {
-  // Tolerant read: if columns missing, treat as zero (prevents hard crashes)
   const { data, error } = await supabaseAdmin
     .from(TABLES.usageMonthly)
     .select("*")
@@ -466,7 +482,6 @@ async function chooseModelForRequest({ userId, tier, month, attachmentsPresent }
   }
 
   if (tier !== "plus" && tier !== "pro") {
-    // free attachments allowed (limited); process with free model
     return { model: MODELS.CHAT_FREE, visionUsed: false, reason: "free-attachments" };
   }
 
@@ -476,9 +491,7 @@ async function chooseModelForRequest({ userId, tier, month, attachmentsPresent }
   const used = (await loadMonthlyUsage({ userId, month, model: MODELS.VISION })).used;
   const remaining = Math.max(0, visionLimit - used);
 
-  if (remaining > 0) {
-    return { model: MODELS.VISION, visionUsed: true, reason: "vision-budget" };
-  }
+  if (remaining > 0) return { model: MODELS.VISION, visionUsed: true, reason: "vision-budget" };
 
   return { model: chooseDefaultChatModel(tier), visionUsed: false, reason: "fallback-after-vision" };
 }
@@ -499,9 +512,8 @@ async function requireTokensOrUpgrade({ userId, tier, month, model, expectedMaxS
   const remaining = Math.max(0, limit - used);
 
   if (remaining <= 0) return { ok: false, remaining, reason: "out" };
-
-  if (typeof expectedMaxSpend === "number" && expectedMaxSpend > 0) {
-    if (remaining < expectedMaxSpend) return { ok: false, remaining, reason: "insufficient" };
+  if (typeof expectedMaxSpend === "number" && expectedMaxSpend > 0 && remaining < expectedMaxSpend) {
+    return { ok: false, remaining, reason: "insufficient" };
   }
 
   return { ok: true, remaining };
@@ -589,9 +601,15 @@ module.exports = async function handler(req, res) {
     return json(res, 405, { error: "Method not allowed" });
   }
 
+  const body = isObject(req.body) ? req.body : {};
+  const wantsDebug = body.debug === true;
+
   try {
-    const auth = await getAuthUser(req);
-    if (auth.error) return json(res, 401, { error: auth.error });
+    const auth = await getAuthUser(req, body);
+    if (auth.error) {
+      // IMPORTANT: return the real reason, not “upgrade”
+      return json(res, 401, { error: auth.error, hint: "Send Authorization: Bearer <access_token>" });
+    }
 
     const userId = auth.user.id;
     const settings = await getUserSettings(userId);
@@ -599,24 +617,15 @@ module.exports = async function handler(req, res) {
 
     const p = planForTier(tier);
 
-    const throttle = await throttleCheckAndBump({
-      userId,
-      maxPerMinute: p.throttlePerMinute,
-    });
+    const throttle = await throttleCheckAndBump({ userId, maxPerMinute: p.throttlePerMinute });
+    if (!throttle.ok) return tooMany(res, "Too many requests. Please wait a moment and try again.");
 
-    if (!throttle.ok) {
-      return tooMany(res, "Too many requests. Please wait a moment and try again.");
-    }
-
-    const body = isObject(req.body) ? req.body : {};
     const action = String(body.action || "chat").toLowerCase().trim();
     const month = monthKeyUTC();
 
     // ========= IMAGE GENERATION =========
     if (action === "image") {
-      if (!p.allowImages) {
-        return forbidden(res, upgradeFeatureMessage());
-      }
+      if (!p.allowImages) return forbidden(res, upgradeFeatureMessage(), wantsDebug ? { tier } : undefined);
 
       const prompt = safeString(body.prompt) || "";
       if (!prompt) return badRequest(res, "No prompt provided");
@@ -640,13 +649,10 @@ module.exports = async function handler(req, res) {
       const result = await openaiDalle2Generate({ prompt, size });
       if (!result.url) return json(res, 500, { error: "Image generated but no URL returned." });
 
-      if (tier !== "admin") {
-        await bumpMonthlyImageCount({ userId, month, model: imageModel, inc: 1 });
-      }
+      if (tier !== "admin") await bumpMonthlyImageCount({ userId, month, model: imageModel, inc: 1 });
 
       const { count } = await loadMonthlyImageCount({ userId, month, model: imageModel });
-      const remainingImages =
-        tier === "admin" ? "Unlimited" : Math.max(0, Number(p.dalle2PerMonth) - Number(count));
+      const remainingImages = tier === "admin" ? "Unlimited" : Math.max(0, Number(p.dalle2PerMonth) - Number(count));
 
       return json(res, 200, {
         image_url: result.url,
@@ -655,6 +661,9 @@ module.exports = async function handler(req, res) {
         tier,
         month,
         remaining_images: remainingImages,
+        ...(wantsDebug && (ALLOW_DEBUG || tier === "admin")
+          ? { debug: { userId, throttle, settings } }
+          : {}),
       });
     }
 
@@ -669,7 +678,7 @@ module.exports = async function handler(req, res) {
     const attachmentsPresent = hasAnyAttachment(attachments);
 
     if (attachmentsPresent) {
-      if (!p.allowUploads) return forbidden(res, upgradeFeatureMessage());
+      if (!p.allowUploads) return forbidden(res, upgradeFeatureMessage(), wantsDebug ? { tier } : undefined);
 
       if (tier === "free") {
         const { count } = await loadUploadsCount({ userId, month });
@@ -685,24 +694,15 @@ module.exports = async function handler(req, res) {
     // model selection (requested only if allowed)
     let baseModel = chooseDefaultChatModel(tier);
     if (requestedModel) {
-      if (!canUseChatModel(tier, requestedModel)) {
-        return forbidden(res, "Your plan can’t use that model.");
-      }
+      if (!canUseChatModel(tier, requestedModel)) return forbidden(res, "Your plan can’t use that model.");
       baseModel = requestedModel;
     }
 
     // choose final model (vision if attachments and budget remains)
-    const chosen = await chooseModelForRequest({
-      userId,
-      tier,
-      month,
-      attachmentsPresent,
-    });
+    const chosen = await chooseModelForRequest({ userId, tier, month, attachmentsPresent });
 
     let model = chosen.model || baseModel;
-    if (!canUseChatModel(tier, model) && model !== MODELS.VISION) {
-      model = chooseDefaultChatModel(tier);
-    }
+    if (!canUseChatModel(tier, model) && model !== MODELS.VISION) model = chooseDefaultChatModel(tier);
 
     let maxOutputTokens = 450;
     if (isDetailedPrompt(question)) maxOutputTokens = 900;
@@ -717,9 +717,7 @@ module.exports = async function handler(req, res) {
         expectedMaxSpend: maxOutputTokens,
       });
 
-      if (!pre.ok) {
-        return tooMany(res, upgradeOutOfUsageMessage());
-      }
+      if (!pre.ok) return tooMany(res, upgradeOutOfUsageMessage(), wantsDebug ? pre : undefined);
     }
 
     let content;
@@ -748,20 +746,13 @@ module.exports = async function handler(req, res) {
     const usage = getUsageTokens(data);
 
     if (tier !== "admin") {
-      await bumpMonthlyUsage({
-        userId,
-        month,
-        model,
-        addInput: usage.input,
-        addOutput: usage.output,
-      });
+      await bumpMonthlyUsage({ userId, month, model, addInput: usage.input, addOutput: usage.output });
     }
 
     if (attachmentsPresent && tier === "free") {
       await bumpUploadsCount({ userId, month, inc: 1 });
     }
 
-    // remaining tokens across plan buckets
     const limits = {
       "gpt-4o-mini": getMonthlyLimitForModel(tier, "gpt-4o-mini"),
       "gpt-5-mini": getMonthlyLimitForModel(tier, "gpt-5-mini"),
@@ -771,11 +762,7 @@ module.exports = async function handler(req, res) {
     async function remainingFor(modelName) {
       if (tier === "admin") return "Unlimited";
 
-      const lim =
-        modelName === "gpt-5.1"
-          ? Number(limits["gpt-5.1"] || 0)
-          : Number(limits[modelName] || 0);
-
+      const lim = modelName === "gpt-5.1" ? Number(limits["gpt-5.1"] || 0) : Number(limits[modelName] || 0);
       const used = (await loadMonthlyUsage({ userId, month, model: modelName })).used;
       return Math.max(0, lim - used);
     }
@@ -805,9 +792,12 @@ module.exports = async function handler(req, res) {
         free_monthly_allowance: tier === "free" ? PLAN.free.freeUploadsPerMonth : "Unlimited",
         free_used_this_month: tier === "free" ? (await loadUploadsCount({ userId, month })).count : undefined,
       },
+      ...(wantsDebug && (ALLOW_DEBUG || tier === "admin")
+        ? { debug: { userId, tier, settings, throttle, authHint: "Use Authorization: Bearer <token>" } }
+        : {}),
     });
   } catch (error) {
     console.error("Server error:", error);
-    return json(res, 500, { error: "Server error" });
+    return json(res, 500, { error: "Server error", detail: String(error?.message || error) });
   }
 };
