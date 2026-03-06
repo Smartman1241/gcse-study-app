@@ -541,6 +541,10 @@ body.ai-active .wrap{
 html[data-theme="light"] .ai-panel{
   background: rgba(255,255,255,.95);
 }
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+<link rel="apple-touch-icon" href="/favicon-192.png">
+<meta name="theme-color" content="#0b1020">
 </style>
 </head>
 
@@ -2406,18 +2410,17 @@ html[data-theme="light"] .ai-panel{
 
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-      const { data: { session } } = await supabaseClient.auth.getSession();
-
-const res = await fetch("/api/ai", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer " + session.access_token
-  },
-  body: JSON.stringify({
-    question: userQuestion
-  })
-});
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+  question: input,
+  timezone,
+  attachments: aiAttachments
+})
       });
 
       const data = await res.json().catch(() => ({}));
@@ -2457,14 +2460,14 @@ async function generateImage(){
 
   out.textContent = "Generating image...";
 
-  const { data:{session} } =
-    await supabaseClient.auth.getSession();
+  const { data:{ session: imageSession } } =
+  await supabaseClient.auth.getSession();
 
   const res = await fetch("/api/ai",{
     method:"POST",
     headers:{
       "Content-Type":"application/json",
-      "Authorization":`Bearer ${session.access_token}`
+      "Authorization": `Bearer ${imageSession.access_token}`
     },
     body:JSON.stringify({
       action:"image",
