@@ -2,9 +2,7 @@ const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
 
 module.exports.config = {
-  api: {
-    bodyParser: false
-  }
+  api: { bodyParser: false }
 };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -24,15 +22,9 @@ const ACTIVE = new Set(["active", "trialing"]);
 // ===============================
 async function getRawBody(readable) {
   const chunks = [];
-
   for await (const chunk of readable) {
-    chunks.push(
-      typeof chunk === "string"
-        ? Buffer.from(chunk)
-        : chunk
-    );
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
   }
-
   return Buffer.concat(chunks);
 }
 
@@ -41,12 +33,18 @@ async function getRawBody(readable) {
 // FIND USER VIA STRIPE CUSTOMER
 // ===============================
 async function findUser(customerId) {
+  if (!customerId) return null;
 
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("profiles")
     .select("id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
+
+  if (error) {
+    console.error("findUser error:", error);
+    return null;
+  }
 
   return data?.id || null;
 }
@@ -55,21 +53,19 @@ async function findUser(customerId) {
 // ===============================
 // UPDATE USER PLAN
 // ===============================
-async function updateUser(
-  userId,
-  tier,
-  subscriptionId,
-  customerId
-) {
+async function updateUser(userId, tier, subscriptionId, customerId) {
 
   const payload = {
     user_id: userId,
     tier: tier,
     role: tier,
-    stripe_subscription_id: subscriptionId,
-    stripe_customer_id: customerId,
+    stripe_subscription_id: subscriptionId || null,
     updated_at: new Date().toISOString()
   };
+
+  if (customerId) {
+    payload.stripe_customer_id = customerId;
+  }
 
   const { error } = await supabaseAdmin
     .from("user_settings")
@@ -96,7 +92,25 @@ function resolveTier(subscription) {
 
 
 // ===============================
-// WEBHOOK
+// IDEMPOTENCY CHECK
+// ===============================
+async function checkDuplicate(eventId) {
+
+  const { error } = await supabaseAdmin
+    .from("stripe_webhook_events")
+    .insert({ id: eventId });
+
+  if (error) {
+    console.log("Duplicate webhook ignored:", eventId);
+    return true;
+  }
+
+  return false;
+}
+
+
+// ===============================
+// WEBHOOK HANDLER
 // ===============================
 module.exports = async function handler(req, res) {
 
@@ -112,24 +126,11 @@ module.exports = async function handler(req, res) {
 
     const signature = req.headers["stripe-signature"];
 
-    event = stripe.webhooks.constructEvent(
-// ===============================
-// IDEMPOTENCY PROTECTION
-// ===============================
-const { error: duplicateError } =
-  await supabaseAdmin
-    .from("stripe_webhook_events")
-    .insert({
-      id: event.id
-    });
+    if (!signature) {
+      return res.status(400).send("Missing Stripe signature");
+    }
 
-if (duplicateError) {
-  console.log("Duplicate webhook ignored:", event.id);
-  return res.status(200).json({
-    received: true,
-    duplicate: true
-  });
-}
+    event = stripe.webhooks.constructEvent(
       rawBody,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
@@ -137,11 +138,26 @@ if (duplicateError) {
 
   } catch (err) {
 
-    console.error("Webhook signature failed:", err.message);
+    console.error("Webhook signature verification failed:", err.message);
+
     return res.status(400).send("Invalid signature");
   }
 
+
   try {
+
+    // ===============================
+    // IDEMPOTENCY
+    // ===============================
+    const duplicate = await checkDuplicate(event.id);
+
+    if (duplicate) {
+      return res.status(200).json({
+        received: true,
+        duplicate: true
+      });
+    }
+
 
     switch (event.type) {
 
@@ -154,24 +170,27 @@ if (duplicateError) {
 
         if (session.mode !== "subscription") break;
 
-        const subscription =
-          await stripe.subscriptions.retrieve(
-            session.subscription
-          );
+        const subscription = await stripe.subscriptions.retrieve(
+          session.subscription
+        );
 
         let userId =
           subscription.metadata?.user_id ||
           session.metadata?.user_id ||
           await findUser(session.customer);
 
-        if (!userId) break;
+        if (!userId) {
+          console.warn("No user found for checkout session");
+          break;
+        }
 
         const tier = resolveTier(subscription);
 
         await updateUser(
           userId,
           tier,
-          subscription.id
+          subscription.id,
+          subscription.customer
         );
 
         break;
@@ -189,24 +208,25 @@ if (duplicateError) {
         const subscription =
           obj.object === "subscription"
             ? obj
-            : await stripe.subscriptions.retrieve(
-                obj.subscription
-              );
+            : await stripe.subscriptions.retrieve(obj.subscription);
 
         const userId =
           subscription.metadata?.user_id ||
           await findUser(subscription.customer);
 
-        if (!userId) break;
+        if (!userId) {
+          console.warn("User not found for subscription update");
+          break;
+        }
 
         const tier = resolveTier(subscription);
 
         await updateUser(
-  userId,
-  tier,
-  subscription.id,
-  subscription.customer
-);
+          userId,
+          tier,
+          subscription.id,
+          subscription.customer
+        );
 
         break;
       }
@@ -219,10 +239,9 @@ if (duplicateError) {
 
         const invoice = event.data.object;
 
-        const subscription =
-          await stripe.subscriptions.retrieve(
-            invoice.subscription
-          );
+        const subscription = await stripe.subscriptions.retrieve(
+          invoice.subscription
+        );
 
         const userId =
           subscription.metadata?.user_id ||
@@ -233,7 +252,8 @@ if (duplicateError) {
         await updateUser(
           userId,
           "free",
-          subscription.id
+          subscription.id,
+          subscription.customer
         );
 
         break;
@@ -254,14 +274,17 @@ if (duplicateError) {
         if (!userId) break;
 
         await updateUser(
-  userId,
-  "free",
-  null,
-  sub.customer
-);
+          userId,
+          "free",
+          null,
+          sub.customer
+        );
 
         break;
       }
+
+      default:
+        console.log("Unhandled Stripe event:", event.type);
     }
 
     return res.status(200).json({ received: true });
