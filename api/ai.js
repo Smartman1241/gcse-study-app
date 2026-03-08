@@ -1,27 +1,117 @@
 // /api/ai.js
-// ReviseFlow unified AI endpoint: chat + attachments + DALL·E 2 generation
-// Tier rules read from public.user_settings.tier (lowercased + validated)
-// Monthly token budgets + monthly image budgets + free attachment allowance
-// Production-focused; server-side only.
+// ReviseFlow unified AI endpoint
+// Features:
+// - chat
+// - image generation
+// - flashcard generation
+// - exam marking
+// - diagram explanation
+// - summarisation
+// - revision planning
+// - weakness tracking
+// - conversation memory
+// - token usage tracking
+// - monthly limits
+// - anti-spam throttling
+// - attachment support (base64 or Supabase Storage)
+// - owner special behavior
+// - response caching
+// - cost tracking
+//
+// Models used:
+// - gpt-4o-mini
+// - gpt-5-mini
+// - gpt-image-1
 
+const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
+
+/* =========================
+   Environment
+   ========================= */
 
 function mustEnv(name) {
   const v = process.env[name];
-  if (!v) throw new Error(`Missing env var: ${name}`);
-  return v;
+  if (!v || !String(v).trim()) {
+    throw new Error(`Missing env var: ${name}`);
+  }
+  return String(v).trim();
 }
 
 const SUPABASE_URL = mustEnv("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
 const OPENAI_API_KEY = mustEnv("OPENAI_API_KEY");
 
-// Optional: allow debug payloads (very useful while you fix auth header issues)
 const ALLOW_DEBUG = String(process.env.ALLOW_DEBUG || "").toLowerCase() === "true";
+const OWNER_USER_ID = "6bb7cfe9-1b9e-4edd-a79e-287dd2ae7ee1";
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
+
+/* =========================
+   Constants
+   ========================= */
+
+const MODELS = {
+  CHAT_FREE: "gpt-4o-mini",
+  CHAT_PAID: "gpt-5-mini",
+  IMAGE: "gpt-image-1",
+};
+
+const PLAN = {
+  free: {
+    tokenLimits: {
+      "gpt-4o-mini": 300_000,
+      "gpt-5-mini": 0,
+    },
+    imagesPerMonth: 10,
+    freeUploadsPerMonth: 5,
+    throttlePerMinute: 10,
+  },
+  plus: {
+    tokenLimits: {
+      "gpt-4o-mini": 1_000_000,
+      "gpt-5-mini": 1_000_000,
+    },
+    imagesPerMonth: 40,
+    freeUploadsPerMonth: Infinity,
+    throttlePerMinute: 20,
+  },
+  pro: {
+    tokenLimits: {
+      "gpt-4o-mini": 2_000_000,
+      "gpt-5-mini": 2_000_000,
+    },
+    imagesPerMonth: 100,
+    freeUploadsPerMonth: Infinity,
+    throttlePerMinute: 40,
+  },
+};
+
+const TABLES = {
+  usageMonthly: "ai_usage_monthly",
+  uploadsMonthly: "ai_attachments_monthly",
+  imageMonthly: "image_usage_monthly",
+  throttleMinute: "ai_throttle_minute",
+  conversations: "ai_conversations",
+  topicStats: "ai_topic_stats",
+  costUsage: "ai_cost_usage",
+  cache: "ai_response_cache",
+};
+
+const MAX_ATTACHMENTS = 3;
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_HISTORY_CHARS = 6000;
+const MAX_REQUEST_CHARS = 12000;
+const MAX_BASE64_LEN = 18_000_000;
+const MAX_DOWNLOAD_BYTES = 12 * 1024 * 1024;
+const MAX_CONVERSATION_LOG_CHARS = 12000;
+const DEFAULT_IMAGE_SIZE = "1024x1024";
+
+/* =========================
+   Generic helpers
+   ========================= */
 
 function json(res, code, obj) {
   return res.status(code).json(obj);
@@ -31,8 +121,12 @@ function safeString(v) {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
-function isObject(x) {
-  return x && typeof x === "object" && !Array.isArray(x);
+function isObject(v) {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+function isNonEmptyArray(v) {
+  return Array.isArray(v) && v.length > 0;
 }
 
 function nowISO() {
@@ -54,61 +148,126 @@ function minuteBucketUTC(d = new Date()) {
   return `${y}-${mo}-${da}T${hh}:${mm}`;
 }
 
-function isDetailedPrompt(text) {
-  return /(^|\b)(detailed|in detail|step[- ]by[- ]step|full marks|long answer)(\b|$)/i.test(
-    String(text || "")
-  );
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function hashText(v) {
+  return crypto.createHash("sha256").update(String(v || "")).digest("hex");
 }
 
 function normalizeTier(input) {
   const r = String(input || "free").toLowerCase().trim();
-  if (r === "user") return "free";
-  if (r === "free" || r === "plus" || r === "pro" || r === "admin") return r;
-  if (r === "basic") return "free";
+  if (r === "free" || r === "plus" || r === "pro") return r;
+  if (r === "user" || r === "basic") return "free";
   if (r === "premium") return "plus";
   return "free";
 }
 
+function planForTier(tier) {
+  if (tier === "pro") return PLAN.pro;
+  if (tier === "plus") return PLAN.plus;
+  return PLAN.free;
+}
+
+function chooseDefaultChatModel(tier) {
+  return tier === "free" ? MODELS.CHAT_FREE : MODELS.CHAT_PAID;
+}
+
+function getMonthlyLimitForModel(tier, model) {
+  return Number(planForTier(tier).tokenLimits?.[model] || 0);
+}
+
+function isDetailedPrompt(text) {
+  return /(^|\b)(detailed|in detail|step[- ]by[- ]step|full marks|long answer|thoroughly|deeply|comprehensive)(\b|$)/i.test(
+    String(text || "")
+  );
+}
+
+function isStudyRelated(text) {
+  const s = String(text || "").toLowerCase();
+  return /gcse|a-?level|revision|revise|exam|past paper|mark scheme|homework|worksheet|biology|chemistry|physics|maths|math|english|history|geography|photosynthesis|equation|derive|calculate|explain|6[- ]marker|12[- ]marker|flashcard|summari[sz]e|tutor|study|diagram|cell|osmosis|respiration|algebra|poetry|language paper|science/.test(
+    s
+  );
+}
+
+function maxOutputTokensForAction(action, text) {
+  if (action === "flashcards") return 1200;
+  if (action === "mark") return 900;
+  if (action === "revision-plan") return 1200;
+  if (action === "summarise") return 1200;
+  if (action === "diagram") return 900;
+  if (action === "weakness") return 900;
+  return isDetailedPrompt(text) ? 900 : 450;
+}
+
 function upgradeOutOfUsageMessage() {
-  return [
-    "You have run out of AI usage for this month.",
-    "If you would like to continue using AI please subscribe to one of our plans:",
-    "subscriptions.html",
-  ].join(" ");
+  return "You have run out of AI usage for this month. Please upgrade in subscriptions.html to continue.";
 }
 
-function upgradeFeatureMessage() {
-  return [
-    "This feature is available on Plus or Pro.",
-    "Please upgrade to continue:",
-    "subscriptions.html",
-  ].join(" ");
+function tooLargeMessage() {
+  return "That request is too large. Please shorten the message or reduce attachments.";
 }
 
-function badRequest(res, msg, extra) {
-  return json(res, 400, { error: msg, ...(extra ? { extra } : {}) });
+function getClientIp(req) {
+  const xff = safeString(req.headers["x-forwarded-for"]);
+  if (xff) return xff.split(",")[0].trim();
+  return safeString(req.headers["x-real-ip"]) || "unknown";
 }
-function forbidden(res, msg, extra) {
-  return json(res, 403, { error: msg, ...(extra ? { extra } : {}) });
+
+function basicBotFlag(req) {
+  const ua = String(req.headers["user-agent"] || "").toLowerCase();
+  if (!ua) return true;
+  return /curl|wget|python|httpclient|insomnia|postmanruntime|node-fetch|axios/i.test(ua);
 }
-function tooMany(res, msg, extra) {
-  return json(res, 429, { error: msg, ...(extra ? { extra } : {}) });
+
+function cleanReplyText(text) {
+  let t = String(text || "");
+  t = t.replace(/\*\*(.*?)\*\*/g, "$1");
+  t = t.replace(/^\s*\*\s+/gm, "- ");
+  t = t.replace(/```[a-z]*\n?/gi, "");
+  t = t.replace(/```+/g, "");
+  t = t.replace(/\n{3,}/g, "\n\n");
+  return t.trim();
+}
+
+function sanitizeHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+    .slice(-MAX_HISTORY_MESSAGES)
+    .map((m) => ({
+      role: m.role,
+      content: [
+        {
+          type: "input_text",
+          text: String(m.content || "").slice(0, MAX_HISTORY_CHARS),
+        },
+      ],
+    }));
+}
+
+function finiteOrNull(n) {
+  return Number.isFinite(n) ? n : null;
+}
+
+function toPositiveInt(v, fallback) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.floor(n);
 }
 
 /* =========================
-   Auth (with backups)
+   Auth
    ========================= */
 
 function extractBearerFromAuthHeader(req) {
   const authHeader = safeString(req.headers.authorization) || "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) return null;
-  const token = safeString(authHeader.slice(7));
-  return token || null;
+  return safeString(authHeader.slice(7)) || null;
 }
 
-// Backups (sometimes people forget to send Authorization)
 function extractTokenFromBackupHeaders(req) {
-  // You can set these from frontend easily
   const h1 = safeString(req.headers["x-access-token"]);
   const h2 = safeString(req.headers["x-supabase-token"]);
   return h1 || h2 || null;
@@ -133,7 +292,7 @@ async function getAuthUser(req, reqBody) {
 }
 
 /* =========================
-   Tier + Settings (fixed)
+   User settings
    ========================= */
 
 async function ensureUserSettingsRow(userId) {
@@ -143,140 +302,35 @@ async function ensureUserSettingsRow(userId) {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (existing.error) {
-    return { row: null, error: existing.error };
-  }
-
-  if (existing.data) {
-    return { row: existing.data, error: null };
-  }
+  if (existing.error) return { row: null, error: existing.error };
+  if (existing.data) return { row: existing.data, error: null };
 
   const inserted = await supabaseAdmin
     .from("user_settings")
-    .insert({
-      user_id: userId,
-      tier: "free",
-    })
+    .insert({ user_id: userId, tier: "free" })
     .select("user_id,tier")
     .maybeSingle();
 
-  if (inserted.error) {
-    return { row: null, error: inserted.error };
-  }
-
+  if (inserted.error) return { row: null, error: inserted.error };
   return { row: inserted.data, error: null };
 }
 
 async function getUserSettings(userId) {
   const { row, error } = await ensureUserSettingsRow(userId);
-
   if (error) {
     console.error("user_settings read error:", error);
-    return {
-      tier: "free",
-      timezone: "UTC",
-      _settingsError: error.message || String(error),
-    };
+    return { tier: "free" };
   }
-
-  return {
-    tier: normalizeTier(row?.tier),
-    timezone: "UTC",
-  };
-}
-/* =========================
-   Models + Plans
-   ========================= */
-
-const MODELS = {
-  CHAT_FREE: "gpt-4o-mini",
-  CHAT_PAID: "gpt-5-mini",
-  VISION: "gpt-5.1",
-  DOC_PARSER: "gpt-5-nano",
-  IMAGE_MODEL: "dall-e-2",
-};
-
-const PLAN = {
-  free: {
-    tokenLimits: { "gpt-4o-mini": 200_000, "gpt-5-mini": 0, "gpt-5.1": 0, "gpt-5-nano": 0 },
-    visionBudget: 0,
-    freeUploadsPerMonth: 5,
-    dalle2PerMonth: 0,
-    allowUploads: true,
-    allowImages: false,
-    throttlePerMinute: 10,
-  },
-  plus: {
-    tokenLimits: { "gpt-4o-mini": 1_000_000, "gpt-5-mini": 1_000_000, "gpt-5.1": 0, "gpt-5-nano": 0 },
-    visionBudget: 50_000,
-    freeUploadsPerMonth: Infinity,
-    dalle2PerMonth: 20,
-    allowUploads: true,
-    allowImages: true,
-    throttlePerMinute: 20,
-  },
-  pro: {
-    tokenLimits: { "gpt-4o-mini": 2_000_000, "gpt-5-mini": 2_000_000, "gpt-5.1": 0, "gpt-5-nano": 0 },
-    visionBudget: 100_000,
-    freeUploadsPerMonth: Infinity,
-    dalle2PerMonth: 50,
-    allowUploads: true,
-    allowImages: true,
-    throttlePerMinute: 40,
-  },
-  admin: {
-    tokenLimits: {},
-    visionBudget: Infinity,
-    freeUploadsPerMonth: Infinity,
-    dalle2PerMonth: Infinity,
-    allowUploads: true,
-    allowImages: true,
-    throttlePerMinute: 999,
-  },
-};
-
-function planForTier(tier) {
-  if (tier === "admin") return PLAN.admin;
-  if (tier === "pro") return PLAN.pro;
-  if (tier === "plus") return PLAN.plus;
-  return PLAN.free;
-}
-
-function chooseDefaultChatModel(tier) {
-  return tier === "free" ? MODELS.CHAT_FREE : MODELS.CHAT_PAID;
-}
-
-function canUseChatModel(tier, model) {
-  if (tier === "admin") return true;
-  if (tier === "free") return model === MODELS.CHAT_FREE;
-  return model === MODELS.CHAT_FREE || model === MODELS.CHAT_PAID;
-}
-
-function getMonthlyLimitForModel(tier, model) {
-  if (tier === "admin") return Infinity;
-  const p = planForTier(tier);
-  return Number(p.tokenLimits?.[model] || 0);
+  return { tier: normalizeTier(row?.tier) };
 }
 
 /* =========================
-   Tables
+   DB tracking
    ========================= */
-
-const TABLES = {
-  usageMonthly: "ai_usage_monthly",
-  attachmentsMonthly: "ai_attachments_monthly",
-  imageMonthly: "image_usage_monthly",
-  throttleMinute: "ai_throttle_minute",
-};
 
 function usageKey(userId, month, model) {
   return { user_id: userId, month, model };
 }
-
-/* =========================
-   Supabase reads/writes
-   (all tolerant: missing rows => 0, missing columns => 0)
-   ========================= */
 
 async function loadMonthlyUsage({ userId, month, model }) {
   const { data, error } = await supabaseAdmin
@@ -294,7 +348,6 @@ async function loadMonthlyUsage({ userId, month, model }) {
 
 async function bumpMonthlyUsage({ userId, month, model, addInput, addOutput }) {
   const cur = await loadMonthlyUsage({ userId, month, model });
-
   const nextIn = cur.input + Math.max(0, Number(addInput || 0));
   const nextOut = cur.output + Math.max(0, Number(addOutput || 0));
 
@@ -308,20 +361,18 @@ async function bumpMonthlyUsage({ userId, month, model, addInput, addOutput }) {
   });
 
   if (error) throw new Error(`Upsert ai_usage_monthly failed: ${error.message}`);
-
   return { usedAfter: nextIn + nextOut };
 }
 
 async function loadUploadsCount({ userId, month }) {
   const { data, error } = await supabaseAdmin
-    .from(TABLES.attachmentsMonthly)
+    .from(TABLES.uploadsMonthly)
     .select("uploads_count")
     .eq("user_id", userId)
     .eq("month", month)
     .maybeSingle();
 
   if (error) throw new Error(`Load ai_attachments_monthly failed: ${error.message}`);
-
   return { count: Number(data?.uploads_count || 0) };
 }
 
@@ -329,7 +380,7 @@ async function bumpUploadsCount({ userId, month, inc }) {
   const cur = await loadUploadsCount({ userId, month });
   const next = cur.count + Math.max(0, Number(inc || 0));
 
-  const { error } = await supabaseAdmin.from(TABLES.attachmentsMonthly).upsert({
+  const { error } = await supabaseAdmin.from(TABLES.uploadsMonthly).upsert({
     user_id: userId,
     month,
     uploads_count: next,
@@ -337,7 +388,6 @@ async function bumpUploadsCount({ userId, month, inc }) {
   });
 
   if (error) throw new Error(`Upsert ai_attachments_monthly failed: ${error.message}`);
-
   return { countAfter: next };
 }
 
@@ -367,7 +417,6 @@ async function bumpMonthlyImageCount({ userId, month, model, inc = 1 }) {
   });
 
   if (error) throw new Error(`Upsert image_usage_monthly failed: ${error.message}`);
-
   return { countAfter: next };
 }
 
@@ -387,7 +436,6 @@ async function throttleCheckAndBump({ userId, maxPerMinute }) {
   if (current >= maxPerMinute) return { ok: false, bucket, count: current };
 
   const next = current + 1;
-
   const { error: upErr } = await supabaseAdmin.from(TABLES.throttleMinute).upsert({
     user_id: userId,
     minute_bucket: bucket,
@@ -396,8 +444,154 @@ async function throttleCheckAndBump({ userId, maxPerMinute }) {
   });
 
   if (upErr) throw new Error(`Upsert ai_throttle_minute failed: ${upErr.message}`);
-
   return { ok: true, bucket, count: next };
+}
+
+async function checkMonthlyTokenAllowance({ userId, tier, month, model, expectedMaxSpend }) {
+  const limit = getMonthlyLimitForModel(tier, model);
+  if (limit <= 0) return { ok: false, remaining: 0, reason: "not-in-plan" };
+
+  const used = (await loadMonthlyUsage({ userId, month, model })).used;
+  const remaining = Math.max(0, limit - used);
+
+  if (remaining <= 0) return { ok: false, remaining, reason: "out" };
+  if (typeof expectedMaxSpend === "number" && expectedMaxSpend > 0 && remaining < expectedMaxSpend) {
+    return { ok: false, remaining, reason: "insufficient" };
+  }
+
+  return { ok: true, remaining };
+}
+
+/* =========================
+   Optional tables
+   ========================= */
+
+async function saveConversationMessage(userId, role, message, action = "chat") {
+  const msg = safeString(message);
+  if (!msg) return;
+
+  try {
+    await supabaseAdmin.from(TABLES.conversations).insert({
+      user_id: userId,
+      role,
+      message: msg.slice(0, MAX_CONVERSATION_LOG_CHARS),
+      action,
+      created_at: nowISO(),
+    });
+  } catch (_) {
+    // optional table
+  }
+}
+
+async function loadConversationMemory(userId, limit = 8) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.conversations)
+      .select("role,message")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error || !Array.isArray(data)) return [];
+
+    return data
+      .reverse()
+      .filter((x) => x && (x.role === "user" || x.role === "assistant"))
+      .map((x) => ({
+        role: x.role,
+        content: [{ type: "input_text", text: String(x.message || "").slice(0, 6000) }],
+      }));
+  } catch (_) {
+    return [];
+  }
+}
+
+async function bumpTopicWeakness(userId, topic, inc = 1) {
+  const t = safeString(topic);
+  if (!t) return;
+
+  try {
+    const { data } = await supabaseAdmin
+      .from(TABLES.topicStats)
+      .select("incorrect_count")
+      .eq("user_id", userId)
+      .eq("topic", t)
+      .maybeSingle();
+
+    const next = Number(data?.incorrect_count || 0) + inc;
+    await supabaseAdmin.from(TABLES.topicStats).upsert({
+      user_id: userId,
+      topic: t,
+      incorrect_count: next,
+      updated_at: nowISO(),
+    });
+  } catch (_) {
+    // optional table
+  }
+}
+
+async function getWeakTopics(userId, limit = 6) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.topicStats)
+      .select("topic,incorrect_count")
+      .eq("user_id", userId)
+      .order("incorrect_count", { ascending: false })
+      .limit(limit);
+
+    if (error || !Array.isArray(data)) return [];
+    return data.map((x) => x.topic).filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
+
+async function bumpCostUsage(userId, month, tokens) {
+  try {
+    const { data } = await supabaseAdmin
+      .from(TABLES.costUsage)
+      .select("tokens")
+      .eq("user_id", userId)
+      .eq("month", month)
+      .maybeSingle();
+
+    const next = Number(data?.tokens || 0) + Math.max(0, Number(tokens || 0));
+    await supabaseAdmin.from(TABLES.costUsage).upsert({
+      user_id: userId,
+      month,
+      tokens: next,
+      updated_at: nowISO(),
+    });
+  } catch (_) {
+    // optional table
+  }
+}
+
+async function getCachedResponse(cacheKey) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.cache)
+      .select("response_json")
+      .eq("cache_key", cacheKey)
+      .maybeSingle();
+
+    if (error || !data?.response_json) return null;
+    return data.response_json;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function setCachedResponse(cacheKey, responseJson) {
+  try {
+    await supabaseAdmin.from(TABLES.cache).upsert({
+      cache_key: cacheKey,
+      response_json: responseJson,
+      updated_at: nowISO(),
+    });
+  } catch (_) {
+    // optional table
+  }
 }
 
 /* =========================
@@ -409,11 +603,25 @@ function safeBase64DataUrl(mime, base64) {
   const b = String(base64 || "").trim();
   if (!b || !m) return null;
   if (!/^[a-z0-9]+\/[a-z0-9.+-]+$/.test(m)) return null;
-  if (b.length > 18_000_000) return null;
+  if (b.length > MAX_BASE64_LEN) return null;
   return `data:${m};base64,${b}`;
 }
 
-function parseAttachments(arr) {
+async function downloadFromStorage(bucket, path) {
+  const b = safeString(bucket) || "ai-uploads";
+  const p = safeString(path);
+  if (!p) return null;
+
+  const { data, error } = await supabaseAdmin.storage.from(b).download(p);
+  if (error || !data) return null;
+
+  const ab = await data.arrayBuffer();
+  if (!ab || ab.byteLength > MAX_DOWNLOAD_BYTES) return null;
+
+  return Buffer.from(ab).toString("base64");
+}
+
+async function parseAttachments(arr) {
   if (!Array.isArray(arr)) return [];
   const out = [];
 
@@ -423,22 +631,30 @@ function parseAttachments(arr) {
     const kind = String(a.kind || "").toLowerCase().trim();
     const filename = safeString(a.filename) || (kind === "pdf" ? "document.pdf" : "image.png");
     const mime = safeString(a.mime) || (kind === "pdf" ? "application/pdf" : "image/png");
-    const base64 = safeString(a.base64) || "";
 
     if (kind !== "pdf" && kind !== "image") continue;
-    if (!base64) continue;
 
-    out.push({ kind, filename, mime, base64 });
+    if (a.path) {
+      const base64 = await downloadFromStorage(a.bucket, a.path);
+      if (!base64) continue;
+      out.push({ kind, filename, mime, base64 });
+    } else {
+      const base64 = safeString(a.base64) || "";
+      if (!base64) continue;
+      out.push({ kind, filename, mime, base64 });
+    }
+
+    if (out.length >= MAX_ATTACHMENTS) break;
   }
 
-  return out.slice(0, 3);
+  return out;
 }
 
 function hasAnyAttachment(attachments) {
   return Array.isArray(attachments) && attachments.length > 0;
 }
 
-function buildContentWithAttachments(question, attachments) {
+function buildContentWithAttachments(text, attachments) {
   const content = [];
 
   for (const a of attachments) {
@@ -460,95 +676,140 @@ function buildContentWithAttachments(question, attachments) {
     }
   }
 
-  content.push({ type: "input_text", text: question });
+  content.push({ type: "input_text", text: String(text || "") });
   return content;
 }
 
-function sanitizeHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history
-    .filter((m) => m && (m.role === "user" || m.role === "assistant"))
-    .slice(-12)
-    .map((m) => ({
-      role: m.role,
-      content: [{ type: "input_text", text: String(m.content || "").slice(0, 6000) }],
-    }));
-}
-
 /* =========================
-   Vision budget logic
+   Prompts
    ========================= */
 
-async function chooseModelForRequest({ userId, tier, month, attachmentsPresent }) {
-  if (!attachmentsPresent) {
-    return { model: chooseDefaultChatModel(tier), visionUsed: false, reason: "no-attachments" };
-  }
-
-  if (tier === "admin") {
-    return { model: MODELS.VISION, visionUsed: true, reason: "admin" };
-  }
-
-  if (tier !== "plus" && tier !== "pro") {
-    return { model: MODELS.CHAT_FREE, visionUsed: false, reason: "free-attachments" };
-  }
-
-  const p = planForTier(tier);
-  const visionLimit = Number(p.visionBudget || 0);
-
-  const used = (await loadMonthlyUsage({ userId, month, model: MODELS.VISION })).used;
-  const remaining = Math.max(0, visionLimit - used);
-
-  if (remaining > 0) return { model: MODELS.VISION, visionUsed: true, reason: "vision-budget" };
-
-  return { model: chooseDefaultChatModel(tier), visionUsed: false, reason: "fallback-after-vision" };
+function baseStylePrompt() {
+  return (
+    "Write in plain text only. Do not use Markdown. " +
+    "Do not use asterisks for bullets or bold. " +
+    "Keep formatting neat and natural. " +
+    "Only use short lists when they genuinely help."
+  );
 }
 
-async function requireTokensOrUpgrade({ userId, tier, month, model, expectedMaxSpend }) {
-  if (tier === "admin") return { ok: true, remaining: Infinity };
+function tutorPrompt() {
+  return (
+    "You are ReviseFlow AI, a strong GCSE and school-study tutor. " +
+    "Teach clearly, explain step by step when needed, and give concise exam-focused tips. " +
+    "If the user asks a study question, be accurate, practical, and educational. " +
+    baseStylePrompt()
+  );
+}
 
-  let limit;
-  if (model === MODELS.VISION) {
-    limit = Number(planForTier(tier).visionBudget || 0);
-  } else {
-    limit = getMonthlyLimitForModel(tier, model);
+function generalPrompt() {
+  return (
+    "You are a helpful, natural AI assistant. " +
+    "Be conversational, sensible, and clear. " +
+    baseStylePrompt()
+  );
+}
+
+function systemPromptFor(userId, action, question, attachmentsPresent, weakTopics = []) {
+  const study = attachmentsPresent || isStudyRelated(question) || action !== "chat";
+
+  if (String(userId) === OWNER_USER_ID) {
+    if (!study) return generalPrompt();
+    return (
+      tutorPrompt() +
+      (weakTopics.length ? ` Focus extra attention on these weak topics if relevant: ${weakTopics.join(", ")}.` : "")
+    );
   }
 
-  if (limit <= 0) return { ok: false, remaining: 0, reason: "not-in-plan" };
+  return (
+    tutorPrompt() +
+    (weakTopics.length ? ` Focus extra attention on these weak topics if relevant: ${weakTopics.join(", ")}.` : "")
+  );
+}
 
-  const used = (await loadMonthlyUsage({ userId, month, model })).used;
-  const remaining = Math.max(0, limit - used);
-
-  if (remaining <= 0) return { ok: false, remaining, reason: "out" };
-  if (typeof expectedMaxSpend === "number" && expectedMaxSpend > 0 && remaining < expectedMaxSpend) {
-    return { ok: false, remaining, reason: "insufficient" };
+function actionInstruction(action, body) {
+  if (action === "flashcards") {
+    return (
+      "Generate useful revision flashcards. " +
+      "Return valid JSON only in this exact shape: " +
+      '{"flashcards":[{"q":"question","a":"answer"}]}. ' +
+      "Make between 6 and 15 flashcards unless the text is tiny."
+    );
   }
 
-  return { ok: true, remaining };
+  if (action === "mark") {
+    return (
+      "Mark the student's answer fairly. " +
+      "Return valid JSON only in this exact shape: " +
+      '{"score_awarded":0,"score_total":0,"strengths":[""],"missing_points":[""],"feedback":"","topic":"optional topic"}.' +
+      " Keep marking realistic and exam-style."
+    );
+  }
+
+  if (action === "summarise") {
+    return (
+      "Summarise the material clearly for revision. " +
+      "Return valid JSON only in this exact shape: " +
+      '{"summary":"","key_points":[""],"exam_tips":[""],"topic":"optional topic"}.'
+    );
+  }
+
+  if (action === "diagram") {
+    return (
+      "Explain the uploaded or described diagram clearly. " +
+      "If the image contains blank label boxes or unreadable text, explain the likely structure based on the visible diagram. " +
+      "Return valid JSON only in this exact shape: " +
+      '{"overview":"","parts":[{"name":"","explanation":""}],"topic":"optional topic"}.'
+    );
+  }
+
+  if (action === "revision-plan") {
+    return (
+      "Create a practical revision plan. " +
+      "Return valid JSON only in this exact shape: " +
+      '{"plan_title":"","days":[{"day":"Day 1","focus":"","tasks":[""]}],"general_advice":[""]}.'
+    );
+  }
+
+  if (action === "weakness") {
+    return (
+      "Based on the user history and weak topics, suggest what to revise next. " +
+      "Return valid JSON only in this exact shape: " +
+      '{"weak_topics":[""],"next_steps":[""],"advice":"","topic":"optional topic"}.'
+    );
+  }
+
+  return "Answer the user's request naturally and helpfully. Plain text only.";
 }
 
 /* =========================
-   OpenAI calls
+   OpenAI
    ========================= */
 
 function extractOutputText(resp) {
+  const direct = resp?.output_text;
+  if (direct && typeof direct === "string") return direct;
+
   const out = resp?.output;
   if (Array.isArray(out) && out.length) {
     for (const item of out) {
       const content = item?.content;
       if (Array.isArray(content)) {
-        const t = content.find((c) => c?.type === "output_text")?.text;
-        if (t) return t;
+        for (const c of content) {
+          if (c?.type === "output_text" && c?.text) return c.text;
+        }
       }
     }
   }
-  return resp?.output_text || null;
+
+  return null;
 }
 
 function getUsageTokens(resp) {
   const usage = resp?.usage || {};
-  const inTok = Number(usage.input_tokens || 0);
-  const outTok = Number(usage.output_tokens || 0);
-  return { input: inTok, output: outTok, total: inTok + outTok };
+  const input = Number(usage.input_tokens || 0);
+  const output = Number(usage.output_tokens || 0);
+  return { input, output, total: input + output };
 }
 
 async function openaiResponsesCall({ model, input, maxOutputTokens, temperature }) {
@@ -575,7 +836,24 @@ async function openaiResponsesCall({ model, input, maxOutputTokens, temperature 
   return data;
 }
 
-async function openaiDalle2Generate({ prompt, size }) {
+function buildSafeDiagramImagePrompt(prompt) {
+  return (
+    String(prompt || "").trim() +
+    "\n\nCreate a clean educational diagram." +
+    "\nRules:" +
+    "\n- Do NOT render readable text inside the image." +
+    "\n- If labels are needed, draw empty label boxes or arrows only." +
+    "\n- Leave label areas blank instead of producing distorted text." +
+    "\n- Focus on shapes, arrows, structures, and clean layout." +
+    "\n- White or very light background." +
+    "\n- GCSE textbook style." +
+    "\n- No gibberish text."
+  );
+}
+
+async function openaiImageGenerate({ prompt, size, userId }) {
+  const guardedPrompt = buildSafeDiagramImagePrompt(prompt);
+
   const resp = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
@@ -583,10 +861,10 @@ async function openaiDalle2Generate({ prompt, size }) {
       Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "dall-e-2",
-      prompt,
-      size,
-      response_format: "url",
+      model: MODELS.IMAGE,
+      prompt: guardedPrompt,
+      size: size || DEFAULT_IMAGE_SIZE,
+      user: userId,
     }),
   });
 
@@ -595,8 +873,181 @@ async function openaiDalle2Generate({ prompt, size }) {
     throw new Error(data?.error?.message || "OpenAI Images request failed");
   }
 
-  const url = data?.data?.[0]?.url || null;
-  return { url };
+  const first = data?.data?.[0] || null;
+  const b64 = first?.b64_json || null;
+  const url = first?.url || null;
+  const usage = data?.usage || {};
+
+  if (b64) return { imageUrl: `data:image/png;base64,${b64}`, usage };
+  if (url) return { imageUrl: url, usage };
+
+  throw new Error("Image generated but no image data returned");
+}
+
+/* =========================
+   Parsing model JSON
+   ========================= */
+
+function tryParseJsonLoose(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    // continue
+  }
+
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (_) {
+    // continue
+  }
+
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try {
+      return JSON.parse(objMatch[0]);
+    } catch (_) {
+      // continue
+    }
+  }
+
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  if (arrMatch) {
+    try {
+      return JSON.parse(arrMatch[0]);
+    } catch (_) {
+      // continue
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   Response builders
+   ========================= */
+
+function normalizeFlashcards(parsed) {
+  const cards = Array.isArray(parsed?.flashcards) ? parsed.flashcards : [];
+  return cards
+    .map((c) => ({
+      q: String(c?.q || "").trim(),
+      a: String(c?.a || "").trim(),
+    }))
+    .filter((c) => c.q && c.a)
+    .slice(0, 20);
+}
+
+function normalizeMarking(parsed) {
+  return {
+    score_awarded: clamp(Number(parsed?.score_awarded || 0), 0, 100),
+    score_total: clamp(Number(parsed?.score_total || 0), 1, 100),
+    strengths: Array.isArray(parsed?.strengths) ? parsed.strengths.map(String).slice(0, 8) : [],
+    missing_points: Array.isArray(parsed?.missing_points) ? parsed.missing_points.map(String).slice(0, 8) : [],
+    feedback: String(parsed?.feedback || "").trim(),
+    topic: String(parsed?.topic || "").trim() || null,
+  };
+}
+
+function normalizeSummary(parsed) {
+  return {
+    summary: String(parsed?.summary || "").trim(),
+    key_points: Array.isArray(parsed?.key_points) ? parsed.key_points.map(String).slice(0, 12) : [],
+    exam_tips: Array.isArray(parsed?.exam_tips) ? parsed.exam_tips.map(String).slice(0, 8) : [],
+    topic: String(parsed?.topic || "").trim() || null,
+  };
+}
+
+function normalizeDiagram(parsed) {
+  return {
+    overview: String(parsed?.overview || "").trim(),
+    parts: Array.isArray(parsed?.parts)
+      ? parsed.parts
+          .map((p) => ({
+            name: String(p?.name || "").trim(),
+            explanation: String(p?.explanation || "").trim(),
+          }))
+          .filter((p) => p.name || p.explanation)
+          .slice(0, 12)
+      : [],
+    topic: String(parsed?.topic || "").trim() || null,
+  };
+}
+
+function normalizeRevisionPlan(parsed) {
+  return {
+    plan_title: String(parsed?.plan_title || "Revision plan").trim(),
+    days: Array.isArray(parsed?.days)
+      ? parsed.days
+          .map((d) => ({
+            day: String(d?.day || "").trim(),
+            focus: String(d?.focus || "").trim(),
+            tasks: Array.isArray(d?.tasks) ? d.tasks.map(String).slice(0, 8) : [],
+          }))
+          .filter((d) => d.day || d.focus || d.tasks.length)
+          .slice(0, 31)
+      : [],
+    general_advice: Array.isArray(parsed?.general_advice)
+      ? parsed.general_advice.map(String).slice(0, 10)
+      : [],
+  };
+}
+
+function normalizeWeakness(parsed) {
+  return {
+    weak_topics: Array.isArray(parsed?.weak_topics) ? parsed.weak_topics.map(String).slice(0, 10) : [],
+    next_steps: Array.isArray(parsed?.next_steps) ? parsed.next_steps.map(String).slice(0, 10) : [],
+    advice: String(parsed?.advice || "").trim(),
+    topic: String(parsed?.topic || "").trim() || null,
+  };
+}
+
+/* =========================
+   Fallback builders
+   ========================= */
+
+function fallbackSummary(rawReply) {
+  return {
+    summary: rawReply || "",
+    key_points: [],
+    exam_tips: [],
+    topic: null,
+  };
+}
+
+function fallbackDiagram(rawReply) {
+  return {
+    overview:
+      rawReply ||
+      "The diagram appears to show a structure or process. If any labels were blank, that was intentional to prevent unreadable AI-generated text.",
+    parts: [],
+    topic: null,
+  };
+}
+
+function fallbackRevisionPlan(rawReply) {
+  return {
+    plan_title: "Revision plan",
+    days: [],
+    general_advice: rawReply ? [rawReply] : [],
+  };
+}
+
+function fallbackWeakness(rawReply) {
+  return {
+    weak_topics: [],
+    next_steps: [],
+    advice: rawReply || "",
+    topic: null,
+  };
 }
 
 /* =========================
@@ -614,197 +1065,338 @@ module.exports = async function handler(req, res) {
   try {
     const auth = await getAuthUser(req, body);
     if (auth.error) {
-      // IMPORTANT: return the real reason, not “upgrade”
-      return json(res, 401, { error: auth.error, hint: "Send Authorization: Bearer <access_token>" });
+      return json(res, 401, {
+        error: auth.error,
+        hint: "Send Authorization: Bearer <access_token>",
+      });
     }
 
     const userId = auth.user.id;
     const settings = await getUserSettings(userId);
     const tier = settings.tier;
-
-    const p = planForTier(tier);
-
-    const throttle = await throttleCheckAndBump({ userId, maxPerMinute: p.throttlePerMinute });
-    if (!throttle.ok) return tooMany(res, "Too many requests. Please wait a moment and try again.");
-
-    const action = String(body.action || "chat").toLowerCase().trim();
+    const plan = planForTier(tier);
     const month = monthKeyUTC();
 
-    // ========= IMAGE GENERATION =========
+    const clientIp = getClientIp(req);
+    const suspiciousUa = basicBotFlag(req);
+
+    const throttle = await throttleCheckAndBump({
+      userId,
+      maxPerMinute: suspiciousUa ? Math.max(2, Math.floor(plan.throttlePerMinute / 2)) : plan.throttlePerMinute,
+    });
+
+    if (!throttle.ok) {
+      return json(res, 429, { error: "Too many requests. Please wait a moment and try again." });
+    }
+
+    const action = String(body.action || "chat").toLowerCase().trim();
+
+    /* ========= IMAGE ========= */
     if (action === "image") {
-      if (!p.allowImages) return forbidden(res, upgradeFeatureMessage(), wantsDebug ? { tier } : undefined);
+      const prompt = safeString(body.prompt) || safeString(body.question);
+      if (!prompt) return json(res, 400, { error: "No prompt provided" });
 
-      const prompt = safeString(body.prompt) || "";
-      if (!prompt) return badRequest(res, "No prompt provided");
+      if (prompt.length > MAX_REQUEST_CHARS) {
+        return json(res, 400, { error: tooLargeMessage() });
+      }
 
-      const size = "1024x1024";
-      const imageModel = MODELS.IMAGE_MODEL;
+      const limit = Number(plan.imagesPerMonth || 0);
+      const { count } = await loadMonthlyImageCount({ userId, month, model: MODELS.IMAGE });
+      if (!(limit === Infinity) && count >= limit) {
+        return json(res, 429, { error: "You have reached your monthly image generation limit." });
+      }
 
-      if (tier !== "admin") {
-        const limit = Number(p.dalle2PerMonth || 0);
-        const { count } = await loadMonthlyImageCount({ userId, month, model: imageModel });
-        if (!(limit === Infinity) && count >= limit) {
-          return tooMany(res, "You have reached your monthly image generation limit.");
+      const size = DEFAULT_IMAGE_SIZE;
+      const result = await openaiImageGenerate({ prompt, size, userId });
+
+      await bumpMonthlyImageCount({ userId, month, model: MODELS.IMAGE, inc: 1 });
+
+      const imgUsage = {
+        input_tokens: Number(result.usage?.input_tokens || 0),
+        output_tokens: Number(result.usage?.output_tokens || 0),
+        total_tokens: Number(result.usage?.total_tokens || 0),
+      };
+
+      if (imgUsage.total_tokens > 0) {
+        const modelForTokens = chooseDefaultChatModel(tier);
+        const allowance = await checkMonthlyTokenAllowance({
+          userId,
+          tier,
+          month,
+          model: modelForTokens,
+          expectedMaxSpend: 1,
+        });
+
+        if (allowance.ok) {
+          await bumpMonthlyUsage({
+            userId,
+            month,
+            model: modelForTokens,
+            addInput: imgUsage.input_tokens,
+            addOutput: imgUsage.output_tokens,
+          });
         }
+
+        await bumpCostUsage(userId, month, imgUsage.total_tokens);
       }
 
-      const perMinuteHard = tier === "pro" ? 8 : 4;
-      if (throttle.count > perMinuteHard) {
-        return tooMany(res, "Too many image requests too quickly. Please wait a minute.");
-      }
-
-      const result = await openaiDalle2Generate({ prompt, size });
-      if (!result.url) return json(res, 500, { error: "Image generated but no URL returned." });
-
-      if (tier !== "admin") await bumpMonthlyImageCount({ userId, month, model: imageModel, inc: 1 });
-
-      const { count } = await loadMonthlyImageCount({ userId, month, model: imageModel });
-      const remainingImages = tier === "admin" ? "Unlimited" : Math.max(0, Number(p.dalle2PerMonth) - Number(count));
+      const imageCount = await loadMonthlyImageCount({ userId, month, model: MODELS.IMAGE });
 
       return json(res, 200, {
-        image_url: result.url,
-        model: imageModel,
+        image_url: result.imageUrl,
+        model: MODELS.IMAGE,
         size,
         tier,
         month,
-        remaining_images: remainingImages,
-        ...(wantsDebug && (ALLOW_DEBUG || tier === "admin")
-          ? { debug: { userId, throttle, settings } }
+        remaining_images: Math.max(0, Number(plan.imagesPerMonth) - Number(imageCount.count)),
+        usage: imgUsage,
+        ...(wantsDebug && (ALLOW_DEBUG || String(userId) === OWNER_USER_ID)
+          ? { debug: { userId, tier, clientIp, suspiciousUa, throttle } }
           : {}),
       });
     }
 
-    // ========= CHAT =========
-    const question = safeString(body.question || body.topic) || "";
-    if (!question) return badRequest(res, "No question provided");
+    /* ========= TEXT / MULTIMODAL ========= */
 
-    const history = sanitizeHistory(body.history);
-    const requestedModel = safeString(body.model) || "";
+    const question =
+      safeString(body.question) ||
+      safeString(body.topic) ||
+      safeString(body.text) ||
+      safeString(body.prompt) ||
+      "";
 
-    const attachments = parseAttachments(body.attachments);
+    if (!question) return json(res, 400, { error: "No question provided" });
+    if (question.length > MAX_REQUEST_CHARS) return json(res, 400, { error: tooLargeMessage() });
+
+    const attachments = await parseAttachments(body.attachments);
     const attachmentsPresent = hasAnyAttachment(attachments);
 
-    if (attachmentsPresent) {
-      if (!p.allowUploads) return forbidden(res, upgradeFeatureMessage(), wantsDebug ? { tier } : undefined);
-
-      if (tier === "free") {
-        const { count } = await loadUploadsCount({ userId, month });
-        if (count >= PLAN.free.freeUploadsPerMonth) {
-          return forbidden(
-            res,
-            "You have used your 5 free uploads for this month. Please upgrade to Plus or Pro: subscriptions.html"
-          );
-        }
+    if (attachmentsPresent && tier === "free") {
+      const { count } = await loadUploadsCount({ userId, month });
+      if (count >= plan.freeUploadsPerMonth) {
+        return json(res, 403, {
+          error: "You have used your free uploads for this month. Please upgrade in subscriptions.html.",
+        });
       }
     }
 
-    // model selection (requested only if allowed)
-    let baseModel = chooseDefaultChatModel(tier);
-    if (requestedModel) {
-      if (!canUseChatModel(tier, requestedModel)) return forbidden(res, "Your plan can’t use that model.");
-      baseModel = requestedModel;
+    const model = chooseDefaultChatModel(tier);
+    const maxOutputTokens = maxOutputTokensForAction(action, question);
+
+    const allowance = await checkMonthlyTokenAllowance({
+      userId,
+      tier,
+      month,
+      model,
+      expectedMaxSpend: maxOutputTokens,
+    });
+
+    if (!allowance.ok) {
+      return json(res, 429, {
+        error: upgradeOutOfUsageMessage(),
+        ...(wantsDebug && (ALLOW_DEBUG || String(userId) === OWNER_USER_ID)
+          ? { debug: { allowance, model, tier } }
+          : {}),
+      });
     }
 
-    // choose final model (vision if attachments and budget remains)
-    const chosen = await chooseModelForRequest({ userId, tier, month, attachmentsPresent });
+    const weakTopics = await getWeakTopics(userId, 6);
+    const sys = systemPromptFor(userId, action, question, attachmentsPresent, weakTopics);
+    const instruction = actionInstruction(action, body);
 
-    let model = chosen.model || baseModel;
-    if (!canUseChatModel(tier, model) && model !== MODELS.VISION) model = chooseDefaultChatModel(tier);
+    let userText = question;
 
-    let maxOutputTokens = 450;
-    if (isDetailedPrompt(question)) maxOutputTokens = 900;
+    if (action === "mark") {
+      userText =
+        `Question:\n${String(body.question || "")}\n\n` +
+        `Student answer:\n${String(body.answer || "")}\n\n` +
+        `Mark it carefully and explain the result.`;
+    }
 
-    // Ensure budget before calling OpenAI
-    if (tier !== "admin") {
-      const pre = await requireTokensOrUpgrade({
-        userId,
-        tier,
-        month,
-        model,
-        expectedMaxSpend: maxOutputTokens,
-      });
+    if (action === "revision-plan") {
+      const subjects = Array.isArray(body.subjects) ? body.subjects.join(", ") : String(body.subjects || "");
+      const days = toPositiveInt(body.days || body.weeks, 7);
+      const hours = Number(body.hours_per_week || body.hours || 0);
+      userText =
+        `Create a revision plan.\nSubjects: ${subjects || "Not provided"}\nDays: ${days}\nHours per week: ${
+          hours || "Not provided"
+        }\nExtra context: ${question}`;
+    }
 
-      if (!pre.ok) return tooMany(res, upgradeOutOfUsageMessage(), wantsDebug ? pre : undefined);
+    if (action === "weakness") {
+      userText =
+        `User question: ${question}\nKnown weak topics: ${weakTopics.join(", ") || "None recorded"}\nGive next revision steps.`;
     }
 
     let content;
     try {
-      content = buildContentWithAttachments(question, attachments);
+      content = buildContentWithAttachments(`${instruction}\n\n${userText}`, attachments);
     } catch (e) {
-      return badRequest(res, e.message || "Bad attachment");
+      return json(res, 400, { error: e.message || "Bad attachment" });
+    }
+
+    const history = sanitizeHistory(body.history);
+    const memory = await loadConversationMemory(userId, 8);
+
+    const cacheEligible =
+      action === "chat" &&
+      !attachmentsPresent &&
+      !body.history &&
+      String(userId) !== OWNER_USER_ID &&
+      isStudyRelated(question);
+
+    const cacheKey = cacheEligible ? hashText(JSON.stringify({ action, tier, model, q: question })) : null;
+    if (cacheKey) {
+      const cached = await getCachedResponse(cacheKey);
+      if (cached) return json(res, 200, cached);
     }
 
     const inputPayload = [
+      { role: "system", content: [{ type: "input_text", text: sys }] },
+      ...memory,
       ...history,
-      {
-        role: "user",
-        content,
-      },
+      { role: "user", content },
     ];
 
-    const data = await openaiResponsesCall({
+    const aiResponse = await openaiResponsesCall({
       model,
       input: inputPayload,
       maxOutputTokens,
-      temperature: 0.7,
+      temperature: action === "mark" ? 0.2 : 0.7,
     });
 
-    const reply = extractOutputText(data) || "No response generated.";
-    const usage = getUsageTokens(data);
+    let rawReply = extractOutputText(aiResponse) || "";
+    rawReply = cleanReplyText(rawReply);
 
-    if (tier !== "admin") {
-      await bumpMonthlyUsage({ userId, month, model, addInput: usage.input, addOutput: usage.output });
+    if (action === "diagram" && !rawReply.trim()) {
+      rawReply =
+        "The diagram contains visual elements but text labels may have been left blank intentionally to avoid unreadable AI-generated text. Use the arrows, shapes and layout to identify the structure.";
     }
+
+    const usage = getUsageTokens(aiResponse);
+
+    await bumpMonthlyUsage({
+      userId,
+      month,
+      model,
+      addInput: usage.input,
+      addOutput: usage.output,
+    });
+
+    await bumpCostUsage(userId, month, usage.total);
 
     if (attachmentsPresent && tier === "free") {
       await bumpUploadsCount({ userId, month, inc: 1 });
     }
 
-    const limits = {
-      "gpt-4o-mini": getMonthlyLimitForModel(tier, "gpt-4o-mini"),
-      "gpt-5-mini": getMonthlyLimitForModel(tier, "gpt-5-mini"),
-      "gpt-5.1": tier === "plus" ? PLAN.plus.visionBudget : tier === "pro" ? PLAN.pro.visionBudget : 0,
-    };
+    await saveConversationMessage(userId, "user", userText, action);
 
-    async function remainingFor(modelName) {
-      if (tier === "admin") return "Unlimited";
+    let responsePayload;
 
-      const lim = modelName === "gpt-5.1" ? Number(limits["gpt-5.1"] || 0) : Number(limits[modelName] || 0);
-      const used = (await loadMonthlyUsage({ userId, month, model: modelName })).used;
-      return Math.max(0, lim - used);
+    if (action === "flashcards") {
+      const parsed = tryParseJsonLoose(rawReply);
+      const flashcards = normalizeFlashcards(parsed);
+      responsePayload = {
+        flashcards,
+        reply: flashcards.length ? "" : rawReply,
+      };
+    } else if (action === "mark") {
+      const parsed = tryParseJsonLoose(rawReply);
+      const marked = normalizeMarking(parsed);
+
+      if (marked.topic) {
+        const percentage = (marked.score_awarded / Math.max(1, marked.score_total)) * 100;
+        if (percentage < 60) await bumpTopicWeakness(userId, marked.topic, 1);
+      }
+
+      responsePayload = marked;
+    } else if (action === "summarise") {
+      const parsed = tryParseJsonLoose(rawReply);
+      const summary = parsed ? normalizeSummary(parsed) : fallbackSummary(rawReply);
+      if (summary.topic) await saveConversationMessage(userId, "assistant", summary.summary || rawReply, action);
+      responsePayload = summary;
+    } else if (action === "diagram") {
+      const parsed = tryParseJsonLoose(rawReply);
+      const diagram = parsed ? normalizeDiagram(parsed) : fallbackDiagram(rawReply);
+      if (diagram.topic) await bumpTopicWeakness(userId, diagram.topic, 0);
+      responsePayload = diagram;
+    } else if (action === "revision-plan") {
+      const parsed = tryParseJsonLoose(rawReply);
+      responsePayload = parsed ? normalizeRevisionPlan(parsed) : fallbackRevisionPlan(rawReply);
+    } else if (action === "weakness") {
+      const parsed = tryParseJsonLoose(rawReply);
+      responsePayload = parsed ? normalizeWeakness(parsed) : fallbackWeakness(rawReply);
+    } else {
+      responsePayload = { reply: rawReply };
     }
 
-    const remaining_tokens = {
-      "gpt-4o-mini": await remainingFor("gpt-4o-mini"),
-      "gpt-5-mini": await remainingFor("gpt-5-mini"),
-      "gpt-5.1": await remainingFor("gpt-5.1"),
-    };
-
-    return json(res, 200, {
-      reply,
+    const finalResponse = {
+      ...responsePayload,
       tier,
       month,
+      action,
       model_used: model,
-      vision_used: chosen.visionUsed,
       usage: {
         input_tokens: usage.input,
         output_tokens: usage.output,
         total_tokens: usage.total,
       },
-      plan_limits: limits,
-      remaining_tokens,
-      upgrade_url: "subscriptions.html",
-      attachments: {
-        submitted: attachments.length,
-        free_monthly_allowance: tier === "free" ? PLAN.free.freeUploadsPerMonth : "Unlimited",
-        free_used_this_month: tier === "free" ? (await loadUploadsCount({ userId, month })).count : undefined,
-      },
-      ...(wantsDebug && (ALLOW_DEBUG || tier === "admin")
-        ? { debug: { userId, tier, settings, throttle, authHint: "Use Authorization: Bearer <token>" } }
-        : {}),
-    });
+    };
+
+    const remainingFree = getMonthlyLimitForModel(tier, "gpt-4o-mini");
+    const remainingPaid = getMonthlyLimitForModel(tier, "gpt-5-mini");
+
+    async function remainingFor(modelName, limit) {
+      if (!Number.isFinite(limit) || limit <= 0) return 0;
+      const used = (await loadMonthlyUsage({ userId, month, model: modelName })).used;
+      return Math.max(0, limit - used);
+    }
+
+    finalResponse.remaining_tokens = {
+      "gpt-4o-mini": await remainingFor("gpt-4o-mini", remainingFree),
+      "gpt-5-mini": await remainingFor("gpt-5-mini", remainingPaid),
+    };
+
+    finalResponse.attachments = {
+      submitted: attachments.length,
+      free_monthly_allowance: tier === "free" ? plan.freeUploadsPerMonth : "Unlimited",
+      free_used_this_month:
+        tier === "free" ? (await loadUploadsCount({ userId, month })).count : undefined,
+    };
+
+    finalResponse.upgrade_url = "subscriptions.html";
+
+    const assistantLog =
+      responsePayload.reply ||
+      responsePayload.summary ||
+      responsePayload.feedback ||
+      responsePayload.advice ||
+      responsePayload.plan_title ||
+      rawReply;
+
+    await saveConversationMessage(userId, "assistant", assistantLog, action);
+
+    if (cacheKey && action === "chat" && responsePayload.reply) {
+      await setCachedResponse(cacheKey, finalResponse);
+    }
+
+    if (wantsDebug && (ALLOW_DEBUG || String(userId) === OWNER_USER_ID)) {
+      finalResponse.debug = {
+        userId,
+        clientIp,
+        suspiciousUa,
+        throttle,
+        weakTopics,
+        authHint: "Use Authorization: Bearer <token>",
+      };
+    }
+
+    return json(res, 200, finalResponse);
   } catch (error) {
-    console.error("Server error:", error);
-    return json(res, 500, { error: "Server error", detail: String(error?.message || error) });
+    console.error("AI endpoint server error:", error);
+    return json(res, 500, {
+      error: "Server error",
+      detail: String(error?.message || error),
+    });
   }
 };
