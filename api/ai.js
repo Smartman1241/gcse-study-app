@@ -423,20 +423,22 @@ function tierBucketForTier(tier) {
   return tier === "free" ? "free" : "paid";
 }
 
-function exactCacheKey({ action, tier, model, question }) {
+function exactCacheKey({ action, tier, model, question, userId }) {
   return `exact:${hashText(JSON.stringify({
     v: SEMANTIC_CACHE_VERSION,
     action,
+    user: userId,
     tier: tierBucketForTier(tier),
     quality: qualityBucketForModel(model),
     q: String(question || "").trim(),
   }))}`;
 }
 
-function semanticCacheKey({ action, tier, model, question }) {
+function semanticCacheKey({ action, tier, model, question, userId }) {
   return `semantic:${hashText(JSON.stringify({
     v: SEMANTIC_CACHE_VERSION,
     action,
+    user: userId,
     tier: tierBucketForTier(tier),
     quality: qualityBucketForModel(model),
     q: semanticNormalizeText(question),
@@ -552,22 +554,16 @@ async function loadMonthlyUsage({ userId, month, model }) {
 }
 
 async function bumpMonthlyUsage({ userId, month, model, addInput, addOutput }) {
-  const cur = await loadMonthlyUsage({ userId, month, model });
-  const nextIn = cur.input + Math.max(0, Number(addInput || 0));
-  const nextOut = cur.output + Math.max(0, Number(addOutput || 0));
+  const { data, error } = await supabaseAdmin.rpc("ai_usage_atomic_increment", {
+  p_user_id: userId,
+  p_month: month,
+  p_model: model,
+  p_input: Math.max(0, Number(addInput || 0)),
+  p_output: Math.max(0, Number(addOutput || 0)),
+});
 
-  const { error } = await supabaseAdmin.from(TABLES.usageMonthly).upsert({
-    user_id: userId,
-    month,
-    model,
-    input_tokens: nextIn,
-    output_tokens: nextOut,
-    updated_at: nowISO(),
-  });
-
-  if (error) throw new Error(`Upsert ai_usage_monthly failed: ${error.message}`);
-  return { usedAfter: nextIn + nextOut };
-}
+if (error) throw new Error(`Atomic usage update failed: ${error.message}`);
+return { usedAfter: Number(data || 0) };
 
 async function loadUploadsCount({ userId, month }) {
   const { data, error } = await supabaseAdmin
@@ -641,16 +637,21 @@ async function throttleCheckAndBump({ userId, maxPerMinute }) {
   if (current >= maxPerMinute) return { ok: false, bucket, count: current };
 
   const next = current + 1;
-  const { error: upErr } = await supabaseAdmin.from(TABLES.throttleMinute).upsert({
-    user_id: userId,
-    minute_bucket: bucket,
-    count: next,
-    updated_at: nowISO(),
-  });
 
-  if (upErr) throw new Error(`Upsert ai_throttle_minute failed: ${upErr.message}`);
-  return { ok: true, bucket, count: next };
-}
+const { error: upErr } = await supabaseAdmin
+  .from(TABLES.throttleMinute)
+  .upsert(
+    {
+      user_id: userId,
+      minute_bucket: bucket,
+      count: next,
+      updated_at: nowISO(),
+    },
+    { onConflict: "user_id,minute_bucket" }
+  );
+
+if (upErr) throw new Error(`Upsert ai_throttle_minute failed: ${upErr.message}`);
+return { ok: true, bucket, count: next };
 
 async function checkMonthlyTokenAllowance({ userId, tier, month, model, expectedMaxSpend }) {
   const limit = getMonthlyLimitForModel(tier, model);
@@ -1920,12 +1921,12 @@ module.exports = async function handler(req, res) {
       isStudyRelated(question);
 
     const currentExactCacheKey = cacheEligible
-      ? exactCacheKey({ action, tier, model, question })
-      : null;
+  ? exactCacheKey({ action, tier, model, question, userId })
+  : null;
 
     const currentSemanticCacheKey = cacheEligible
-      ? semanticCacheKey({ action, tier, model, question })
-      : null;
+  ? semanticCacheKey({ action, tier, model, question, userId })
+  : null;
 
     if (currentExactCacheKey) {
       const exactCached = await getCachedResponse(currentExactCacheKey);
@@ -2116,8 +2117,7 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     console.error("AI endpoint server error:", error);
     return json(res, 500, {
-      error: "Server error",
-      detail: String(error?.message || error),
-    });
+  error: "AI request failed. Please try again later."
+});
   }
 };
