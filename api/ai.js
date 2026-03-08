@@ -112,7 +112,7 @@ const MAX_REQUEST_CHARS = 12000;
 const MAX_BASE64_LEN = 18_000_000;
 const MAX_DOWNLOAD_BYTES = 12 * 1024 * 1024;
 const MAX_CONVERSATION_LOG_CHARS = 12000;
-const DEFAULT_IMAGE_SIZE = "1024x1024";
+const DEFAULT_IMAGE_SIZE = "512x512";
 const SEMANTIC_CACHE_VERSION = "semantic-v2";
 const SEMANTIC_CACHE_SCAN_LIMIT = 60;
 const ROUTER_MAX_OUTPUT_TOKENS = 180;
@@ -120,10 +120,10 @@ const ROUTER_EXPECTED_SPEND = 220;
 const IMAGE_LABELS_EXPECTED_SPEND = 320;
 
 const IMAGE_COST_REFERENCE = {
-  "1024x1024": {
-    low: 0.011,
-    medium: 0.042,
-    high: 0.167,
+  "512x512": {
+    low: 0.008,
+    medium: 0.02,
+    high: 0.08,
   },
 };
 
