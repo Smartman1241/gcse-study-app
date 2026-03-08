@@ -2,7 +2,9 @@
 // ReviseFlow unified AI endpoint
 // Features:
 // - chat
+// - optional chat streaming for typing effect
 // - image generation
+// - image label pack generation for blank-label diagrams
 // - flashcard generation
 // - exam marking
 // - diagram explanation
@@ -15,13 +17,15 @@
 // - anti-spam throttling
 // - attachment support (base64 or Supabase Storage)
 // - owner special behavior
-// - response caching
+// - exact + semantic cache
+// - two-stage routing (gpt-4o-mini router, gpt-5-mini for harder paid requests)
 // - cost tracking
 //
 // Models used:
 // - gpt-4o-mini
 // - gpt-5-mini
 // - gpt-image-1
+// - text-embedding-3-small (reserved for future upgrades; semantic cache below is schema-safe)
 
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
@@ -54,9 +58,10 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
    ========================= */
 
 const MODELS = {
-  CHAT_FREE: "gpt-4o-mini",
-  CHAT_PAID: "gpt-5-mini",
+  CHAT_FAST: "gpt-4o-mini",
+  CHAT_SMART: "gpt-5-mini",
   IMAGE: "gpt-image-1",
+  EMBEDDING: "text-embedding-3-small",
 };
 
 const PLAN = {
@@ -108,6 +113,19 @@ const MAX_BASE64_LEN = 18_000_000;
 const MAX_DOWNLOAD_BYTES = 12 * 1024 * 1024;
 const MAX_CONVERSATION_LOG_CHARS = 12000;
 const DEFAULT_IMAGE_SIZE = "1024x1024";
+const SEMANTIC_CACHE_VERSION = "semantic-v2";
+const SEMANTIC_CACHE_SCAN_LIMIT = 60;
+const ROUTER_MAX_OUTPUT_TOKENS = 180;
+const ROUTER_EXPECTED_SPEND = 220;
+const IMAGE_LABELS_EXPECTED_SPEND = 320;
+
+const IMAGE_COST_REFERENCE = {
+  "1024x1024": {
+    low: 0.011,
+    medium: 0.042,
+    high: 0.167,
+  },
+};
 
 /* =========================
    Generic helpers
@@ -123,10 +141,6 @@ function safeString(v) {
 
 function isObject(v) {
   return !!v && typeof v === "object" && !Array.isArray(v);
-}
-
-function isNonEmptyArray(v) {
-  return Array.isArray(v) && v.length > 0;
 }
 
 function nowISO() {
@@ -168,10 +182,6 @@ function planForTier(tier) {
   if (tier === "pro") return PLAN.pro;
   if (tier === "plus") return PLAN.plus;
   return PLAN.free;
-}
-
-function chooseDefaultChatModel(tier) {
-  return tier === "free" ? MODELS.CHAT_FREE : MODELS.CHAT_PAID;
 }
 
 function getMonthlyLimitForModel(tier, model) {
@@ -247,14 +257,209 @@ function sanitizeHistory(history) {
     }));
 }
 
-function finiteOrNull(n) {
-  return Number.isFinite(n) ? n : null;
-}
-
 function toPositiveInt(v, fallback) {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return fallback;
   return Math.floor(n);
+}
+
+function asJsonObject(v) {
+  if (isObject(v)) return v;
+  if (typeof v === "string") {
+    try {
+      const parsed = JSON.parse(v);
+      return isObject(parsed) ? parsed : null;
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
+function deepCloneJson(v) {
+  try {
+    return JSON.parse(JSON.stringify(v));
+  } catch (_) {
+    return v;
+  }
+}
+
+function isGpt5Family(model) {
+  return /^gpt-5/i.test(String(model || ""));
+}
+
+function supportsTemperature(model) {
+  return !isGpt5Family(model);
+}
+
+function priceRefForImageSize(size) {
+  return IMAGE_COST_REFERENCE[size] || null;
+}
+
+function chooseVerbosityForAction(action, text) {
+  if (action === "mark") return "medium";
+  if (action === "revision-plan") return "medium";
+  if (action === "summarise") return "medium";
+  if (action === "diagram") return "medium";
+  return isDetailedPrompt(text) ? "medium" : "low";
+}
+
+function chooseReasoningEffortForRoute(routeDifficulty, action) {
+  if (action === "mark") return "medium";
+  if (routeDifficulty === "hard") return "medium";
+  return "low";
+}
+
+/* =========================
+   Semantic cache helpers
+   Schema-safe: uses response_json metadata
+   ========================= */
+
+const SEMANTIC_STOPWORDS = new Set([
+  "a", "an", "and", "are", "as", "at", "be", "by", "can", "could", "do", "does", "for", "from",
+  "give", "how", "i", "in", "is", "it", "me", "of", "on", "or", "please", "tell", "the", "this",
+  "to", "what", "when", "where", "which", "who", "why", "with", "would", "you", "your", "about",
+  "explain", "describe", "show", "write", "make", "create", "help", "understand", "work", "works"
+]);
+
+function semanticPreNormalize(text) {
+  let s = String(text || "").toLowerCase();
+  s = s.replace(/what is /g, " ");
+  s = s.replace(/how does /g, " ");
+  s = s.replace(/tell me about /g, " ");
+  s = s.replace(/can you /g, " ");
+  s = s.replace(/please /g, " ");
+  s = s.replace(/step by step/g, " ");
+  s = s.replace(/past paper/g, " pastpaper ");
+  s = s.replace(/mark scheme/g, " markscheme ");
+  s = s.replace(/6 marker/g, " 6marker ");
+  s = s.replace(/12 marker/g, " 12marker ");
+  s = s.replace(/photosynthetic/g, " photosynthesis ");
+  s = s.replace(/respiring/g, " respiration ");
+  s = s.replace(/organisms/g, " organism ");
+  s = s.replace(/cells/g, " cell ");
+  s = s.replace(/equations/g, " equation ");
+  s = s.replace(/diagrams/g, " diagram ");
+  s = s.replace(/summarise/g, " summary ");
+  s = s.replace(/summarize/g, " summary ");
+  s = s.replace(/flashcards/g, " flashcard ");
+  s = s.replace(/revision plan/g, " revisionplan ");
+  s = s.replace(/[^a-z0-9\s]/g, " ");
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+function stemSemanticToken(token) {
+  let t = String(token || "").trim();
+  if (!t) return "";
+  if (t.length > 6 && t.endsWith("ing")) t = t.slice(0, -3);
+  else if (t.length > 5 && t.endsWith("ed")) t = t.slice(0, -2);
+  else if (t.length > 5 && t.endsWith("es")) t = t.slice(0, -2);
+  else if (t.length > 4 && t.endsWith("s")) t = t.slice(0, -1);
+  return t;
+}
+
+function semanticTokens(text) {
+  const raw = semanticPreNormalize(text);
+  if (!raw) return [];
+  const out = [];
+  const seen = new Set();
+
+  for (const part of raw.split(" ")) {
+    const t = stemSemanticToken(part);
+    if (!t) continue;
+    if (SEMANTIC_STOPWORDS.has(t)) continue;
+    if (t.length < 2) continue;
+    if (seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+
+  out.sort();
+  return out;
+}
+
+function semanticNormalizeText(text) {
+  return semanticTokens(text).join(" ");
+}
+
+function semanticSimilarity(aText, bText) {
+  const a = new Set(semanticTokens(aText));
+  const b = new Set(semanticTokens(bText));
+
+  if (!a.size || !b.size) return { score: 0, jaccard: 0, containment: 0 };
+
+  let intersection = 0;
+  for (const item of a) {
+    if (b.has(item)) intersection++;
+  }
+
+  const union = new Set([...a, ...b]).size;
+  const jaccard = union ? intersection / union : 0;
+  const containment = intersection / Math.min(a.size, b.size);
+  const score = (jaccard * 0.45) + (containment * 0.55);
+
+  return { score, jaccard, containment };
+}
+
+function semanticMatchGoodEnough(currentText, candidateText) {
+  const currentTokens = semanticTokens(currentText);
+  const candidateTokens = semanticTokens(candidateText);
+
+  if (!currentTokens.length || !candidateTokens.length) return false;
+  if (currentTokens.length < 2 || candidateTokens.length < 2) {
+    return currentTokens.join(" ") === candidateTokens.join(" ");
+  }
+
+  const { score, containment } = semanticSimilarity(currentText, candidateText);
+  return score >= 0.84 || containment >= 0.9;
+}
+
+function qualityBucketForModel(model) {
+  return model === MODELS.CHAT_SMART ? "smart" : "fast";
+}
+
+function tierBucketForTier(tier) {
+  return tier === "free" ? "free" : "paid";
+}
+
+function exactCacheKey({ action, tier, model, question }) {
+  return `exact:${hashText(JSON.stringify({
+    v: SEMANTIC_CACHE_VERSION,
+    action,
+    tier: tierBucketForTier(tier),
+    quality: qualityBucketForModel(model),
+    q: String(question || "").trim(),
+  }))}`;
+}
+
+function semanticCacheKey({ action, tier, model, question }) {
+  return `semantic:${hashText(JSON.stringify({
+    v: SEMANTIC_CACHE_VERSION,
+    action,
+    tier: tierBucketForTier(tier),
+    quality: qualityBucketForModel(model),
+    q: semanticNormalizeText(question),
+  }))}`;
+}
+
+function cacheMetaFor({ action, tier, model, question }) {
+  return {
+    version: SEMANTIC_CACHE_VERSION,
+    action,
+    tier_bucket: tierBucketForTier(tier),
+    quality_bucket: qualityBucketForModel(model),
+    semantic_prompt: semanticNormalizeText(question),
+    question_preview: String(question || "").slice(0, 200),
+  };
+}
+
+function stripPrivateCacheMeta(payload) {
+  const obj = asJsonObject(payload);
+  if (!obj) return payload;
+  const cloned = deepCloneJson(obj);
+  delete cloned._cache_meta;
+  return cloned;
 }
 
 /* =========================
@@ -594,6 +799,64 @@ async function setCachedResponse(cacheKey, responseJson) {
   }
 }
 
+async function getRecentSemanticCacheCandidates(limit = SEMANTIC_CACHE_SCAN_LIMIT) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.cache)
+      .select("cache_key,response_json,updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+
+    if (error || !Array.isArray(data)) return [];
+    return data;
+  } catch (_) {
+    return [];
+  }
+}
+
+async function getBestSemanticCachedResponse({ action, tier, model, question }) {
+  const currentSemantic = semanticNormalizeText(question);
+  if (!currentSemantic) return null;
+
+  const candidates = await getRecentSemanticCacheCandidates();
+  let best = null;
+
+  for (const row of candidates) {
+    const payload = asJsonObject(row?.response_json);
+    if (!payload) continue;
+
+    const meta = payload?._cache_meta;
+    if (!isObject(meta)) continue;
+    if (meta.version !== SEMANTIC_CACHE_VERSION) continue;
+    if (meta.action !== action) continue;
+    if (meta.tier_bucket !== tierBucketForTier(tier)) continue;
+    if (meta.quality_bucket !== qualityBucketForModel(model)) continue;
+
+    const candidateSemantic = String(meta.semantic_prompt || "");
+    if (!candidateSemantic) continue;
+    if (!semanticMatchGoodEnough(currentSemantic, candidateSemantic)) continue;
+
+    const sim = semanticSimilarity(currentSemantic, candidateSemantic);
+
+    if (!best || sim.score > best.score) {
+      best = {
+        score: sim.score,
+        row,
+        payload,
+      };
+    }
+  }
+
+  if (!best) return null;
+
+  const cleaned = stripPrivateCacheMeta(best.payload);
+  if (isObject(cleaned)) {
+    cleaned.cache_hit = "semantic";
+    cleaned.cache_similarity = Number(best.score.toFixed(3));
+  }
+  return cleaned;
+}
+
 /* =========================
    Attachments
    ========================= */
@@ -727,7 +990,7 @@ function systemPromptFor(userId, action, question, attachmentsPresent, weakTopic
   );
 }
 
-function actionInstruction(action, body) {
+function actionInstruction(action) {
   if (action === "flashcards") {
     return (
       "Generate useful revision flashcards. " +
@@ -782,8 +1045,26 @@ function actionInstruction(action, body) {
   return "Answer the user's request naturally and helpfully. Plain text only.";
 }
 
+function buildRouterSystemPrompt() {
+  return (
+    "You are a routing classifier for an education AI endpoint. " +
+    "Return JSON only. " +
+    'Shape: {"difficulty":"simple"|"hard","reason":"short reason","recommended_action":"chat"|"flashcards"|"mark"|"diagram"|"summarise"|"revision-plan"|"weakness"}'
+  );
+}
+
+function buildImageLabelPrompt(prompt) {
+  return (
+    "Create a concise label pack for an educational diagram request. " +
+    "Return JSON only in this exact shape: " +
+    '{"title":"","labels":[{"label":"","text":""}]}. ' +
+    "Use short textbook-style labels only. " +
+    `Request: ${String(prompt || "").trim()}`
+  );
+}
+
 /* =========================
-   OpenAI
+   OpenAI helpers
    ========================= */
 
 function extractOutputText(resp) {
@@ -812,19 +1093,46 @@ function getUsageTokens(resp) {
   return { input, output, total: input + output };
 }
 
-async function openaiResponsesCall({ model, input, maxOutputTokens, temperature }) {
+function buildResponsesRequestBody({ model, input, maxOutputTokens, temperature, reasoningEffort, verbosity }) {
+  const body = {
+    model,
+    input,
+    max_output_tokens: maxOutputTokens,
+  };
+
+  if (supportsTemperature(model) && typeof temperature === "number") {
+    body.temperature = temperature;
+  }
+
+  if (isGpt5Family(model)) {
+    if (reasoningEffort) {
+      body.reasoning = { effort: reasoningEffort };
+    }
+    if (verbosity) {
+      body.text = { ...(body.text || {}), verbosity };
+    }
+  }
+
+  return body;
+}
+
+async function openaiResponsesCall({ model, input, maxOutputTokens, temperature, reasoningEffort, verbosity }) {
+  const requestBody = buildResponsesRequestBody({
+    model,
+    input,
+    maxOutputTokens,
+    temperature,
+    reasoningEffort,
+    verbosity,
+  });
+
   const resp = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
-    body: JSON.stringify({
-      model,
-      input,
-      max_output_tokens: maxOutputTokens,
-      temperature: typeof temperature === "number" ? temperature : 0.7,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   const data = await resp.json().catch(() => ({}));
@@ -882,6 +1190,253 @@ async function openaiImageGenerate({ prompt, size, userId }) {
   if (url) return { imageUrl: url, usage };
 
   throw new Error("Image generated but no image data returned");
+}
+
+/* =========================
+   Router / label helpers
+   ========================= */
+
+function heuristicDifficulty(action, question, attachmentsPresent) {
+  const q = String(question || "").toLowerCase();
+  const longPrompt = q.length > 900;
+  const multiQuestion = (q.match(/\?/g) || []).length > 1;
+  const complexTerms = /compare|evaluate|assess|analyse|analyze|argue|justify|essay|12[- ]?marker|16[- ]?marker|mark scheme|revision plan|study plan|weakness|improve my answer|grade this|feedback on my answer/.test(q);
+  const attachmentHeavy = attachmentsPresent && /explain this|analyse this|analyze this|mark this|summarise this|summary|diagram/.test(q);
+
+  if (action === "mark") return "hard";
+  if (action === "revision-plan") return "hard";
+  if (action === "weakness") return "hard";
+  if (action === "diagram" && attachmentsPresent) return "hard";
+  if (longPrompt || multiQuestion || complexTerms || attachmentHeavy) return "hard";
+
+  return "simple";
+}
+
+function isLikelyDiagramPrompt(prompt) {
+  const q = String(prompt || "").toLowerCase();
+  return /diagram|label|biology|cell|chloroplast|leaf|heart|lungs|photosynthesis|plant|gcse|science|structure|arrow|process|annotate/.test(q);
+}
+
+async function maybeSpendUsage({ userId, month, model, usage }) {
+  const tokens = getUsageTokens({ usage });
+  if (tokens.total <= 0) return;
+  await bumpMonthlyUsage({
+    userId,
+    month,
+    model,
+    addInput: tokens.input,
+    addOutput: tokens.output,
+  });
+  await bumpCostUsage(userId, month, tokens.total);
+}
+
+async function runFastRouterModel({ userId, tier, month, action, question, attachmentsPresent }) {
+  const allowance = await checkMonthlyTokenAllowance({
+    userId,
+    tier,
+    month,
+    model: MODELS.CHAT_FAST,
+    expectedMaxSpend: ROUTER_EXPECTED_SPEND,
+  });
+
+  if (!allowance.ok) {
+    return {
+      difficulty: heuristicDifficulty(action, question, attachmentsPresent),
+      source: "heuristic-no-fast-router-budget",
+      reason: "Skipped router due to remaining fast-model budget.",
+      usage: { input: 0, output: 0, total: 0 },
+    };
+  }
+
+  const input = [
+    {
+      role: "system",
+      content: [{ type: "input_text", text: buildRouterSystemPrompt() }],
+    },
+    {
+      role: "user",
+      content: [{
+        type: "input_text",
+        text: JSON.stringify({
+          action,
+          question: String(question || ""),
+          attachments_present: !!attachmentsPresent,
+        }),
+      }],
+    },
+  ];
+
+  try {
+    const resp = await openaiResponsesCall({
+      model: MODELS.CHAT_FAST,
+      input,
+      maxOutputTokens: ROUTER_MAX_OUTPUT_TOKENS,
+      temperature: 0,
+      verbosity: "low",
+    });
+
+    const raw = cleanReplyText(extractOutputText(resp) || "");
+    const parsed = tryParseJsonLoose(raw);
+    const usage = getUsageTokens(resp);
+
+    await bumpMonthlyUsage({
+      userId,
+      month,
+      model: MODELS.CHAT_FAST,
+      addInput: usage.input,
+      addOutput: usage.output,
+    });
+    await bumpCostUsage(userId, month, usage.total);
+
+    const difficulty = parsed?.difficulty === "hard" ? "hard" : "simple";
+    const reason = String(parsed?.reason || "").trim() || "Router classified the request.";
+    const recommendedAction = String(parsed?.recommended_action || action).trim() || action;
+
+    return {
+      difficulty,
+      source: "gpt-4o-mini-router",
+      reason,
+      recommendedAction,
+      usage,
+    };
+  } catch (_) {
+    return {
+      difficulty: heuristicDifficulty(action, question, attachmentsPresent),
+      source: "heuristic-router-fallback",
+      reason: "Router fallback used.",
+      usage: { input: 0, output: 0, total: 0 },
+    };
+  }
+}
+
+async function chooseMainModelForRequest({ userId, tier, month, action, question, attachmentsPresent }) {
+  const heuristic = heuristicDifficulty(action, question, attachmentsPresent);
+
+  if (tier === "free") {
+    return {
+      model: MODELS.CHAT_FAST,
+      difficulty: heuristic,
+      source: "free-fast-only",
+      reason: "Free tier uses gpt-4o-mini only.",
+      router_usage: { input: 0, output: 0, total: 0 },
+      reasoning_effort: "low",
+      verbosity: chooseVerbosityForAction(action, question),
+    };
+  }
+
+  const fastAllowance = await checkMonthlyTokenAllowance({
+    userId,
+    tier,
+    month,
+    model: MODELS.CHAT_FAST,
+    expectedMaxSpend: ROUTER_EXPECTED_SPEND,
+  });
+
+  const smartAllowance = await checkMonthlyTokenAllowance({
+    userId,
+    tier,
+    month,
+    model: MODELS.CHAT_SMART,
+    expectedMaxSpend: maxOutputTokensForAction(action, question),
+  });
+
+  if (!fastAllowance.ok && smartAllowance.ok) {
+    return {
+      model: MODELS.CHAT_SMART,
+      difficulty: "hard",
+      source: "fallback-smart-no-fast-budget",
+      reason: "Fast-model budget unavailable, so the request uses gpt-5-mini.",
+      router_usage: { input: 0, output: 0, total: 0 },
+      reasoning_effort: "medium",
+      verbosity: chooseVerbosityForAction(action, question),
+    };
+  }
+
+  const router = await runFastRouterModel({
+    userId,
+    tier,
+    month,
+    action,
+    question,
+    attachmentsPresent,
+  });
+
+  let selectedModel = MODELS.CHAT_FAST;
+  if (router.difficulty === "hard" && smartAllowance.ok) {
+    selectedModel = MODELS.CHAT_SMART;
+  } else if (!fastAllowance.ok && smartAllowance.ok) {
+    selectedModel = MODELS.CHAT_SMART;
+  } else {
+    selectedModel = MODELS.CHAT_FAST;
+  }
+
+  return {
+    model: selectedModel,
+    difficulty: router.difficulty,
+    source: router.source,
+    reason: router.reason,
+    router_usage: router.usage || { input: 0, output: 0, total: 0 },
+    reasoning_effort: chooseReasoningEffortForRoute(router.difficulty, action),
+    verbosity: chooseVerbosityForAction(action, question),
+  };
+}
+
+async function maybeGenerateImageLabels({ userId, tier, month, prompt }) {
+  if (!isLikelyDiagramPrompt(prompt)) return null;
+
+  const allowance = await checkMonthlyTokenAllowance({
+    userId,
+    tier,
+    month,
+    model: MODELS.CHAT_FAST,
+    expectedMaxSpend: IMAGE_LABELS_EXPECTED_SPEND,
+  });
+
+  if (!allowance.ok) return null;
+
+  try {
+    const resp = await openaiResponsesCall({
+      model: MODELS.CHAT_FAST,
+      input: [
+        {
+          role: "system",
+          content: [{
+            type: "input_text",
+            text: "Return JSON only. Keep labels short and clean for GCSE diagrams.",
+          }],
+        },
+        {
+          role: "user",
+          content: [{
+            type: "input_text",
+            text: buildImageLabelPrompt(prompt),
+          }],
+        },
+      ],
+      maxOutputTokens: 350,
+      temperature: 0.2,
+      verbosity: "low",
+    });
+
+    const raw = cleanReplyText(extractOutputText(resp) || "");
+    const parsed = tryParseJsonLoose(raw);
+    const usage = getUsageTokens(resp);
+
+    await bumpMonthlyUsage({
+      userId,
+      month,
+      model: MODELS.CHAT_FAST,
+      addInput: usage.input,
+      addOutput: usage.output,
+    });
+    await bumpCostUsage(userId, month, usage.total);
+
+    const normalized = normalizeImageLabels(parsed);
+    if (!normalized || !normalized.labels.length) return null;
+    return normalized;
+  } catch (_) {
+    return null;
+  }
 }
 
 /* =========================
@@ -1010,6 +1565,20 @@ function normalizeWeakness(parsed) {
   };
 }
 
+function normalizeImageLabels(parsed) {
+  const labels = Array.isArray(parsed?.labels) ? parsed.labels : [];
+  return {
+    title: String(parsed?.title || "").trim(),
+    labels: labels
+      .map((x) => ({
+        label: String(x?.label || "").trim(),
+        text: String(x?.text || "").trim(),
+      }))
+      .filter((x) => x.label && x.text)
+      .slice(0, 12),
+  };
+}
+
 /* =========================
    Fallback builders
    ========================= */
@@ -1048,6 +1617,75 @@ function fallbackWeakness(rawReply) {
     advice: rawReply || "",
     topic: null,
   };
+}
+
+/* =========================
+   Streaming helpers
+   Optional: send body.stream = true for action=chat
+   ========================= */
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function sendSseEvent(res, event, data) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function chunkTextForStream(text, target = 18) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  const chunks = [];
+  let current = "";
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length >= target) {
+      chunks.push(next + " ");
+      current = "";
+    } else {
+      current = next;
+    }
+  }
+
+  if (current) chunks.push(current);
+  if (!chunks.length && text) chunks.push(String(text));
+
+  return chunks;
+}
+
+async function streamFinalChatResponse(res, finalResponse) {
+  const reply = String(finalResponse?.reply || "");
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
+
+  sendSseEvent(res, "meta", {
+    action: finalResponse.action,
+    tier: finalResponse.tier,
+    model_used: finalResponse.model_used,
+    routing: finalResponse.routing,
+  });
+
+  let built = "";
+  const chunks = chunkTextForStream(reply, 20);
+
+  for (const chunk of chunks) {
+    built += chunk;
+    sendSseEvent(res, "delta", { delta: chunk, text: built });
+    await sleep(16);
+  }
+
+  sendSseEvent(res, "done", finalResponse);
+  res.end();
 }
 
 /* =========================
@@ -1118,20 +1756,19 @@ module.exports = async function handler(req, res) {
       };
 
       if (imgUsage.total_tokens > 0) {
-        const modelForTokens = chooseDefaultChatModel(tier);
-        const allowance = await checkMonthlyTokenAllowance({
+        const fastAllowance = await checkMonthlyTokenAllowance({
           userId,
           tier,
           month,
-          model: modelForTokens,
+          model: MODELS.CHAT_FAST,
           expectedMaxSpend: 1,
         });
 
-        if (allowance.ok) {
+        if (fastAllowance.ok) {
           await bumpMonthlyUsage({
             userId,
             month,
-            model: modelForTokens,
+            model: MODELS.CHAT_FAST,
             addInput: imgUsage.input_tokens,
             addOutput: imgUsage.output_tokens,
           });
@@ -1139,6 +1776,11 @@ module.exports = async function handler(req, res) {
 
         await bumpCostUsage(userId, month, imgUsage.total_tokens);
       }
+
+      const imageLabels =
+        body.return_labels === false
+          ? null
+          : await maybeGenerateImageLabels({ userId, tier, month, prompt });
 
       const imageCount = await loadMonthlyImageCount({ userId, month, model: MODELS.IMAGE });
 
@@ -1150,6 +1792,10 @@ module.exports = async function handler(req, res) {
         month,
         remaining_images: Math.max(0, Number(plan.imagesPerMonth) - Number(imageCount.count)),
         usage: imgUsage,
+        approx_image_cost_usd: priceRefForImageSize(size),
+        image_title: imageLabels?.title || null,
+        image_labels: imageLabels?.labels || [],
+        label_mode: imageLabels?.labels?.length ? "blank-image-plus-text-labels" : "blank-image-only",
         ...(wantsDebug && (ALLOW_DEBUG || String(userId) === OWNER_USER_ID)
           ? { debug: { userId, tier, clientIp, suspiciousUa, throttle } }
           : {}),
@@ -1180,29 +1826,9 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const model = chooseDefaultChatModel(tier);
-    const maxOutputTokens = maxOutputTokensForAction(action, question);
-
-    const allowance = await checkMonthlyTokenAllowance({
-      userId,
-      tier,
-      month,
-      model,
-      expectedMaxSpend: maxOutputTokens,
-    });
-
-    if (!allowance.ok) {
-      return json(res, 429, {
-        error: upgradeOutOfUsageMessage(),
-        ...(wantsDebug && (ALLOW_DEBUG || String(userId) === OWNER_USER_ID)
-          ? { debug: { allowance, model, tier } }
-          : {}),
-      });
-    }
-
     const weakTopics = await getWeakTopics(userId, 6);
     const sys = systemPromptFor(userId, action, question, attachmentsPresent, weakTopics);
-    const instruction = actionInstruction(action, body);
+    const instruction = actionInstruction(action);
 
     let userText = question;
 
@@ -1235,6 +1861,54 @@ module.exports = async function handler(req, res) {
       return json(res, 400, { error: e.message || "Bad attachment" });
     }
 
+    const routing = await chooseMainModelForRequest({
+      userId,
+      tier,
+      month,
+      action,
+      question: userText,
+      attachmentsPresent,
+    });
+
+    let model = routing.model;
+    const maxOutputTokens = maxOutputTokensForAction(action, question);
+
+    let allowance = await checkMonthlyTokenAllowance({
+      userId,
+      tier,
+      month,
+      model,
+      expectedMaxSpend: maxOutputTokens,
+    });
+
+    if (!allowance.ok && model === MODELS.CHAT_SMART) {
+      const fastFallbackAllowance = await checkMonthlyTokenAllowance({
+        userId,
+        tier,
+        month,
+        model: MODELS.CHAT_FAST,
+        expectedMaxSpend: maxOutputTokens,
+      });
+
+      if (fastFallbackAllowance.ok) {
+        model = MODELS.CHAT_FAST;
+      } else {
+        return json(res, 429, {
+          error: upgradeOutOfUsageMessage(),
+          ...(wantsDebug && (ALLOW_DEBUG || String(userId) === OWNER_USER_ID)
+            ? { debug: { allowance, model, tier } }
+            : {}),
+        });
+      }
+    } else if (!allowance.ok) {
+      return json(res, 429, {
+        error: upgradeOutOfUsageMessage(),
+        ...(wantsDebug && (ALLOW_DEBUG || String(userId) === OWNER_USER_ID)
+          ? { debug: { allowance, model, tier } }
+          : {}),
+      });
+    }
+
     const history = sanitizeHistory(body.history);
     const memory = await loadConversationMemory(userId, 8);
 
@@ -1245,10 +1919,32 @@ module.exports = async function handler(req, res) {
       String(userId) !== OWNER_USER_ID &&
       isStudyRelated(question);
 
-    const cacheKey = cacheEligible ? hashText(JSON.stringify({ action, tier, model, q: question })) : null;
-    if (cacheKey) {
-      const cached = await getCachedResponse(cacheKey);
-      if (cached) return json(res, 200, cached);
+    const currentExactCacheKey = cacheEligible
+      ? exactCacheKey({ action, tier, model, question })
+      : null;
+
+    const currentSemanticCacheKey = cacheEligible
+      ? semanticCacheKey({ action, tier, model, question })
+      : null;
+
+    if (currentExactCacheKey) {
+      const exactCached = await getCachedResponse(currentExactCacheKey);
+      if (exactCached) {
+        const cleaned = stripPrivateCacheMeta(exactCached);
+        if (isObject(cleaned)) cleaned.cache_hit = "exact";
+        return json(res, 200, cleaned);
+      }
+
+      const semanticCached = await getBestSemanticCachedResponse({
+        action,
+        tier,
+        model,
+        question,
+      });
+
+      if (semanticCached) {
+        return json(res, 200, semanticCached);
+      }
     }
 
     const inputPayload = [
@@ -1262,7 +1958,9 @@ module.exports = async function handler(req, res) {
       model,
       input: inputPayload,
       maxOutputTokens,
-      temperature: action === "mark" ? 0.2 : 0.7,
+      temperature: supportsTemperature(model) ? (action === "mark" ? 0.2 : 0.7) : undefined,
+      reasoningEffort: isGpt5Family(model) ? routing.reasoning_effort : undefined,
+      verbosity: isGpt5Family(model) ? routing.verbosity : undefined,
     });
 
     let rawReply = extractOutputText(aiResponse) || "";
@@ -1336,6 +2034,12 @@ module.exports = async function handler(req, res) {
       month,
       action,
       model_used: model,
+      routing: {
+        selected_model: model,
+        difficulty: routing.difficulty,
+        source: routing.source,
+        reason: routing.reason,
+      },
       usage: {
         input_tokens: usage.input,
         output_tokens: usage.output,
@@ -1343,8 +2047,8 @@ module.exports = async function handler(req, res) {
       },
     };
 
-    const remainingFree = getMonthlyLimitForModel(tier, "gpt-4o-mini");
-    const remainingPaid = getMonthlyLimitForModel(tier, "gpt-5-mini");
+    const remainingFast = getMonthlyLimitForModel(tier, MODELS.CHAT_FAST);
+    const remainingSmart = getMonthlyLimitForModel(tier, MODELS.CHAT_SMART);
 
     async function remainingFor(modelName, limit) {
       if (!Number.isFinite(limit) || limit <= 0) return 0;
@@ -1353,8 +2057,8 @@ module.exports = async function handler(req, res) {
     }
 
     finalResponse.remaining_tokens = {
-      "gpt-4o-mini": await remainingFor("gpt-4o-mini", remainingFree),
-      "gpt-5-mini": await remainingFor("gpt-5-mini", remainingPaid),
+      [MODELS.CHAT_FAST]: await remainingFor(MODELS.CHAT_FAST, remainingFast),
+      [MODELS.CHAT_SMART]: await remainingFor(MODELS.CHAT_SMART, remainingSmart),
     };
 
     finalResponse.attachments = {
@@ -1376,8 +2080,20 @@ module.exports = async function handler(req, res) {
 
     await saveConversationMessage(userId, "assistant", assistantLog, action);
 
-    if (cacheKey && action === "chat" && responsePayload.reply) {
-      await setCachedResponse(cacheKey, finalResponse);
+    if (cacheEligible && responsePayload.reply) {
+      const meta = cacheMetaFor({ action, tier, model, question });
+      const cachedCopy = {
+        ...deepCloneJson(finalResponse),
+        _cache_meta: meta,
+      };
+
+      if (currentExactCacheKey) {
+        await setCachedResponse(currentExactCacheKey, cachedCopy);
+      }
+
+      if (currentSemanticCacheKey && currentSemanticCacheKey !== currentExactCacheKey) {
+        await setCachedResponse(currentSemanticCacheKey, cachedCopy);
+      }
     }
 
     if (wantsDebug && (ALLOW_DEBUG || String(userId) === OWNER_USER_ID)) {
@@ -1387,8 +2103,13 @@ module.exports = async function handler(req, res) {
         suspiciousUa,
         throttle,
         weakTopics,
+        router_usage: routing.router_usage || { input: 0, output: 0, total: 0 },
         authHint: "Use Authorization: Bearer <token>",
       };
+    }
+
+    if (body.stream === true && action === "chat" && typeof finalResponse.reply === "string") {
+      return await streamFinalChatResponse(res, finalResponse);
     }
 
     return json(res, 200, finalResponse);
