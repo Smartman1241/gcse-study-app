@@ -288,9 +288,7 @@ function isGpt5Family(model) {
   return /^gpt-5/i.test(String(model || ""));
 }
 
-function supportsTemperature(model) {
-  return !isGpt5Family(model);
-}
+
 
 function priceRefForImageSize(size) {
   return IMAGE_COST_REFERENCE[size] || null;
@@ -1094,16 +1092,14 @@ function getUsageTokens(resp) {
   return { input, output, total: input + output };
 }
 
-function buildResponsesRequestBody({ model, input, maxOutputTokens, temperature, reasoningEffort, verbosity }) {
+function buildResponsesRequestBody({ model, input, maxOutputTokens, reasoningEffort, verbosity }) {
   const body = {
     model,
     input,
     max_output_tokens: maxOutputTokens,
   };
 
-  if (supportsTemperature(model) && typeof temperature === "number") {
-    body.temperature = temperature;
-  }
+  
 
   if (isGpt5Family(model)) {
     if (reasoningEffort) {
@@ -1117,12 +1113,11 @@ function buildResponsesRequestBody({ model, input, maxOutputTokens, temperature,
   return body;
 }
 
-async function openaiResponsesCall({ model, input, maxOutputTokens, temperature, reasoningEffort, verbosity }) {
+async function openaiResponsesCall({ model, input, maxOutputTokens, reasoningEffort, verbosity }) {
   const requestBody = buildResponsesRequestBody({
     model,
     input,
     maxOutputTokens,
-    temperature,
     reasoningEffort,
     verbosity,
   });
@@ -1272,7 +1267,6 @@ async function runFastRouterModel({ userId, tier, month, action, question, attac
       model: MODELS.CHAT_FAST,
       input,
       maxOutputTokens: ROUTER_MAX_OUTPUT_TOKENS,
-      temperature: 0,
       verbosity: "low",
     });
 
@@ -1415,7 +1409,6 @@ async function maybeGenerateImageLabels({ userId, tier, month, prompt }) {
         },
       ],
       maxOutputTokens: 350,
-      temperature: 0.2,
       verbosity: "low",
     });
 
@@ -1959,7 +1952,6 @@ module.exports = async function handler(req, res) {
       model,
       input: inputPayload,
       maxOutputTokens,
-      temperature: supportsTemperature(model) ? (action === "mark" ? 0.2 : 0.7) : undefined,
       reasoningEffort: isGpt5Family(model) ? routing.reasoning_effort : undefined,
       verbosity: isGpt5Family(model) ? routing.verbosity : undefined,
     });
