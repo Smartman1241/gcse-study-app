@@ -553,15 +553,16 @@ async function loadMonthlyUsage({ userId, month, model }) {
 
 async function bumpMonthlyUsage({ userId, month, model, addInput, addOutput }) {
   const { data, error } = await supabaseAdmin.rpc("ai_usage_atomic_increment", {
-  p_user_id: userId,
-  p_month: month,
-  p_model: model,
-  p_input: Math.max(0, Number(addInput || 0)),
-  p_output: Math.max(0, Number(addOutput || 0)),
-});
+    p_user_id: userId,
+    p_month: month,
+    p_model: model,
+    p_input: Math.max(0, Number(addInput || 0)),
+    p_output: Math.max(0, Number(addOutput || 0)),
+  });
 
-if (error) throw new Error(`Atomic usage update failed: ${error.message}`);
-return { usedAfter: Number(data || 0) };
+  if (error) throw new Error(`Atomic usage update failed: ${error.message}`);
+  return { usedAfter: Number(data || 0) };
+}
 
 async function loadUploadsCount({ userId, month }) {
   const { data, error } = await supabaseAdmin
