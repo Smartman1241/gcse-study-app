@@ -2114,3 +2114,4 @@ module.exports = async function handler(req, res) {
     error: "AI request failed. Please try again later."
   });
 }
+}
