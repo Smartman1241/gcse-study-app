@@ -326,11 +326,6 @@ if (existing) {
   return;
 }
 
-  if(existing){
-    els.signupMsg.textContent="Username already taken.";
-    return;
-  }
-
   const { data, error } = await supabaseClient.auth.signUp({
     email: emailVal,
     password: passwordVal
@@ -351,9 +346,10 @@ if (existing) {
       });
 
     if(insertError){
-      els.signupMsg.textContent="Username already taken.";
-      return;
-    }
+  console.error(insertError);
+  els.signupMsg.textContent="Error creating account. Please try again.";
+  return;
+}
   }
 
   els.signupMsg.classList.add("success");
@@ -366,7 +362,7 @@ async function resetPassword(){
   const { error } =
     await supabaseClient.auth.resetPasswordForEmail(
       els.resetEmail.value.trim(),
-      { redirectTo: window.location.origin + "/index.html" + "/index.html" }
+      { redirectTo: window.location.origin + "/index.html" }
     );
 
   if(error){
