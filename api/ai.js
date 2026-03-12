@@ -651,7 +651,7 @@ const { error: upErr } = await supabaseAdmin
 
 if (upErr) throw new Error(`Upsert ai_throttle_minute failed: ${upErr.message}`);
 return { ok: true, bucket, count: next };
-
+}
 async function checkMonthlyTokenAllowance({ userId, tier, month, model, expectedMaxSpend }) {
   const limit = getMonthlyLimitForModel(tier, model);
   if (limit <= 0) return { ok: false, remaining: 0, reason: "not-in-plan" };
