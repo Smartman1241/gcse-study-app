@@ -1739,7 +1739,7 @@ module.exports = async function handler(req, res) {
         return json(res, 429, { error: "You have reached your monthly image generation limit." });
       }
 
-      const size = DEFAULT_IMAGE_SIZE;
+      const size = parseImageSize(body.size);
       const result = await openaiImageGenerate({ prompt, size, userId });
 
       await bumpMonthlyImageCount({ userId, month, model: MODELS.IMAGE, inc: 1 });
