@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="theme.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ReviseFlow — Sign In</title>
@@ -90,8 +89,6 @@ button:hover{
   transform:translateY(-2px);
 }
 
-/* ===== Premium Google Button ===== */
-
 .google-btn{
   background:#ffffff;
   color:#1f1f1f;
@@ -114,8 +111,6 @@ button:hover{
   background:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg") no-repeat center;
   background-size:contain;
 }
-
-/* =============================== */
 
 .link{
   margin-top:14px;
@@ -174,7 +169,6 @@ footer span{
 }
 </style>
 </head>
-
 <body>
 
 <div class="auth-container">
@@ -183,7 +177,6 @@ footer span{
 <div class="subtitle">Smarter revision. Real progress.</div>
 
 <div id="signin">
-
   <button class="google-btn" onclick="signInWithGoogle()">
     <span class="google-icon"></span>
     Continue with Google
@@ -234,154 +227,128 @@ footer span{
 <script>
 const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-window.supabaseClient =
-  supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-const supabaseClient = window.supabaseClient;
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const els = {
   signin: document.getElementById("signin"),
   signup: document.getElementById("signup"),
   reset: document.getElementById("reset"),
-
   email: document.getElementById("email"),
   password: document.getElementById("password"),
   signinMsg: document.getElementById("signinMsg"),
-
   signupUsername: document.getElementById("signupUsername"),
   signupEmail: document.getElementById("signupEmail"),
   signupPassword: document.getElementById("signupPassword"),
   signupMsg: document.getElementById("signupMsg"),
-
   resetEmail: document.getElementById("resetEmail"),
   resetMsg: document.getElementById("resetMsg"),
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) window.location.href = "index.html";
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) window.location.href = "index.html";
+  } catch(e) {
+    console.error("Session check failed:", e);
+  }
 });
 
-function showSignup(){
-  els.signin.classList.add("hidden");
-  els.reset.classList.add("hidden");
-  els.signup.classList.remove("hidden");
-}
-
-function showSignin(){
-  els.signup.classList.add("hidden");
-  els.reset.classList.add("hidden");
-  els.signin.classList.remove("hidden");
-}
-
-function showReset(){
-  els.signin.classList.add("hidden");
-  els.signup.classList.add("hidden");
-  els.reset.classList.remove("hidden");
-}
+function showSignup(){ els.signin.classList.add("hidden"); els.reset.classList.add("hidden"); els.signup.classList.remove("hidden"); }
+function showSignin(){ els.signup.classList.add("hidden"); els.reset.classList.add("hidden"); els.signin.classList.remove("hidden"); }
+function showReset(){ els.signin.classList.add("hidden"); els.signup.classList.add("hidden"); els.reset.classList.remove("hidden"); }
 
 async function signIn(){
   els.signinMsg.textContent="";
-
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email: els.email.value.trim(),
-    password: els.password.value
-  });
-
-  if(error){
-    els.signinMsg.textContent=error.message;
-  } else {
-    window.location.href="index.html";
+  try {
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email: els.email.value.trim(),
+      password: els.password.value
+    });
+    if(error) els.signinMsg.textContent=error.message;
+    else window.location.href="index.html";
+  } catch(e) {
+    console.error("Sign in failed:", e);
+    els.signinMsg.textContent="Unexpected error during sign in.";
   }
 }
 
 async function signUp(){
   els.signupMsg.textContent="";
+  const username = els.signupUsername.value.trim();
+  const emailVal = els.signupEmail.value.trim();
+  const passwordVal = els.signupPassword.value;
 
-  const username=els.signupUsername.value.trim();
-  const emailVal=els.signupEmail.value.trim();
-  const passwordVal=els.signupPassword.value;
+  if(!username){ els.signupMsg.textContent="Please choose a username."; return; }
 
-  if(!username){
-    els.signupMsg.textContent="Please choose a username.";
-    return;
-  }
+  try {
+    // Check for existing username
+    const { data: existing, error: checkError } = await supabaseClient
+      .from("user_settings")
+      .select("user_id")
+      .ilike("username", username)
+      .maybeSingle();
 
-  const { data: existing, error: checkError } =
-  await supabaseClient
-    .from("user_settings")
-    .select("user_id")
-    .ilike("username", username)
-    .maybeSingle();
+    if(checkError){ els.signupMsg.textContent="Unable to verify username right now."; return; }
+    if(existing){ els.signupMsg.textContent="Username already taken."; return; }
 
-if (checkError) {
-  els.signupMsg.textContent =
-    "Unable to verify username right now.";
-  return;
-}
+    // Signup user
+    const { data, error } = await supabaseClient.auth.signUp({ email: emailVal, password: passwordVal });
 
-if (existing) {
-  els.signupMsg.textContent =
-    "Username already taken.";
-  return;
-}
+    if(error){
+      console.error("Supabase signup error:", error);
+      els.signupMsg.textContent=error.message || "Error creating account.";
+      return;
+    }
 
-  const { data, error } = await supabaseClient.auth.signUp({
-    email: emailVal,
-    password: passwordVal
-  });
-
-  if(error){
-    els.signupMsg.textContent=error.message;
-    return;
-  }
-
-  if(data.user){
-    const { error: insertError } =
-      await supabaseClient.from("user_settings").insert({
-        user_id:data.user.id,
-        username:username,
-        tier:"free",
-        role:"user"
+    if(data.user){
+      // Insert into user_settings
+      const { error: insertError } = await supabaseClient.from("user_settings").insert({
+        user_id: data.user.id,
+        username: username,
+        tier: "free",
+        role: "user"
       });
 
-    if(insertError){
-  console.error(insertError);
-  els.signupMsg.textContent="Error creating account. Please try again.";
-  return;
-}
-  }
+      if(insertError){
+        console.error("User settings insert failed:", insertError);
+        els.signupMsg.textContent="Error creating account settings. Try again later.";
+        return;
+      }
 
-  els.signupMsg.classList.add("success");
-  els.signupMsg.textContent="Account created. You can now sign in.";
+      els.signupMsg.classList.add("success");
+      els.signupMsg.textContent="Account created successfully. You can now sign in.";
+    }
+  } catch(e){
+    console.error("Signup exception:", e);
+    els.signupMsg.textContent="Unexpected error during signup.";
+  }
 }
 
 async function resetPassword(){
   els.resetMsg.textContent="";
-
-  const { error } =
-    await supabaseClient.auth.resetPasswordForEmail(
+  try {
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(
       els.resetEmail.value.trim(),
       { redirectTo: window.location.origin + "/index.html" }
     );
-
-  if(error){
-    els.resetMsg.textContent=error.message;
-  } else {
-    els.resetMsg.classList.add("success");
-    els.resetMsg.textContent="Reset email sent.";
+    if(error) els.resetMsg.textContent=error.message;
+    else { els.resetMsg.classList.add("success"); els.resetMsg.textContent="Reset email sent."; }
+  } catch(e){
+    console.error("Password reset failed:", e);
+    els.resetMsg.textContent="Unexpected error sending reset email.";
   }
 }
 
 async function signInWithGoogle(){
-  const { error } =
-    await supabaseClient.auth.signInWithOAuth({
+  try {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
       provider:"google",
       options:{ redirectTo: window.location.origin }
     });
-
-  if(error){
-    alert("Google sign in failed.");
+    if(error) alert("Google sign in failed: " + error.message);
+  } catch(e){
+    console.error("Google OAuth failed:", e);
+    alert("Google sign in failed unexpectedly.");
   }
 }
 </script>
