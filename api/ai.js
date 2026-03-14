@@ -2111,4 +2111,5 @@ module.exports = async function handler(req, res) {
 } catch (error) {
   console.error("AI endpoint server error:", error);
   return json(res, 500, { error: "AI request failed. Please try again later." });
+}
 };
