@@ -29,7 +29,6 @@ body{
   display:flex;
   justify-content:center;
   align-items:center;
-  overflow:hidden;
 }
 
 .auth-container{
@@ -40,21 +39,10 @@ body{
   border:1px solid var(--border);
   border-radius:22px;
   box-shadow:0 25px 80px rgba(0,0,0,.5);
-  position:relative;
 }
 
-h1{
-  margin:0;
-  font-size:30px;
-  text-align:center;
-}
-
-.subtitle{
-  text-align:center;
-  color:var(--muted);
-  margin:8px 0 28px;
-  font-size:14px;
-}
+h1{margin:0;text-align:center;font-size:30px}
+.subtitle{margin:8px 0 28px;text-align:center;color:var(--muted)}
 
 input{
   width:100%;
@@ -63,14 +51,7 @@ input{
   border-radius:12px;
   border:1px solid var(--border);
   background:rgba(255,255,255,.05);
-  color:var(--text);
-  font-size:14px;
-  transition:.2s;
-}
-
-input:focus{
-  outline:none;
-  border-color:#8ea2ff;
+  color:white;
 }
 
 button{
@@ -82,34 +63,21 @@ button{
   background:linear-gradient(135deg,#8ea2ff,#46e6b3);
   font-weight:600;
   cursor:pointer;
-  transition:.2s;
-}
-
-button:hover{
-  transform:translateY(-2px);
 }
 
 .google-btn{
-  background:#ffffff;
+  background:white;
   color:#1f1f1f;
   display:flex;
   align-items:center;
   justify-content:center;
   gap:10px;
-  font-weight:600;
-  box-shadow:0 4px 14px rgba(0,0,0,.15);
-}
-
-.google-btn:hover{
-  transform:translateY(-2px);
-  box-shadow:0 6px 18px rgba(0,0,0,.25);
 }
 
 .google-icon{
   width:18px;
   height:18px;
-  background:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg") no-repeat center;
-  background-size:contain;
+  background:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg") center/contain no-repeat;
 }
 
 .link{
@@ -118,57 +86,20 @@ button:hover{
   font-size:14px;
   color:var(--muted);
   cursor:pointer;
-  transition:.2s;
 }
 
-.link:hover{
-  color:white;
-}
-
-.hidden{display:none;}
+.hidden{display:none}
 
 .message{
   margin-top:14px;
-  font-size:14px;
   text-align:center;
   color:#ff7b8f;
 }
 
-.success{color:#46e6b3;}
-
-footer{
-  position:absolute;
-  bottom:25px;
-  width:100%;
-  text-align:center;
-  font-size:13px;
-  color:rgba(255,255,255,.6);
-}
-
-.footer-links{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-}
-
-footer a{
-  color:rgba(255,255,255,.8);
-  text-decoration:none;
-  transition:.2s;
-}
-
-footer a:hover{
-  color:white;
-  text-decoration:underline;
-}
-
-footer span{
-  opacity:.4;
-}
+.success{color:#46e6b3}
 </style>
 </head>
+
 <body>
 
 <div class="auth-container">
@@ -177,180 +108,185 @@ footer span{
 <div class="subtitle">Smarter revision. Real progress.</div>
 
 <div id="signin">
-  <button class="google-btn" onclick="signInWithGoogle()">
-    <span class="google-icon"></span>
-    Continue with Google
-  </button>
 
-  <div style="margin:16px 0; text-align:center; opacity:.6; font-size:13px;">
-    ─── or ───
-  </div>
+<button class="google-btn" onclick="signInWithGoogle()">
+<span class="google-icon"></span>
+Continue with Google
+</button>
 
-  <input id="email" type="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
-  <button onclick="signIn()">Sign In</button>
-  <div class="link" onclick="showSignup()">Create account</div>
-  <div class="link" onclick="showReset()">Forgot password?</div>
-  <div id="signinMsg" class="message"></div>
+<div style="margin:16px 0;text-align:center;opacity:.6">─── or ───</div>
+
+<input id="email" type="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+
+<button onclick="signIn()">Sign In</button>
+
+<div class="link" onclick="showSignup()">Create account</div>
+<div class="link" onclick="showReset()">Forgot password?</div>
+
+<div id="signinMsg" class="message"></div>
+
 </div>
+
 
 <div id="signup" class="hidden">
-  <input id="signupUsername" type="text" placeholder="Choose username">
-  <input id="signupEmail" type="email" placeholder="Email">
-  <input id="signupPassword" type="password" placeholder="Password">
-  <button onclick="signUp()">Create Account</button>
-  <div class="link" onclick="showSignin()">Back to sign in</div>
-  <div id="signupMsg" class="message"></div>
+
+<input id="signupUsername" placeholder="Choose username">
+<input id="signupEmail" type="email" placeholder="Email">
+<input id="signupPassword" type="password" placeholder="Password">
+
+<button onclick="signUp()">Create Account</button>
+
+<div class="link" onclick="showSignin()">Back to sign in</div>
+
+<div id="signupMsg" class="message"></div>
+
 </div>
+
 
 <div id="reset" class="hidden">
-  <input id="resetEmail" type="email" placeholder="Email">
-  <button onclick="resetPassword()">Send Reset Link</button>
-  <div class="link" onclick="showSignin()">Back to sign in</div>
-  <div id="resetMsg" class="message"></div>
-</div>
+
+<input id="resetEmail" type="email" placeholder="Email">
+
+<button onclick="resetPassword()">Send Reset Link</button>
+
+<div class="link" onclick="showSignin()">Back to sign in</div>
+
+<div id="resetMsg" class="message"></div>
 
 </div>
 
-<footer>
-  <div class="footer-links">
-    <a href="about.html" target="_blank" rel="noopener">About</a>
-    <span>•</span>
-    <a href="contact.html" target="_blank" rel="noopener">Contact</a>
-    <span>•</span>
-    <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
-    <span>•</span>
-    <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>
-  </div>
-</footer>
+</div>
 
 <script>
-const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const els = {
-  signin: document.getElementById("signin"),
-  signup: document.getElementById("signup"),
-  reset: document.getElementById("reset"),
-  email: document.getElementById("email"),
-  password: document.getElementById("password"),
-  signinMsg: document.getElementById("signinMsg"),
-  signupUsername: document.getElementById("signupUsername"),
-  signupEmail: document.getElementById("signupEmail"),
-  signupPassword: document.getElementById("signupPassword"),
-  signupMsg: document.getElementById("signupMsg"),
-  resetEmail: document.getElementById("resetEmail"),
-  resetMsg: document.getElementById("resetMsg"),
-};
+const SUPABASE_URL="https://mgpwknnbhaljsscsvucm.supabase.co"
+const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
 
-document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session) window.location.href = "index.html";
-  } catch(e) {
-    console.error("Session check failed:", e);
-  }
-});
+const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
 
-function showSignup(){ els.signin.classList.add("hidden"); els.reset.classList.add("hidden"); els.signup.classList.remove("hidden"); }
-function showSignin(){ els.signup.classList.add("hidden"); els.reset.classList.add("hidden"); els.signin.classList.remove("hidden"); }
-function showReset(){ els.signin.classList.add("hidden"); els.signup.classList.add("hidden"); els.reset.classList.remove("hidden"); }
+const els={
+signin:document.getElementById("signin"),
+signup:document.getElementById("signup"),
+reset:document.getElementById("reset"),
+email:document.getElementById("email"),
+password:document.getElementById("password"),
+signinMsg:document.getElementById("signinMsg"),
+signupUsername:document.getElementById("signupUsername"),
+signupEmail:document.getElementById("signupEmail"),
+signupPassword:document.getElementById("signupPassword"),
+signupMsg:document.getElementById("signupMsg"),
+resetEmail:document.getElementById("resetEmail"),
+resetMsg:document.getElementById("resetMsg")
+}
+
+document.addEventListener("DOMContentLoaded",async()=>{
+const {data:{session}}=await supabaseClient.auth.getSession()
+if(session)window.location.href="index.html"
+})
+
+function showSignup(){
+els.signin.classList.add("hidden")
+els.signup.classList.remove("hidden")
+els.reset.classList.add("hidden")
+}
+
+function showSignin(){
+els.signup.classList.add("hidden")
+els.reset.classList.add("hidden")
+els.signin.classList.remove("hidden")
+}
+
+function showReset(){
+els.signin.classList.add("hidden")
+els.signup.classList.add("hidden")
+els.reset.classList.remove("hidden")
+}
 
 async function signIn(){
-  els.signinMsg.textContent="";
-  try {
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email: els.email.value.trim(),
-      password: els.password.value
-    });
-    if(error) els.signinMsg.textContent=error.message;
-    else window.location.href="index.html";
-  } catch(e) {
-    console.error("Sign in failed:", e);
-    els.signinMsg.textContent="Unexpected error during sign in.";
-  }
+
+els.signinMsg.textContent=""
+
+const {error}=await supabaseClient.auth.signInWithPassword({
+email:els.email.value.trim(),
+password:els.password.value
+})
+
+if(error){
+els.signinMsg.textContent=error.message
+return
+}
+
+window.location.href="index.html"
+
 }
 
 async function signUp(){
-  els.signupMsg.textContent="";
-  const username = els.signupUsername.value.trim();
-  const emailVal = els.signupEmail.value.trim();
-  const passwordVal = els.signupPassword.value;
 
-  if(!username){ els.signupMsg.textContent="Please choose a username."; return; }
+els.signupMsg.textContent=""
 
-  try {
-    // Check for existing username
-    const { data: existing, error: checkError } = await supabaseClient
-      .from("user_settings")
-      .select("user_id")
-      .ilike("username", username)
-      .maybeSingle();
+const username=els.signupUsername.value.trim()
+const email=els.signupEmail.value.trim()
+const password=els.signupPassword.value
 
-    if(checkError){ els.signupMsg.textContent="Unable to verify username right now."; return; }
-    if(existing){ els.signupMsg.textContent="Username already taken."; return; }
+if(!username){
+els.signupMsg.textContent="Please choose a username"
+return
+}
 
-    // Signup user
-    const { data, error } = await supabaseClient.auth.signUp({ email: emailVal, password: passwordVal });
+const {error}=await supabaseClient.auth.signUp({
+email:email,
+password:password,
+options:{
+data:{
+username:username
+}
+}
+})
 
-    if(error){
-      console.error("Supabase signup error:", error);
-      els.signupMsg.textContent=error.message || "Error creating account.";
-      return;
-    }
+if(error){
+els.signupMsg.textContent=error.message
+return
+}
 
-    if(data.user){
-      // Insert into user_settings
-      const { error: insertError } = await supabaseClient.from("user_settings").insert({
-        user_id: data.user.id,
-        username: username,
-        tier: "free",
-        role: "user"
-      });
+els.signupMsg.classList.add("success")
+els.signupMsg.textContent="Account created. Check your email to verify."
 
-      if(insertError){
-        console.error("User settings insert failed:", insertError);
-        els.signupMsg.textContent="Error creating account settings. Try again later.";
-        return;
-      }
-
-      els.signupMsg.classList.add("success");
-      els.signupMsg.textContent="Account created successfully. You can now sign in.";
-    }
-  } catch(e){
-    console.error("Signup exception:", e);
-    els.signupMsg.textContent="Unexpected error during signup.";
-  }
 }
 
 async function resetPassword(){
-  els.resetMsg.textContent="";
-  try {
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(
-      els.resetEmail.value.trim(),
-      { redirectTo: window.location.origin + "/index.html" }
-    );
-    if(error) els.resetMsg.textContent=error.message;
-    else { els.resetMsg.classList.add("success"); els.resetMsg.textContent="Reset email sent."; }
-  } catch(e){
-    console.error("Password reset failed:", e);
-    els.resetMsg.textContent="Unexpected error sending reset email.";
-  }
+
+els.resetMsg.textContent=""
+
+const {error}=await supabaseClient.auth.resetPasswordForEmail(
+els.resetEmail.value.trim(),
+{redirectTo:window.location.origin}
+)
+
+if(error){
+els.resetMsg.textContent=error.message
+return
+}
+
+els.resetMsg.classList.add("success")
+els.resetMsg.textContent="Reset email sent"
+
 }
 
 async function signInWithGoogle(){
-  try {
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider:"google",
-      options:{ redirectTo: window.location.origin }
-    });
-    if(error) alert("Google sign in failed: " + error.message);
-  } catch(e){
-    console.error("Google OAuth failed:", e);
-    alert("Google sign in failed unexpectedly.");
-  }
+
+const {error}=await supabaseClient.auth.signInWithOAuth({
+provider:"google",
+options:{redirectTo:window.location.origin}
+})
+
+if(error){
+alert("Google sign in failed")
 }
+
+}
+
 </script>
+
 </body>
 </html>
