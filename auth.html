@@ -8,16 +8,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root {
+:root{
   --bg:#0b1020;
   --text:rgba(255,255,255,.92);
   --muted:rgba(255,255,255,.6);
   --border:rgba(255,255,255,.15);
 }
 
-* { box-sizing:border-box; }
+*{box-sizing:border-box}
 
-body {
+body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto;
   background:
@@ -31,7 +31,7 @@ body {
   align-items:center;
 }
 
-.auth-container {
+.auth-container{
   width:420px;
   padding:42px;
   background:rgba(255,255,255,.06);
@@ -41,10 +41,10 @@ body {
   box-shadow:0 25px 80px rgba(0,0,0,.5);
 }
 
-h1 { margin:0; text-align:center; font-size:30px; }
-.subtitle { margin:8px 0 28px; text-align:center; color:var(--muted); }
+h1{margin:0;text-align:center;font-size:30px}
+.subtitle{margin:8px 0 28px;text-align:center;color:var(--muted)}
 
-input {
+input{
   width:100%;
   padding:13px;
   margin-top:12px;
@@ -54,7 +54,7 @@ input {
   color:white;
 }
 
-button {
+button{
   width:100%;
   padding:13px;
   margin-top:18px;
@@ -65,7 +65,7 @@ button {
   cursor:pointer;
 }
 
-.oauth-btn {
+.oauth-btn{
   display:flex;
   align-items:center;
   justify-content:center;
@@ -75,34 +75,56 @@ button {
   border:1px solid var(--border);
   font-weight:600;
   cursor:pointer;
-  transition:0.2s;
-  margin-top:10px;
 }
 
-.oauth-btn:hover { opacity:.85; }
+.google-btn{
+  background:white;
+  color:#1f1f1f;
+}
 
-.google-btn { background:white; color:#1f1f1f; }
-.microsoft-btn { background:#2F2F2F; color:white; }
+.microsoft-btn{
+  background:#2F2F2F;
+  color:white;
+}
 
-.google-icon, .ms-icon {
-  width:20px;
-  height:20px;
-  display:inline-block;
+.google-icon,
+.ms-icon{
+  width:18px;
+  height:18px;
   background-size:contain;
   background-repeat:no-repeat;
 }
 
-.google-icon { background-image:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"); }
-.ms-icon { background-image:url("https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"); }
+.google-icon{
+  background-image:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg");
+}
 
-.link { margin-top:14px; text-align:center; font-size:14px; color:var(--muted); cursor:pointer; }
-.hidden { display:none; }
-.message { margin-top:14px; text-align:center; color:#ff7b8f; }
-.success { color:#46e6b3; }
+.ms-icon{
+  background-image:url("https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg");
+}
+
+.link{
+  margin-top:14px;
+  text-align:center;
+  font-size:14px;
+  color:var(--muted);
+  cursor:pointer;
+}
+
+.hidden{display:none}
+
+.message{
+  margin-top:14px;
+  text-align:center;
+  color:#ff7b8f;
+}
+
+.success{color:#46e6b3}
 </style>
 </head>
 
 <body>
+
 <div class="auth-container">
 
 <h1>ReviseFlow</h1>
@@ -110,147 +132,204 @@ button {
 
 <!-- SIGN IN -->
 <div id="signin">
-  <button class="oauth-btn google-btn" id="googleBtn">
-    <span class="google-icon"></span>Continue with Google
-  </button>
 
-  <button class="oauth-btn microsoft-btn" id="msBtn">
-    <span class="ms-icon"></span>Continue with Microsoft
-  </button>
+<button class="oauth-btn google-btn" onclick="signInWithGoogle()">
+<span class="google-icon"></span>
+Continue with Google
+</button>
 
-  <div style="margin:16px 0;text-align:center;opacity:.6">─── or ───</div>
+<button class="oauth-btn microsoft-btn" onclick="signInWithMicrosoft()">
+<span class="ms-icon"></span>
+Continue with Microsoft
+</button>
 
-  <input id="email" type="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
+<div style="margin:16px 0;text-align:center;opacity:.6">─── or ───</div>
 
-  <button id="signinBtn">Sign In</button>
+<input id="email" type="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
 
-  <div class="link" id="toSignup">Create account</div>
-  <div class="link" id="toReset">Forgot password?</div>
+<button onclick="signIn()">Sign In</button>
 
-  <div id="signinMsg" class="message"></div>
+<div class="link" onclick="showSignup()">Create account</div>
+<div class="link" onclick="showReset()">Forgot password?</div>
+
+<div id="signinMsg" class="message"></div>
+
 </div>
+
 
 <!-- SIGN UP -->
 <div id="signup" class="hidden">
-  <input id="signupUsername" placeholder="Choose username">
-  <input id="signupEmail" type="email" placeholder="Email">
-  <input id="signupPassword" type="password" placeholder="Password">
 
-  <button id="signupBtn">Create Account</button>
+<input id="signupUsername" placeholder="Choose username">
+<input id="signupEmail" type="email" placeholder="Email">
+<input id="signupPassword" type="password" placeholder="Password">
 
-  <div class="link" id="toSigninFromSignup">Back to sign in</div>
+<button onclick="signUp()">Create Account</button>
 
-  <div id="signupMsg" class="message"></div>
+<div class="link" onclick="showSignin()">Back to sign in</div>
+
+<div id="signupMsg" class="message"></div>
+
 </div>
+
 
 <!-- RESET -->
 <div id="reset" class="hidden">
-  <input id="resetEmail" type="email" placeholder="Email">
-  <button id="resetBtn">Send Reset Link</button>
 
-  <div class="link" id="toSigninFromReset">Back to sign in</div>
-  <div id="resetMsg" class="message"></div>
+<input id="resetEmail" type="email" placeholder="Email">
+
+<button onclick="resetPassword()">Send Reset Link</button>
+
+<div class="link" onclick="showSignin()">Back to sign in</div>
+
+<div id="resetMsg" class="message"></div>
+
 </div>
 
 </div>
+
 
 <script>
-const SUPABASE_URL="https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-const supabase = supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-const els = {
-  signin: document.getElementById("signin"),
-  signup: document.getElementById("signup"),
-  reset: document.getElementById("reset"),
-  email: document.getElementById("email"),
-  password: document.getElementById("password"),
-  signinMsg: document.getElementById("signinMsg"),
-  signupUsername: document.getElementById("signupUsername"),
-  signupEmail: document.getElementById("signupEmail"),
-  signupPassword: document.getElementById("signupPassword"),
-  signupMsg: document.getElementById("signupMsg"),
-  resetEmail: document.getElementById("resetEmail"),
-  resetMsg: document.getElementById("resetMsg"),
-};
+const SUPABASE_URL="https://mgpwknnbhaljsscsvucm.supabase.co"
+const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
 
-const redirectURL = window.location.origin + "/auth.html";
+const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
 
-// Buttons
-document.getElementById("signinBtn").addEventListener("click", signIn);
-document.getElementById("signupBtn").addEventListener("click", signUp);
-document.getElementById("resetBtn").addEventListener("click", resetPassword);
-document.getElementById("googleBtn").addEventListener("click", signInWithGoogle);
-document.getElementById("msBtn").addEventListener("click", signInWithMicrosoft);
-document.getElementById("toSignup").addEventListener("click", showSignup);
-document.getElementById("toReset").addEventListener("click", showReset);
-document.getElementById("toSigninFromSignup").addEventListener("click", showSignin);
-document.getElementById("toSigninFromReset").addEventListener("click", showSignin);
+const redirectURL = window.location.origin + "/auth.html"
 
-// Redirect logged-in users
+
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data:{ session } } = await supabase.auth.getSession();
-  if(session){ window.location.href="index.html"; return; }
 
-  const params = new URLSearchParams(window.location.search);
-  const mode = params.get("mode");
-  if(mode==="signup") showSignup(); else showSignin();
-});
+  const { data:{ session } } = await supabaseClient.auth.getSession()
 
-// UI Functions
-function showSignup(){ els.signin.classList.add("hidden"); els.signup.classList.remove("hidden"); els.reset.classList.add("hidden"); }
-function showSignin(){ els.signup.classList.add("hidden"); els.reset.classList.add("hidden"); els.signin.classList.remove("hidden"); }
-function showReset(){ els.signin.classList.add("hidden"); els.signup.classList.add("hidden"); els.reset.classList.remove("hidden"); }
+  if(session){
+    window.location.href="index.html"
+    return
+  }
 
-// Auth Functions
-async function signIn(){
-  els.signinMsg.textContent="";
-  const { error } = await supabase.auth.signInWithPassword({
-    email: els.email.value.trim(),
-    password: els.password.value
-  });
-  if(error){ els.signinMsg.textContent = error.message; return; }
-  window.location.href = "index.html";
+  const params=new URLSearchParams(window.location.search)
+  const mode=params.get("mode")
+
+  if(mode==="signup") showSignup()
+  else showSignin()
+
+})
+
+
+function showSignup(){
+signin.classList.add("hidden")
+signup.classList.remove("hidden")
+reset.classList.add("hidden")
 }
+
+function showSignin(){
+signup.classList.add("hidden")
+reset.classList.add("hidden")
+signin.classList.remove("hidden")
+}
+
+function showReset(){
+signin.classList.add("hidden")
+signup.classList.add("hidden")
+reset.classList.remove("hidden")
+}
+
+
+async function signIn(){
+
+signinMsg.textContent=""
+
+const {error}=await supabaseClient.auth.signInWithPassword({
+email:email.value.trim(),
+password:password.value
+})
+
+if(error){
+signinMsg.textContent=error.message
+return
+}
+
+window.location.href="index.html"
+
+}
+
 
 async function signUp(){
-  els.signupMsg.textContent="";
-  const username = els.signupUsername.value.trim();
-  const emailVal = els.signupEmail.value.trim();
-  const passwordVal = els.signupPassword.value;
 
-  if(!username){ els.signupMsg.textContent="Please choose a username"; return; }
+signupMsg.textContent=""
 
-  const { error } = await supabase.auth.signUp({
-    email: emailVal,
-    password: passwordVal,
-    options: { data:{ username } }
-  });
+const username=signupUsername.value.trim()
+const emailVal=signupEmail.value.trim()
+const passwordVal=signupPassword.value
 
-  if(error){ els.signupMsg.textContent = error.message; return; }
-
-  els.signupMsg.classList.add("success");
-  els.signupMsg.textContent="Account created. Check your email to verify.";
+if(!username){
+signupMsg.textContent="Please choose a username"
+return
 }
+
+const {error}=await supabaseClient.auth.signUp({
+email:emailVal,
+password:passwordVal,
+options:{data:{username}}
+})
+
+if(error){
+signupMsg.textContent=error.message
+return
+}
+
+signupMsg.classList.add("success")
+signupMsg.textContent="Account created. Check your email to verify."
+
+}
+
 
 async function resetPassword(){
-  els.resetMsg.textContent="";
-  const { error } = await supabase.auth.resetPasswordForEmail(els.resetEmail.value.trim(), { redirectTo: redirectURL });
-  if(error){ els.resetMsg.textContent = error.message; return; }
-  els.resetMsg.classList.add("success");
-  els.resetMsg.textContent="Reset email sent";
+
+resetMsg.textContent=""
+
+const {error}=await supabaseClient.auth.resetPasswordForEmail(
+resetEmail.value.trim(),
+{redirectTo:redirectURL}
+)
+
+if(error){
+resetMsg.textContent=error.message
+return
 }
+
+resetMsg.classList.add("success")
+resetMsg.textContent="Reset email sent"
+
+}
+
 
 async function signInWithGoogle(){
-  const { error } = await supabase.auth.signInWithOAuth({ provider:"google", options:{ redirectTo: redirectURL }});
-  if(error) alert("Google sign in failed: "+error.message);
+
+const {error}=await supabaseClient.auth.signInWithOAuth({
+provider:"google",
+options:{redirectTo:redirectURL}
+})
+
+if(error) alert("Google sign in failed")
+
 }
 
+
 async function signInWithMicrosoft(){
-  const { error } = await supabase.auth.signInWithOAuth({ provider:"azure", options:{ redirectTo: redirectURL }});
-  if(error) alert("Microsoft sign in failed: "+error.message);
+
+const {error}=await supabaseClient.auth.signInWithOAuth({
+provider:"azure",
+options:{redirectTo:redirectURL}
+})
+
+if(error) alert("Microsoft sign in failed")
+
 }
+
 </script>
+
 </body>
 </html>
