@@ -32,7 +32,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-
 /*
   ===============================
   PRICE MAP (SERVER AUTHORITY)
@@ -47,7 +46,6 @@ const PRICE_MAP = {
   price_1T5v9oRzC23qaxzMWkfmzc1l: { plan: "pro", cycle: "quarterly" },
   price_1T46qbRzC23qaxzMC9TWNVsK: { plan: "pro", cycle: "annual" }
 };
-
 
 /*
   ===============================
@@ -64,7 +62,6 @@ function getBearerToken(req) {
   if (!authHeader.toLowerCase().startsWith("bearer ")) return null;
   return safeString(authHeader.slice(7));
 }
-
 
 /*
   ===============================
@@ -84,7 +81,6 @@ module.exports = async function handler(req, res) {
     const priceId = safeString(body.priceId);
     const waiveConfirmed = body.waiveConfirmed;
 
-
     /*
       ===============================
       PRICE VALIDATION
@@ -103,10 +99,9 @@ module.exports = async function handler(req, res) {
 
     const { plan, cycle } = PRICE_MAP[priceId];
 
-
     /*
       ===============================
-      AUTH VALIDATION (FIXED ORDER)
+      AUTH VALIDATION
       ===============================
     */
 
@@ -124,7 +119,6 @@ module.exports = async function handler(req, res) {
     if (userErr || !userId) {
       return res.status(401).json({ error: "Invalid session" });
     }
-
 
     /*
       ===============================
@@ -144,10 +138,9 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: "Profile lookup failed" });
     }
 
-
     /*
       ===============================
-      GET / CREATE STRIPE CUSTOMER
+      GET / CREATE STRIPE CUSTOMER (FIXED)
       ===============================
     */
 
@@ -156,34 +149,32 @@ module.exports = async function handler(req, res) {
     async function createCustomer() {
 
       const customer = await stripe.customers.create({
-        metadata: {
-          user_id: userId
-        }
+        metadata: { user_id: userId }
       });
 
-      await supabaseAdmin
+      const { error: upsertError } = await supabaseAdmin
         .from("profiles")
         .update({ stripe_customer_id: customer.id })
         .eq("id", userId);
+
+      if (upsertError) {
+        console.error("Failed to update stripe_customer_id:", upsertError);
+        throw new Error("Customer creation failed, DB update error");
+      }
 
       return customer.id;
     }
 
     if (customerId) {
-
       try {
         await stripe.customers.retrieve(customerId);
       } catch (err) {
         console.warn("Customer invalid for this Stripe mode, recreating");
         customerId = await createCustomer();
       }
-
     } else {
-
       customerId = await createCustomer();
-
     }
-
 
     /*
       ===============================
@@ -192,54 +183,23 @@ module.exports = async function handler(req, res) {
     */
 
     const session = await stripe.checkout.sessions.create({
-
       customer: customerId,
-
       mode: "subscription",
-
       payment_method_types: ["card"],
-
       allow_promotion_codes: true,
-
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1
-        }
-      ],
-
-      metadata: {
-        plan,
-        cycle,
-        user_id: userId,
-        waive_confirmed: "true"
-      },
-
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { plan, cycle, user_id: userId, waive_confirmed: "true" },
       subscription_data: {
-        metadata: {
-          plan,
-          cycle,
-          user_id: userId,
-          waive_confirmed: "true"
-        }
+        metadata: { plan, cycle, user_id: userId, waive_confirmed: "true" }
       },
-
       success_url: `${process.env.APP_URL}/subscriptions.html?success=1&session_id={CHECKOUT_SESSION_ID}`,
-
       cancel_url: `${process.env.APP_URL}/subscriptions.html?canceled=1`
-
     });
 
-    return res.status(200).json({
-      url: session.url
-    });
+    return res.status(200).json({ url: session.url });
 
   } catch (err) {
-
     console.error("Checkout session error:", err);
-
-    return res.status(500).json({
-      error: "Unable to create checkout session"
-    });
+    return res.status(500).json({ error: "Unable to create checkout session" });
   }
 };

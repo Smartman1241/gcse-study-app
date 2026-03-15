@@ -16,7 +16,6 @@ const supabaseAdmin = createClient(
 
 const ACTIVE = new Set(["active", "trialing"]);
 
-
 // ===============================
 // RAW BODY
 // ===============================
@@ -27,7 +26,6 @@ async function getRawBody(readable) {
   }
   return Buffer.concat(chunks);
 }
-
 
 // ===============================
 // FIND USER VIA STRIPE CUSTOMER
@@ -49,12 +47,10 @@ async function findUser(customerId) {
   return data?.id || null;
 }
 
-
 // ===============================
 // UPDATE USER PLAN
 // ===============================
 async function updateUser(userId, tier, subscriptionId, customerId) {
-
   const payload = {
     user_id: userId,
     tier: tier,
@@ -77,43 +73,42 @@ async function updateUser(userId, tier, subscriptionId, customerId) {
   }
 }
 
-
 // ===============================
 // RESOLVE PLAN
 // ===============================
 function resolveTier(subscription) {
-
   if (!ACTIVE.has(subscription.status)) {
     return "free";
   }
-
   return subscription.metadata?.plan || "free";
 }
 
-
 // ===============================
-// IDEMPOTENCY CHECK
+// IDEMPOTENCY CHECK (FIXED)
 // ===============================
 async function checkDuplicate(eventId) {
-
   const { error } = await supabaseAdmin
     .from("stripe_webhook_events")
     .insert({ id: eventId });
 
   if (error) {
-    console.log("Duplicate webhook ignored:", eventId);
-    return true;
+    // Only treat as duplicate if unique constraint violation
+    if (error.code === "23505") {
+      console.log("Duplicate webhook ignored:", eventId);
+      return true;
+    }
+    // All other errors should throw to trigger Stripe retry
+    console.error("Webhook DB error:", error);
+    throw error;
   }
 
   return false;
 }
 
-
 // ===============================
 // WEBHOOK HANDLER
 // ===============================
 module.exports = async function handler(req, res) {
-
   if (req.method !== "POST") {
     return res.status(405).send("Method not allowed");
   }
@@ -121,9 +116,7 @@ module.exports = async function handler(req, res) {
   let event;
 
   try {
-
     const rawBody = await getRawBody(req);
-
     const signature = req.headers["stripe-signature"];
 
     if (!signature) {
@@ -135,22 +128,16 @@ module.exports = async function handler(req, res) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
     );
-
   } catch (err) {
-
     console.error("Webhook signature verification failed:", err.message);
-
     return res.status(400).send("Invalid signature");
   }
 
-
   try {
-
     // ===============================
     // IDEMPOTENCY
     // ===============================
     const duplicate = await checkDuplicate(event.id);
-
     if (duplicate) {
       return res.status(200).json({
         received: true,
@@ -158,14 +145,12 @@ module.exports = async function handler(req, res) {
       });
     }
 
-
     switch (event.type) {
 
       // ===============================
       // FIRST PURCHASE
       // ===============================
       case "checkout.session.completed": {
-
         const session = event.data.object;
 
         if (session.mode !== "subscription") break;
@@ -196,13 +181,11 @@ module.exports = async function handler(req, res) {
         break;
       }
 
-
       // ===============================
       // RENEWALS + PLAN CHANGES
       // ===============================
       case "invoice.paid":
       case "customer.subscription.updated": {
-
         const obj = event.data.object;
 
         const subscription =
@@ -231,12 +214,10 @@ module.exports = async function handler(req, res) {
         break;
       }
 
-
       // ===============================
       // PAYMENT FAILED
       // ===============================
       case "invoice.payment_failed": {
-
         const invoice = event.data.object;
 
         const subscription = await stripe.subscriptions.retrieve(
@@ -259,12 +240,10 @@ module.exports = async function handler(req, res) {
         break;
       }
 
-
       // ===============================
       // CANCELLED
       // ===============================
       case "customer.subscription.deleted": {
-
         const sub = event.data.object;
 
         const userId =
@@ -290,7 +269,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ received: true });
 
   } catch (err) {
-
     console.error("Webhook processing error:", err);
 
     return res.status(500).json({

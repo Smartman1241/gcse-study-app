@@ -1,16 +1,18 @@
 {
   "name": "gcse-study-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "GCSE Study App — tasks, flashcards, AI, past papers",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"No tests yet — placeholder\" && exit 0",
+    "start": "node index.js",
+    "lint": "echo \"No linter configured\""
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Smartman1241/gcse-study-app.git"
   },
-  "keywords": [],
+  "keywords": ["gcse", "study", "revision", "flashcards", "ai"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",

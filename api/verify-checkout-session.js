@@ -28,7 +28,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-
 /*
 ===============================
 HELPERS
@@ -41,7 +40,6 @@ function getBearerToken(req) {
   return auth.slice(7).trim();
 }
 
-
 /*
 ===============================
 HANDLER
@@ -49,21 +47,16 @@ HANDLER
 */
 
 module.exports = async function handler(req, res) {
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-
     const { sessionId } = req.body || {};
 
     if (!sessionId) {
-      return res.status(400).json({
-        error: "Missing sessionId"
-      });
+      return res.status(400).json({ error: "Missing sessionId" });
     }
-
 
     /*
     ===============================
@@ -74,9 +67,7 @@ module.exports = async function handler(req, res) {
     const token = getBearerToken(req);
 
     if (!token) {
-      return res.status(401).json({
-        error: "Missing auth token"
-      });
+      return res.status(401).json({ error: "Missing auth token" });
     }
 
     const { data: userData, error: authError } =
@@ -85,11 +76,8 @@ module.exports = async function handler(req, res) {
     const authUserId = userData?.user?.id || null;
 
     if (authError || !authUserId) {
-      return res.status(401).json({
-        error: "Invalid session"
-      });
+      return res.status(401).json({ error: "Invalid session" });
     }
-
 
     /*
     ===============================
@@ -97,21 +85,15 @@ module.exports = async function handler(req, res) {
     ===============================
     */
 
-    const session =
-      await stripe.checkout.sessions.retrieve(sessionId);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (!session) {
-      return res.status(404).json({
-        error: "Checkout session not found"
-      });
+      return res.status(404).json({ error: "Checkout session not found" });
     }
 
     if (session.payment_status !== "paid") {
-      return res.json({
-        verified: false
-      });
+      return res.json({ verified: false });
     }
-
 
     /*
     ===============================
@@ -119,54 +101,36 @@ module.exports = async function handler(req, res) {
     ===============================
     */
 
-    const metadataUserId =
-      session.metadata?.user_id || null;
+    const metadataUserId = session.metadata?.user_id || null;
 
-    if (!metadataUserId) {
-      return res.json({
-        verified: false
-      });
+    if (!metadataUserId || metadataUserId !== authUserId) {
+      return res.status(403).json({ error: "Session does not belong to authenticated user" });
     }
-
-    if (metadataUserId !== authUserId) {
-      return res.status(403).json({
-        error: "Session does not belong to authenticated user"
-      });
-    }
-
 
     /*
     ===============================
-    GET SUBSCRIPTION
+    GET SUBSCRIPTION SAFELY
     ===============================
     */
 
-    const subscription =
-      await stripe.subscriptions.retrieve(
-        session.subscription
-      );
+    let subscription = null;
+    let tier = "free";
 
-    const tier =
-      subscription.metadata?.plan || "free";
+    if (session.mode === "subscription" && session.subscription) {
+      subscription = await stripe.subscriptions.retrieve(session.subscription);
+      tier = subscription.metadata?.plan || "free";
 
-
-    /*
-    ===============================
-    OPTIONAL: ENSURE DB MATCHES STRIPE
-    (Webhook should normally do this)
-    ===============================
-    */
-
-    await supabaseAdmin
-      .from("user_settings")
-      .upsert({
-        user_id: authUserId,
-        tier,
-        role: tier,
-        stripe_subscription_id: subscription.id,
-        updated_at: new Date().toISOString()
-      });
-
+      // OPTIONAL: Ensure DB matches Stripe (Webhook should normally do this)
+      await supabaseAdmin
+        .from("user_settings")
+        .upsert({
+          user_id: authUserId,
+          tier,
+          role: tier,
+          stripe_subscription_id: subscription.id,
+          updated_at: new Date().toISOString()
+        });
+    }
 
     return res.json({
       verified: true,
@@ -174,11 +138,7 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (err) {
-
     console.error("Checkout verification error:", err);
-
-    return res.status(500).json({
-      error: "Verification failed"
-    });
+    return res.status(500).json({ error: "Verification failed" });
   }
 };

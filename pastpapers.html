@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script src="theme.js"></script>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>GCSE Focus – AQA Past Papers</title>
 
+<script src="theme.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -16,14 +16,12 @@
   --text:rgba(255,255,255,.92);
   --brand:#8ea2ff;
 }
-
 html[data-theme="light"]{
   --bg:#f5f7ff;
   --glass:rgba(0,0,0,.05);
   --border:rgba(0,0,0,.15);
   --text:rgba(0,0,0,.88);
 }
-
 body{
   margin:0;
   min-height:100vh;
@@ -38,13 +36,11 @@ body{
   align-items:center;
   color:var(--text);
 }
-
 .container{
   width:100%;
   max-width:700px;
   padding:30px;
 }
-
 .card{
   backdrop-filter:blur(20px);
   background:var(--glass);
@@ -53,19 +49,16 @@ body{
   padding:40px;
   box-shadow:0 20px 60px rgba(0,0,0,.35);
 }
-
 h1{
   text-align:center;
   margin-bottom:30px;
   font-size:28px;
 }
-
 label{
   display:block;
   margin-top:18px;
   font-weight:600;
 }
-
 select{
   width:100%;
   padding:12px;
@@ -76,12 +69,10 @@ select{
   color:var(--text);
   font-size:15px;
 }
-
 select option{
   background:var(--bg);
   color:var(--text);
 }
-
 button{
   width:100%;
   padding:14px;
@@ -93,12 +84,10 @@ button{
   cursor:pointer;
   font-size:15px;
 }
-
 .back{
   background:var(--glass);
   margin-top:15px;
 }
-
 .results{
   margin-top:30px;
   padding:20px;
@@ -106,7 +95,6 @@ button{
   background:var(--glass);
   border:1px solid var(--border);
 }
-
 a{
   display:block;
   margin-top:12px;
@@ -116,23 +104,14 @@ a{
 }
 </style>
 </head>
-
 <body>
 
 <div class="container">
   <div class="card">
-
     <h1>AQA Past Papers</h1>
 
     <label>Subject</label>
-    <select id="subject" onchange="updatePaperOptions(); updateTierOptions();">
-      <option value="English Language">English Language</option>
-      <option value="English Literature">English Literature</option>
-      <option value="Biology">Biology</option>
-      <option value="Chemistry">Chemistry</option>
-      <option value="Physics">Physics</option>
-      <option value="Maths">Maths</option>
-    </select>
+    <select id="subject" onchange="updatePaperOptions(); updateTierOptions();"></select>
 
     <label>Paper</label>
     <select id="paper"></select>
@@ -141,24 +120,13 @@ a{
     <select id="tier"></select>
 
     <label>Year</label>
-    <select id="year">
-      <option value="2024">2024</option>
-      <option value="2023">2023</option>
-      <option value="2022">2022</option>
-      <option value="2021">2021</option>
-      <option value="2020">2020</option>
-      <option value="2019">2019</option>
-      <option value="2018">2018</option>
-    </select>
+    <select id="year"></select>
 
     <button onclick="findPaper()">Find Paper</button>
 
     <div class="results" id="results" style="display:none;"></div>
 
-    <button class="back" onclick="window.location.href='index.html'">
-      ← Back to Dashboard
-    </button>
-
+    <button class="back" onclick="window.location.href='index.html'">← Back to Dashboard</button>
   </div>
 </div>
 
@@ -167,50 +135,67 @@ const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Populate subject dropdown dynamically
+const subjects = ["English Language","English Literature","Biology","Chemistry","Physics","Maths"];
+const subjectSelect = document.getElementById("subject");
+subjects.forEach(sub => {
+  const option = document.createElement('option');
+  option.value = sub;
+  option.textContent = sub;
+  subjectSelect.appendChild(option);
+});
+
+// Populate year dropdown dynamically
+const yearSelect = document.getElementById("year");
+for(let y=2024; y>=2018; y--){
+  const option = document.createElement('option');
+  option.value = y;
+  option.textContent = y;
+  yearSelect.appendChild(option);
+}
+
 function updatePaperOptions(){
-  const subject = document.getElementById("subject").value;
+  const subject = subjectSelect.value;
   const paperSelect = document.getElementById("paper");
   paperSelect.innerHTML = "";
-
-  if(subject === "Maths"){
-    paperSelect.innerHTML = `
-      <option value="Paper 1 Non Calculator">Paper 1 Non Calculator</option>
-      <option value="Paper 2 Calculator">Paper 2 Calculator</option>
-      <option value="Paper 3 Calculator">Paper 3 Calculator</option>
-    `;
-  } else {
-    paperSelect.innerHTML = `
-      <option value="Paper 1">Paper 1</option>
-      <option value="Paper 2">Paper 2</option>
-    `;
-  }
+  const options = (subject === "Maths")
+    ? ["Paper 1 Non Calculator","Paper 2 Calculator","Paper 3 Calculator"]
+    : ["Paper 1","Paper 2"];
+  options.forEach(opt => {
+    const optionEl = document.createElement('option');
+    optionEl.value = opt;
+    optionEl.textContent = opt;
+    paperSelect.appendChild(optionEl);
+  });
 }
 
 function updateTierOptions(){
-  const subject = document.getElementById("subject").value;
+  const subject = subjectSelect.value;
   const tierSelect = document.getElementById("tier");
   tierSelect.innerHTML = "";
-
-  if(subject === "English Language" || subject === "English Literature"){
-    tierSelect.innerHTML = `<option value="N/A">N/A</option>`;
-  } else {
-    tierSelect.innerHTML = `
-      <option value="Foundation">Foundation</option>
-      <option value="Higher">Higher</option>
-    `;
-  }
+  const options = (subject === "English Language" || subject === "English Literature")
+    ? ["N/A"]
+    : ["Foundation","Higher"];
+  options.forEach(opt => {
+    const optionEl = document.createElement('option');
+    optionEl.value = opt;
+    optionEl.textContent = opt;
+    tierSelect.appendChild(optionEl);
+  });
 }
 
 async function findPaper(){
-
-  const subject = document.getElementById("subject").value;
+  const subject = subjectSelect.value;
   const paper_type = document.getElementById("paper").value;
   const tier = document.getElementById("tier").value;
-  const year = parseInt(document.getElementById("year").value);
+  const year = parseInt(yearSelect.value);
 
   const results = document.getElementById("results");
   results.style.display = "block";
-  results.innerHTML = "Searching...";
+  results.innerHTML = "";
+  const loading = document.createElement('p');
+  loading.textContent = "Searching...";
+  results.appendChild(loading);
 
   const { data, error } = await supabaseClient
     .from("past_papers")
@@ -218,21 +203,47 @@ async function findPaper(){
     .eq("subject", subject)
     .eq("paper_type", paper_type)
     .eq("tier", tier)
-    .eq("year", year)
-    .single();
+    .eq("year", year);
 
-  if(error || !data){
-    results.innerHTML = "Paper not found in database.";
+  results.innerHTML = "";
+  if(error || !data || data.length===0){
+    const msg = document.createElement('p');
+    msg.textContent = "No papers found in the database.";
+    results.appendChild(msg);
     return;
   }
 
-  results.innerHTML = `
-    <h3>${year} ${subject} - ${paper_type} (${tier})</h3>
-    <a href="${data.question_link}" target="_blank">📄 View Official Paper</a>
-    <a href="${data.markscheme_link}" target="_blank">📝 View Mark Scheme</a>
-  `;
+  data.forEach(paper => {
+    const container = document.createElement('div');
+    container.style.marginBottom = "20px";
+
+    const title = document.createElement('h3');
+    title.textContent = `${paper.year} ${paper.subject} - ${paper.paper_type} (${paper.tier})`;
+    container.appendChild(title);
+
+    if(paper.question_link){
+      const qLink = document.createElement('a');
+      qLink.textContent = "📄 View Official Paper";
+      qLink.href = paper.question_link;
+      qLink.target = "_blank";
+      qLink.rel = "noopener noreferrer";
+      container.appendChild(qLink);
+    }
+
+    if(paper.markscheme_link){
+      const mLink = document.createElement('a');
+      mLink.textContent = "📝 View Mark Scheme";
+      mLink.href = paper.markscheme_link;
+      mLink.target = "_blank";
+      mLink.rel = "noopener noreferrer";
+      container.appendChild(mLink);
+    }
+
+    results.appendChild(container);
+  });
 }
 
+// Initial population
 updatePaperOptions();
 updateTierOptions();
 </script>

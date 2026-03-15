@@ -483,19 +483,23 @@ function extractTokenFromBody(reqBody) {
   return safeString(reqBody.access_token) || null;
 }
 
-async function getAuthUser(req, reqBody) {
-  const token =
-    extractBearerFromAuthHeader(req) ||
-    extractTokenFromBackupHeaders(req) ||
-    extractTokenFromBody(reqBody);
+async function getAuthUser(req) {
+  // Only accept Bearer token from the Authorization header
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    return { error: "Missing or invalid auth token" };
+  }
 
+  const token = authHeader.slice(7).trim();
   if (!token) return { error: "Missing auth token" };
 
   const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !data?.user?.id) return { error: "Invalid session" };
+  if (error || !data?.user?.id) {
+    return { error: "Invalid session" };
+  }
+
   return { user: data.user, accessToken: token };
 }
-
 /* =========================
    User settings
    ========================= */

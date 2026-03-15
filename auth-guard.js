@@ -1,21 +1,28 @@
 // auth-guard.js
-const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+import { createClient } from "@supabase/supabase-js";
 
-// Fail-safe: if Supabase CDN didn't load, don't crash the page
-if (!window.supabase || typeof window.supabase.createClient !== "function") {
-  console.error("Supabase client not available (CDN failed to load).");
-} else {
-  const supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  );
+/*
+===============================
+Centralized Supabase Client
+===============================
+Uses environment variables instead of hardcoded keys.
+For client-side usage, you may still use the public anon key.
+*/
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://mgpwknnbhaljsscsvucm.supabase.co";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
-  // ✅ Use on pages that MUST be logged in (index.html, account.html, etc.)
-  async function requireAuth() {
-    const {
-      data: { session }
-    } = await supabaseClient.auth.getSession();
+export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/*
+===============================
+Authentication Helpers
+===============================
+*/
+
+// Pages that require a logged-in user
+export async function requireAuth() {
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (!session) {
       window.location.replace("start.html");
@@ -23,21 +30,26 @@ if (!window.supabase || typeof window.supabase.createClient !== "function") {
     }
 
     return session;
+  } catch (err) {
+    console.error("Error checking auth session:", err);
+    window.location.replace("start.html");
+    return null;
   }
+}
 
-  // ✅ Use on pages that MUST be logged out (start.html, auth.html)
-  async function redirectIfLoggedIn() {
-    const {
-      data: { session }
-    } = await supabaseClient.auth.getSession();
+// Pages that require the user to be logged out
+export async function redirectIfLoggedIn() {
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (session) {
-      // ✅ FIX: home.html doesn't exist
       window.location.replace("index.html");
     }
+  } catch (err) {
+    console.error("Error checking auth session:", err);
   }
-
-  // Expose functions globally for inline HTML usage
-  window.requireAuth = requireAuth;
-  window.redirectIfLoggedIn = redirectIfLoggedIn;
 }
+
+// Optional: expose globally for inline HTML usage
+window.requireAuth = requireAuth;
+window.redirectIfLoggedIn = redirectIfLoggedIn;

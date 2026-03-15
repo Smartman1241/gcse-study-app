@@ -1456,38 +1456,102 @@ html[data-theme="light"] .ai-panel{
       return;
     }
 
-    list.innerHTML = items.map(t => {
-      const duePart = t.dueISO ? `<span class="pill">📅 ${prettyDate(t.dueISO)}</span>` : "";
-      const repPart = t.repeat && t.repeat!=="none" ? `<span class="pill">🔁 ${t.repeat}</span>` : "";
-      const subj = `<span class="pill">📘 ${escapeHtml(t.subject)}</span>`;
-      const pri = priorityBadge(t.priority);
-      const doneCls = t.done ? "text-decoration:line-through; opacity:.8" : "";
-      return `
-        <div class="item">
-          <div class="itemMain">
-            <div class="check" data-done="${t.done}" role="button" aria-label="Toggle done" data-action="toggleTask" data-id="${t.id}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 6L9 17l-5-5"></path>
-              </svg>
-            </div>
-            <div class="itemText">
-              <div class="topline">
-                <div class="name" style="${doneCls}">${escapeHtml(t.name)}</div>
-                ${pri}
-              </div>
-              <div class="meta">
-                ${subj}
-                ${duePart}
-                ${repPart}
-              </div>
-            </div>
-          </div>
-          <div class="actions">
-            <button class="iconBtn" data-action="deleteTask" data-id="${t.id}">🗑</button>
-          </div>
-        </div>
-      `;
-    }).join("");
+  list.innerHTML = ""; // clear existing items
+
+items.forEach(t => {
+  const item = document.createElement("div");
+  item.className = "item";
+
+  const itemMain = document.createElement("div");
+  itemMain.className = "itemMain";
+
+  // Check toggle
+  const check = document.createElement("div");
+  check.className = "check";
+  check.dataset.done = t.done;
+  check.dataset.action = "toggleTask";
+  check.dataset.id = t.id; // safe assignment
+  check.setAttribute("role", "button");
+  check.setAttribute("aria-label", "Toggle done");
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "3");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M20 6L9 17l-5-5");
+
+  svg.appendChild(path);
+  check.appendChild(svg);
+
+  // Item text
+  const itemText = document.createElement("div");
+  itemText.className = "itemText";
+
+  const topline = document.createElement("div");
+  topline.className = "topline";
+
+  const nameDiv = document.createElement("div");
+  nameDiv.className = "name";
+  if (t.done) nameDiv.style.cssText = "text-decoration:line-through; opacity:.8";
+  nameDiv.textContent = t.name; // safe text
+
+  const priDiv = document.createElement("div");
+  priDiv.innerHTML = priorityBadge(t.priority); // already sanitized
+
+  topline.appendChild(nameDiv);
+  topline.appendChild(priDiv);
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+
+  const subjSpan = document.createElement("span");
+  subjSpan.className = "pill";
+  subjSpan.textContent = `📘 ${t.subject}`;
+
+  meta.appendChild(subjSpan);
+
+  if (t.dueISO) {
+    const dueSpan = document.createElement("span");
+    dueSpan.className = "pill";
+    dueSpan.textContent = `📅 ${prettyDate(t.dueISO)}`;
+    meta.appendChild(dueSpan);
+  }
+
+  if (t.repeat && t.repeat !== "none") {
+    const repSpan = document.createElement("span");
+    repSpan.className = "pill";
+    repSpan.textContent = `🔁 ${t.repeat}`;
+    meta.appendChild(repSpan);
+  }
+
+  itemText.appendChild(topline);
+  itemText.appendChild(meta);
+
+  itemMain.appendChild(check);
+  itemMain.appendChild(itemText);
+
+  // Actions
+  const actions = document.createElement("div");
+  actions.className = "actions";
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "iconBtn";
+  delBtn.dataset.action = "deleteTask";
+  delBtn.dataset.id = t.id; // safe assignment
+  delBtn.textContent = "🗑";
+
+  actions.appendChild(delBtn);
+
+  item.appendChild(itemMain);
+  item.appendChild(actions);
+
+  list.appendChild(item);
+});
 
     $$("[data-action='toggleTask']").forEach(el => el.onclick = () => toggleTaskDone(el.dataset.id));
     $$("[data-action='deleteTask']").forEach(el => el.onclick = () => deleteTask(el.dataset.id));
