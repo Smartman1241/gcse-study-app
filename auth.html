@@ -180,10 +180,18 @@ resetEmail:document.getElementById("resetEmail"),
 resetMsg:document.getElementById("resetMsg")
 }
 
-document.addEventListener("DOMContentLoaded",async()=>{
-const {data:{session}}=await supabaseClient.auth.getSession()
-if(session)window.location.href="index.html"
-})
+document.addEventListener("DOMContentLoaded", async () => {
+  // Redirect logged-in users
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) window.location.href = "index.html";
+
+  // Show correct form based on ?mode=login or ?mode=signup
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode"); // "login" or "signup"
+
+  if (mode === "signup") showSignup();
+  else showSignin(); // default to login
+});
 
 function showSignup(){
 els.signin.classList.add("hidden")
