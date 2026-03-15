@@ -8,327 +8,306 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
-  --bg:#0b1020;
-  --text:rgba(255,255,255,.92);
-  --muted:rgba(255,255,255,.6);
-  --border:rgba(255,255,255,.15);
+:root {
+  --bg: #0b1020;
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.6);
+  --border: rgba(255,255,255,.15);
+  --accent-gradient: linear-gradient(135deg, #8ea2ff, #46e6b3);
+  --transition-speed: 0.25s;
 }
 
-*{box-sizing:border-box}
+* { box-sizing: border-box; }
 
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto;
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background:
-    radial-gradient(1200px 700px at 10% 10%, rgba(142,162,255,.25),transparent 60%),
-    radial-gradient(900px 600px at 90% 20%, rgba(70,230,179,.15),transparent 55%),
+    radial-gradient(1200px 700px at 10% 10%, rgba(142,162,255,.25), transparent 60%),
+    radial-gradient(900px 600px at 90% 20%, rgba(70,230,179,.15), transparent 55%),
     var(--bg);
-  color:var(--text);
-  height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  overflow: hidden;
 }
 
-.auth-container{
-  width:420px;
-  padding:42px;
-  background:rgba(255,255,255,.06);
-  backdrop-filter:blur(20px);
-  border:1px solid var(--border);
-  border-radius:22px;
-  box-shadow:0 25px 80px rgba(0,0,0,.5);
+.auth-container {
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+  background: rgba(255,255,255,.06);
+  backdrop-filter: blur(22px);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: 0 25px 80px rgba(0,0,0,.5);
+  position: relative;
+  overflow: hidden;
 }
 
-h1{margin:0;text-align:center;font-size:30px}
-.subtitle{margin:8px 0 28px;text-align:center;color:var(--muted)}
-
-input{
-  width:100%;
-  padding:13px;
-  margin-top:12px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:rgba(255,255,255,.05);
-  color:white;
+h1 { 
+  margin: 0;
+  text-align: center;
+  font-size: 32px;
+  opacity: 0;
+  transform: translateY(-20px);
+  animation: fadeIn 0.5s forwards 0.1s;
 }
 
-button{
-  width:100%;
-  padding:13px;
-  margin-top:18px;
-  border:none;
-  border-radius:12px;
-  background:linear-gradient(135deg,#8ea2ff,#46e6b3);
-  font-weight:600;
-  cursor:pointer;
+.subtitle { 
+  margin: 8px 0 28px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fadeIn 0.5s forwards 0.3s;
 }
 
-.oauth-btn{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  padding:12px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  font-weight:600;
-  cursor:pointer;
+input, button, .oauth-btn, .link {
+  transition: all var(--transition-speed) ease;
 }
 
-.google-btn{
-  background:white;
-  color:#1f1f1f;
+input {
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.05);
+  color: white;
+  font-size: 14px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s forwards;
 }
 
-.microsoft-btn{
-  background:#2F2F2F;
-  color:white;
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 18px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 15px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s forwards;
 }
+
+button:hover {
+  filter: brightness(1.05);
+}
+
+.oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s forwards;
+}
+
+.google-btn { background: white; color: #1f1f1f; }
+.microsoft-btn { background: #2F2F2F; color: white; }
 
 .google-icon,
-.ms-icon{
-  width:18px;
-  height:18px;
-  background-size:contain;
-  background-repeat:no-repeat;
+.ms-icon {
+  width: 18px;
+  height: 18px;
+  background-size: contain;
+  background-repeat: no-repeat;
 }
 
-.google-icon{
-  background-image:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg");
+.google-icon { background-image: url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"); }
+.ms-icon { background-image: url("https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"); }
+
+.link {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
 }
 
-.ms-icon{
-  background-image:url("https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg");
+.hidden { display: none; }
+
+.message {
+  margin-top: 14px;
+  text-align: center;
+  color: #ff7b8f;
+  font-size: 13px;
 }
 
-.link{
-  margin-top:14px;
-  text-align:center;
-  font-size:14px;
-  color:var(--muted);
-  cursor:pointer;
+.success { color: #46e6b3; }
+
+.divider {
+  margin: 16px 0;
+  text-align: center;
+  opacity: 0.6;
+  font-size: 14px;
 }
 
-.hidden{display:none}
-
-.message{
-  margin-top:14px;
-  text-align:center;
-  color:#ff7b8f;
+@keyframes fadeIn {
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.success{color:#46e6b3}
+@keyframes fadeInUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Smooth transitions for switching forms */
+form-section {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
 </style>
 </head>
 
 <body>
-
 <div class="auth-container">
 
 <h1>ReviseFlow</h1>
 <div class="subtitle">Smarter revision. Real progress.</div>
 
 <!-- SIGN IN -->
-<div id="signin">
+<div id="signin" class="form-section">
 
-<button class="oauth-btn google-btn" onclick="signInWithGoogle()">
-<span class="google-icon"></span>
-Continue with Google
-</button>
+  <button class="oauth-btn google-btn" onclick="signInWithGoogle()">
+    <span class="google-icon"></span> Continue with Google
+  </button>
 
-<button class="oauth-btn microsoft-btn" onclick="signInWithMicrosoft()">
-<span class="ms-icon"></span>
-Continue with Microsoft
-</button>
+  <button class="oauth-btn microsoft-btn" onclick="signInWithMicrosoft()">
+    <span class="ms-icon"></span> Continue with Microsoft
+  </button>
 
-<div style="margin:16px 0;text-align:center;opacity:.6">─── or ───</div>
+  <div class="divider">─── or ───</div>
 
-<input id="email" type="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="signIn()" style="background: var(--accent-gradient); color: white;">Sign In</button>
 
-<button onclick="signIn()">Sign In</button>
+  <div class="link" onclick="showSignup()">Create account</div>
+  <div class="link" onclick="showReset()">Forgot password?</div>
 
-<div class="link" onclick="showSignup()">Create account</div>
-<div class="link" onclick="showReset()">Forgot password?</div>
-
-<div id="signinMsg" class="message"></div>
+  <div id="signinMsg" class="message"></div>
 
 </div>
-
 
 <!-- SIGN UP -->
-<div id="signup" class="hidden">
+<div id="signup" class="form-section hidden">
 
-<input id="signupUsername" placeholder="Choose username">
-<input id="signupEmail" type="email" placeholder="Email">
-<input id="signupPassword" type="password" placeholder="Password">
-
-<button onclick="signUp()">Create Account</button>
-
-<div class="link" onclick="showSignin()">Back to sign in</div>
-
-<div id="signupMsg" class="message"></div>
+  <input id="signupUsername" placeholder="Choose username">
+  <input id="signupEmail" type="email" placeholder="Email">
+  <input id="signupPassword" type="password" placeholder="Password">
+  <button onclick="signUp()" style="background: var(--accent-gradient); color: white;">Create Account</button>
+  <div class="link" onclick="showSignin()">Back to sign in</div>
+  <div id="signupMsg" class="message"></div>
 
 </div>
-
 
 <!-- RESET -->
-<div id="reset" class="hidden">
+<div id="reset" class="form-section hidden">
 
-<input id="resetEmail" type="email" placeholder="Email">
-
-<button onclick="resetPassword()">Send Reset Link</button>
-
-<div class="link" onclick="showSignin()">Back to sign in</div>
-
-<div id="resetMsg" class="message"></div>
+  <input id="resetEmail" type="email" placeholder="Email">
+  <button onclick="resetPassword()" style="background: var(--accent-gradient); color: white;">Send Reset Link</button>
+  <div class="link" onclick="showSignin()">Back to sign in</div>
+  <div id="resetMsg" class="message"></div>
 
 </div>
 
 </div>
-
 
 <script>
-
 const SUPABASE_URL="https://mgpwknnbhaljsscsvucm.supabase.co"
 const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+const supabaseClient = supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
 
-const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
+// Redirect after OAuth login
+const redirectURL = window.location.origin + "/index.html"
 
-const redirectURL = window.location.origin + "/auth.html"
-
-
+// Wait for DOM
 document.addEventListener("DOMContentLoaded", async () => {
-
   const { data:{ session } } = await supabaseClient.auth.getSession()
+  if(session) window.location.href = "index.html"
 
-  if(session){
-    window.location.href="index.html"
-    return
-  }
-
-  const params=new URLSearchParams(window.location.search)
-  const mode=params.get("mode")
-
+  const mode=new URLSearchParams(window.location.search).get("mode")
   if(mode==="signup") showSignup()
   else showSignin()
-
 })
 
+// Form toggle functions
+function showSignup(){ signin.classList.add("hidden"); signup.classList.remove("hidden"); reset.classList.add("hidden"); }
+function showSignin(){ signup.classList.add("hidden"); reset.classList.add("hidden"); signin.classList.remove("hidden"); }
+function showReset(){ signin.classList.add("hidden"); signup.classList.add("hidden"); reset.classList.remove("hidden"); }
 
-function showSignup(){
-signin.classList.add("hidden")
-signup.classList.remove("hidden")
-reset.classList.add("hidden")
-}
-
-function showSignin(){
-signup.classList.add("hidden")
-reset.classList.add("hidden")
-signin.classList.remove("hidden")
-}
-
-function showReset(){
-signin.classList.add("hidden")
-signup.classList.add("hidden")
-reset.classList.remove("hidden")
-}
-
-
+// Sign In
 async function signIn(){
-
-signinMsg.textContent=""
-
-const {error}=await supabaseClient.auth.signInWithPassword({
-email:email.value.trim(),
-password:password.value
-})
-
-if(error){
-signinMsg.textContent=error.message
-return
+  signinMsg.textContent=""
+  const {error} = await supabaseClient.auth.signInWithPassword({
+    email: email.value.trim(),
+    password: password.value
+  })
+  if(error){ signinMsg.textContent=error.message; return }
+  window.location.href="index.html"
 }
 
-window.location.href="index.html"
-
-}
-
-
+// Sign Up
 async function signUp(){
-
-signupMsg.textContent=""
-
-const username=signupUsername.value.trim()
-const emailVal=signupEmail.value.trim()
-const passwordVal=signupPassword.value
-
-if(!username){
-signupMsg.textContent="Please choose a username"
-return
+  signupMsg.textContent=""
+  const username=signupUsername.value.trim()
+  const emailVal=signupEmail.value.trim()
+  const passwordVal=signupPassword.value
+  if(!username){ signupMsg.textContent="Please choose a username"; return }
+  const {error}=await supabaseClient.auth.signUp({
+    email: emailVal,
+    password: passwordVal,
+    options:{data:{username}}
+  })
+  if(error){ signupMsg.textContent=error.message; return }
+  signupMsg.classList.add("success")
+  signupMsg.textContent="Account created. Check your email to verify."
 }
 
-const {error}=await supabaseClient.auth.signUp({
-email:emailVal,
-password:passwordVal,
-options:{data:{username}}
-})
-
-if(error){
-signupMsg.textContent=error.message
-return
-}
-
-signupMsg.classList.add("success")
-signupMsg.textContent="Account created. Check your email to verify."
-
-}
-
-
+// Password Reset
 async function resetPassword(){
-
-resetMsg.textContent=""
-
-const {error}=await supabaseClient.auth.resetPasswordForEmail(
-resetEmail.value.trim(),
-{redirectTo:redirectURL}
-)
-
-if(error){
-resetMsg.textContent=error.message
-return
+  resetMsg.textContent=""
+  const {error}=await supabaseClient.auth.resetPasswordForEmail(
+    resetEmail.value.trim(),
+    {redirectTo: redirectURL}
+  )
+  if(error){ resetMsg.textContent=error.message; return }
+  resetMsg.classList.add("success")
+  resetMsg.textContent="Reset email sent"
 }
 
-resetMsg.classList.add("success")
-resetMsg.textContent="Reset email sent"
-
-}
-
-
+// Google OAuth
 async function signInWithGoogle(){
-
-const {error}=await supabaseClient.auth.signInWithOAuth({
-provider:"google",
-options:{redirectTo:redirectURL}
-})
-
-if(error) alert("Google sign in failed")
-
+  const {error}=await supabaseClient.auth.signInWithOAuth({
+    provider:"google",
+    options:{redirectTo:redirectURL}
+  })
+  if(error) alert("Google sign in failed: "+error.message)
 }
 
-
+// Microsoft OAuth
 async function signInWithMicrosoft(){
-
-const {error}=await supabaseClient.auth.signInWithOAuth({
-provider:"azure",
-options:{redirectTo:redirectURL}
-})
-
-if(error) alert("Microsoft sign in failed")
-
+  const {error}=await supabaseClient.auth.signInWithOAuth({
+    provider:"azure",
+    options:{redirectTo:redirectURL}
+  })
+  if(error) alert("Microsoft sign in failed: "+error.message)
 }
-
 </script>
 
 </body>
