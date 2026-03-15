@@ -158,11 +158,18 @@ button:hover { filter: brightness(1.05); }
 }
 
 .show-password {
-  margin-top: 6px;
-  font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.show-password input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
   cursor: pointer;
 }
 
@@ -192,9 +199,12 @@ button:hover { filter: brightness(1.05); }
 
   <input id="email" type="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
-  <div class="show-password">
-    <input type="checkbox" id="showPasswordLogin"> Show password
-  </div>
+
+  <label class="show-password">
+    <input type="checkbox" id="showPasswordLogin">
+    Show password
+  </label>
+
   <button onclick="signIn()" style="background: var(--accent-gradient); color: white;">Sign In</button>
 
   <div class="link" onclick="showSignup()">Create account</div>
@@ -210,10 +220,14 @@ button:hover { filter: brightness(1.05); }
   <input id="signupEmail" type="email" placeholder="Email">
   <input id="signupPassword" type="password" placeholder="Password">
   <input id="signupConfirmPassword" type="password" placeholder="Confirm Password">
-  <div class="show-password">
-    <input type="checkbox" id="showPasswordSignup"> Show passwords
-  </div>
+
+  <label class="show-password">
+    <input type="checkbox" id="showPasswordSignup">
+    Show passwords
+  </label>
+
   <div id="confirmMsg" class="message"></div>
+
   <button onclick="signUp()" style="background: var(--accent-gradient); color: white;">Create Account</button>
 
   <div class="link" onclick="showSignin()">Back to sign in</div>
@@ -239,7 +253,6 @@ const redirectURL = "https://www.reviseflow.co.uk"
 document.addEventListener("DOMContentLoaded", async () => {
   const { data } = await supabaseClient.auth.getSession()
   if(data?.session){ window.location.href="index.html"; return }
-
   const mode = new URLSearchParams(window.location.search).get("mode")
   if(mode==="signup") showSignup()
   else showSignin()
@@ -303,7 +316,6 @@ async function signInWithMicrosoft(){
   if(error) alert("Microsoft sign in failed: "+error.message)
 }
 
-// Show/Hide passwords
 document.getElementById('showPasswordLogin').addEventListener('change', e=>{
   password.type = e.target.checked ? 'text' : 'password'
 })
@@ -314,21 +326,12 @@ document.getElementById('showPasswordSignup').addEventListener('change', e=>{
   signupConfirmPassword.type = show ? 'text' : 'password'
 })
 
-// Real-time confirm password validation
 signupConfirmPassword.addEventListener('input', () => {
-  if(signupPassword.value !== signupConfirmPassword.value){
-    confirmMsg.textContent = "Passwords do not match"
-  } else {
-    confirmMsg.textContent = ""
-  }
+  confirmMsg.textContent = (signupPassword.value !== signupConfirmPassword.value) ? "Passwords do not match" : ""
 })
 
 signupPassword.addEventListener('input', () => {
-  if(signupConfirmPassword.value && signupPassword.value !== signupConfirmPassword.value){
-    confirmMsg.textContent = "Passwords do not match"
-  } else {
-    confirmMsg.textContent = ""
-  }
+  if(signupConfirmPassword.value) confirmMsg.textContent = (signupPassword.value !== signupConfirmPassword.value) ? "Passwords do not match" : ""
 })
 </script>
 </body>
