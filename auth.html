@@ -15,6 +15,7 @@
   --border: rgba(255,255,255,.15);
   --accent-gradient: linear-gradient(135deg, #8ea2ff, #46e6b3);
   --transition-speed: 0.25s;
+  --ms-blue: #0078D4;
 }
 
 * { box-sizing: border-box; }
@@ -45,7 +46,6 @@ body {
   border-radius: 22px;
   box-shadow: 0 25px 80px rgba(0,0,0,.5);
   position: relative;
-  overflow: hidden;
 }
 
 h1 { 
@@ -120,7 +120,7 @@ button:hover {
 }
 
 .google-btn { background: white; color: #1f1f1f; }
-.microsoft-btn { background: #2F2F2F; color: white; }
+.microsoft-btn { background: var(--ms-blue); color: white; }
 
 .google-icon,
 .ms-icon {
@@ -159,13 +159,8 @@ button:hover {
   font-size: 14px;
 }
 
-@keyframes fadeIn {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeInUp {
-  to { opacity: 1; transform: translateY(0); }
-}
+@keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 
@@ -228,16 +223,27 @@ const SUPABASE_URL="https://mgpwknnbhaljsscsvucm.supabase.co"
 const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
 const supabaseClient = supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
 
-// FIXED REDIRECT URL for Microsoft (must match Azure exactly)
+// Use Supabase callback URL
 const redirectURL = "https://www.reviseflow.co.uk"
 
+// Capture OAuth session after redirect
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data:{ session } } = await supabaseClient.auth.getSession()
-  if(session) window.location.href = redirectURL
+  const { data, error } = await supabaseClient.auth.getSession()
+  if(data?.session) {
+    window.location.href = "index.html"
+    return
+  }
 
-  const mode=new URLSearchParams(window.location.search).get("mode")
-  if(mode==="signup") showSignup()
+  const mode = new URLSearchParams(window.location.search).get("mode")
+  if(mode === "signup") showSignup()
   else showSignin()
+})
+
+// Optional: redirect immediately on auth state change
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if(event === "SIGNED_IN" && session) {
+    window.location.href = "index.html"
+  }
 })
 
 function showSignup(){ signin.classList.add("hidden"); signup.classList.remove("hidden"); reset.classList.add("hidden"); }
@@ -251,16 +257,16 @@ async function signIn(){
     password: password.value
   })
   if(error){ signinMsg.textContent=error.message; return }
-  window.location.href=redirectURL
+  window.location.href="index.html"
 }
 
 async function signUp(){
   signupMsg.textContent=""
-  const username=signupUsername.value.trim()
-  const emailVal=signupEmail.value.trim()
-  const passwordVal=signupPassword.value
+  const username = signupUsername.value.trim()
+  const emailVal = signupEmail.value.trim()
+  const passwordVal = signupPassword.value
   if(!username){ signupMsg.textContent="Please choose a username"; return }
-  const {error}=await supabaseClient.auth.signUp({
+  const {error} = await supabaseClient.auth.signUp({
     email: emailVal,
     password: passwordVal,
     options:{data:{username}}
@@ -272,7 +278,7 @@ async function signUp(){
 
 async function resetPassword(){
   resetMsg.textContent=""
-  const {error}=await supabaseClient.auth.resetPasswordForEmail(
+  const {error} = await supabaseClient.auth.resetPasswordForEmail(
     resetEmail.value.trim(),
     {redirectTo: redirectURL}
   )
@@ -282,7 +288,7 @@ async function resetPassword(){
 }
 
 async function signInWithGoogle(){
-  const {error}=await supabaseClient.auth.signInWithOAuth({
+  const {error} = await supabaseClient.auth.signInWithOAuth({
     provider:"google",
     options:{redirectTo:redirectURL}
   })
@@ -290,7 +296,7 @@ async function signInWithGoogle(){
 }
 
 async function signInWithMicrosoft(){
-  const {error}=await supabaseClient.auth.signInWithOAuth({
+  const {error} = await supabaseClient.auth.signInWithOAuth({
     provider:"azure",
     options:{redirectTo:redirectURL}
   })
