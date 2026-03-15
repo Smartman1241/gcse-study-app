@@ -229,7 +229,7 @@ const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
 const supabaseClient = supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
 
 // FIXED REDIRECT URL for Microsoft (must match Azure exactly)
-const redirectURL = "https://www.reviseflow.co.uk/index.html"
+const redirectURL = "https://www.reviseflow.co.uk"
 
 document.addEventListener("DOMContentLoaded", async () => {
   const { data:{ session } } = await supabaseClient.auth.getSession()
