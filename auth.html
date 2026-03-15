@@ -166,11 +166,6 @@ button:hover {
 @keyframes fadeInUp {
   to { opacity: 1; transform: translateY(0); }
 }
-
-/* Smooth transitions for switching forms */
-form-section {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
 </style>
 </head>
 
@@ -181,7 +176,7 @@ form-section {
 <div class="subtitle">Smarter revision. Real progress.</div>
 
 <!-- SIGN IN -->
-<div id="signin" class="form-section">
+<div id="signin">
 
   <button class="oauth-btn google-btn" onclick="signInWithGoogle()">
     <span class="google-icon"></span> Continue with Google
@@ -205,7 +200,7 @@ form-section {
 </div>
 
 <!-- SIGN UP -->
-<div id="signup" class="form-section hidden">
+<div id="signup" class="hidden">
 
   <input id="signupUsername" placeholder="Choose username">
   <input id="signupEmail" type="email" placeholder="Email">
@@ -217,7 +212,7 @@ form-section {
 </div>
 
 <!-- RESET -->
-<div id="reset" class="form-section hidden">
+<div id="reset" class="hidden">
 
   <input id="resetEmail" type="email" placeholder="Email">
   <button onclick="resetPassword()" style="background: var(--accent-gradient); color: white;">Send Reset Link</button>
@@ -233,25 +228,22 @@ const SUPABASE_URL="https://mgpwknnbhaljsscsvucm.supabase.co"
 const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
 const supabaseClient = supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
 
-// Redirect after OAuth login
-const redirectURL = window.location.origin + "/index.html"
+// FIXED REDIRECT URL for Microsoft (must match Azure exactly)
+const redirectURL = "https://www.reviseflow.co.uk/index.html"
 
-// Wait for DOM
 document.addEventListener("DOMContentLoaded", async () => {
   const { data:{ session } } = await supabaseClient.auth.getSession()
-  if(session) window.location.href = "index.html"
+  if(session) window.location.href = redirectURL
 
   const mode=new URLSearchParams(window.location.search).get("mode")
   if(mode==="signup") showSignup()
   else showSignin()
 })
 
-// Form toggle functions
 function showSignup(){ signin.classList.add("hidden"); signup.classList.remove("hidden"); reset.classList.add("hidden"); }
 function showSignin(){ signup.classList.add("hidden"); reset.classList.add("hidden"); signin.classList.remove("hidden"); }
 function showReset(){ signin.classList.add("hidden"); signup.classList.add("hidden"); reset.classList.remove("hidden"); }
 
-// Sign In
 async function signIn(){
   signinMsg.textContent=""
   const {error} = await supabaseClient.auth.signInWithPassword({
@@ -259,10 +251,9 @@ async function signIn(){
     password: password.value
   })
   if(error){ signinMsg.textContent=error.message; return }
-  window.location.href="index.html"
+  window.location.href=redirectURL
 }
 
-// Sign Up
 async function signUp(){
   signupMsg.textContent=""
   const username=signupUsername.value.trim()
@@ -279,7 +270,6 @@ async function signUp(){
   signupMsg.textContent="Account created. Check your email to verify."
 }
 
-// Password Reset
 async function resetPassword(){
   resetMsg.textContent=""
   const {error}=await supabaseClient.auth.resetPasswordForEmail(
@@ -291,7 +281,6 @@ async function resetPassword(){
   resetMsg.textContent="Reset email sent"
 }
 
-// Google OAuth
 async function signInWithGoogle(){
   const {error}=await supabaseClient.auth.signInWithOAuth({
     provider:"google",
@@ -300,7 +289,6 @@ async function signInWithGoogle(){
   if(error) alert("Google sign in failed: "+error.message)
 }
 
-// Microsoft OAuth
 async function signInWithMicrosoft(){
   const {error}=await supabaseClient.auth.signInWithOAuth({
     provider:"azure",
@@ -309,6 +297,5 @@ async function signInWithMicrosoft(){
   if(error) alert("Microsoft sign in failed: "+error.message)
 }
 </script>
-
 </body>
 </html>
