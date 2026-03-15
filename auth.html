@@ -99,9 +99,7 @@ button {
   animation: fadeInUp 0.5s forwards;
 }
 
-button:hover {
-  filter: brightness(1.05);
-}
+button:hover { filter: brightness(1.05); }
 
 .oauth-btn {
   display: flex;
@@ -159,6 +157,15 @@ button:hover {
   font-size: 14px;
 }
 
+.show-password {
+  margin-top: 6px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
 @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
 </style>
@@ -185,13 +192,15 @@ button:hover {
 
   <input id="email" type="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
+  <div class="show-password">
+    <input type="checkbox" id="showPasswordLogin"> Show password
+  </div>
   <button onclick="signIn()" style="background: var(--accent-gradient); color: white;">Sign In</button>
 
   <div class="link" onclick="showSignup()">Create account</div>
   <div class="link" onclick="showReset()">Forgot password?</div>
 
   <div id="signinMsg" class="message"></div>
-
 </div>
 
 <!-- SIGN UP -->
@@ -200,20 +209,23 @@ button:hover {
   <input id="signupUsername" placeholder="Choose username">
   <input id="signupEmail" type="email" placeholder="Email">
   <input id="signupPassword" type="password" placeholder="Password">
+  <input id="signupConfirmPassword" type="password" placeholder="Confirm Password">
+  <div class="show-password">
+    <input type="checkbox" id="showPasswordSignup"> Show passwords
+  </div>
+  <div id="confirmMsg" class="message"></div>
   <button onclick="signUp()" style="background: var(--accent-gradient); color: white;">Create Account</button>
+
   <div class="link" onclick="showSignin()">Back to sign in</div>
   <div id="signupMsg" class="message"></div>
-
 </div>
 
 <!-- RESET -->
 <div id="reset" class="hidden">
-
   <input id="resetEmail" type="email" placeholder="Email">
   <button onclick="resetPassword()" style="background: var(--accent-gradient); color: white;">Send Reset Link</button>
   <div class="link" onclick="showSignin()">Back to sign in</div>
   <div id="resetMsg" class="message"></div>
-
 </div>
 
 </div>
@@ -222,28 +234,19 @@ button:hover {
 const SUPABASE_URL="https://mgpwknnbhaljsscsvucm.supabase.co"
 const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
 const supabaseClient = supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
-
-// Use Supabase callback URL
 const redirectURL = "https://www.reviseflow.co.uk"
 
-// Capture OAuth session after redirect
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data, error } = await supabaseClient.auth.getSession()
-  if(data?.session) {
-    window.location.href = "index.html"
-    return
-  }
+  const { data } = await supabaseClient.auth.getSession()
+  if(data?.session){ window.location.href="index.html"; return }
 
   const mode = new URLSearchParams(window.location.search).get("mode")
-  if(mode === "signup") showSignup()
+  if(mode==="signup") showSignup()
   else showSignin()
 })
 
-// Optional: redirect immediately on auth state change
 supabaseClient.auth.onAuthStateChange((event, session) => {
-  if(event === "SIGNED_IN" && session) {
-    window.location.href = "index.html"
-  }
+  if(event==="SIGNED_IN" && session) window.location.href="index.html"
 })
 
 function showSignup(){ signin.classList.add("hidden"); signup.classList.remove("hidden"); reset.classList.add("hidden"); }
@@ -265,7 +268,10 @@ async function signUp(){
   const username = signupUsername.value.trim()
   const emailVal = signupEmail.value.trim()
   const passwordVal = signupPassword.value
+  const confirmVal = signupConfirmPassword.value
   if(!username){ signupMsg.textContent="Please choose a username"; return }
+  if(passwordVal!==confirmVal){ signupMsg.textContent="Passwords do not match"; return }
+
   const {error} = await supabaseClient.auth.signUp({
     email: emailVal,
     password: passwordVal,
@@ -288,20 +294,42 @@ async function resetPassword(){
 }
 
 async function signInWithGoogle(){
-  const {error} = await supabaseClient.auth.signInWithOAuth({
-    provider:"google",
-    options:{redirectTo:redirectURL}
-  })
+  const {error} = await supabaseClient.auth.signInWithOAuth({provider:"google", options:{redirectTo:redirectURL}})
   if(error) alert("Google sign in failed: "+error.message)
 }
 
 async function signInWithMicrosoft(){
-  const {error} = await supabaseClient.auth.signInWithOAuth({
-    provider:"azure",
-    options:{redirectTo:redirectURL}
-  })
+  const {error} = await supabaseClient.auth.signInWithOAuth({provider:"azure", options:{redirectTo:redirectURL}})
   if(error) alert("Microsoft sign in failed: "+error.message)
 }
+
+// Show/Hide passwords
+document.getElementById('showPasswordLogin').addEventListener('change', e=>{
+  password.type = e.target.checked ? 'text' : 'password'
+})
+
+document.getElementById('showPasswordSignup').addEventListener('change', e=>{
+  const show = e.target.checked
+  signupPassword.type = show ? 'text' : 'password'
+  signupConfirmPassword.type = show ? 'text' : 'password'
+})
+
+// Real-time confirm password validation
+signupConfirmPassword.addEventListener('input', () => {
+  if(signupPassword.value !== signupConfirmPassword.value){
+    confirmMsg.textContent = "Passwords do not match"
+  } else {
+    confirmMsg.textContent = ""
+  }
+})
+
+signupPassword.addEventListener('input', () => {
+  if(signupConfirmPassword.value && signupPassword.value !== signupConfirmPassword.value){
+    confirmMsg.textContent = "Passwords do not match"
+  } else {
+    confirmMsg.textContent = ""
+  }
+})
 </script>
 </body>
 </html>
