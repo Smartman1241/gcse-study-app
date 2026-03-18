@@ -591,8 +591,9 @@ async function openaiResponsesStream(body, onDelta) {
   const reader = resp.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let doneReading = false;
 
-  while (true) {
+  while (!doneReading) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
@@ -601,14 +602,20 @@ async function openaiResponsesStream(body, onDelta) {
     buffer = lines.pop(); // keep last incomplete line
 
     for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const payload = line.slice(6);
-        if (payload === "[DONE]") break;
-        try {
-          const deltaObj = JSON.parse(payload);
-          const token = deltaObj?.output_text_delta || deltaObj?.delta?.content?.[0]?.text;
-          if (token) onDelta(token);
-        } catch {}
+      if (!line.startsWith("data: ")) continue;
+      const payload = line.slice(6);
+      if (payload === "[DONE]") {
+        doneReading = true;
+        break; // exit for-loop cleanly
+      }
+      try {
+        const deltaObj = JSON.parse(payload);
+        const token =
+          deltaObj?.output_text_delta ||
+          deltaObj?.delta?.content?.[0]?.text;
+        if (token) onDelta(token);
+      } catch {
+        // ignore JSON parse errors silently
       }
     }
   }
