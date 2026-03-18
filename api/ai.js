@@ -656,47 +656,52 @@ module.exports = async function handler(req, res) {
 
   // -------- Call OpenAI --------
   const requestBody = buildResponsesRequestBody(model, content, maxTokens, reasoning, verbosity);
-  let outputText = "";
-await openaiResponsesStream(requestBody, (token) => {
-  sendSseEvent(res, "delta", { text: token });
-  outputText += token;
-});
-sendSseEvent(res, "done", {});
-res.end();
-return;
-  const usage = getUsageTokens(aiResp);
+let outputText = "";
 
-  // -------- Update usage and logs --------
-  await bumpMonthlyUsage(user.id, month, model, usage.input, usage.output);
-  await saveConversationMessage(user.id, "user", question);
-  await saveConversationMessage(user.id, "assistant", outputText);
-
-  // -------- Parse output based on action --------
-  let parsedOutput;
-  try {
-    const rawParsed = tryParseJsonLoose(outputText);
-    switch (action) {
-      case "flashcards": parsedOutput = normalizeFlashcards(rawParsed); break;
-      case "mark": parsedOutput = normalizeMarking(rawParsed); break;
-      case "summarise": parsedOutput = normalizeSummary(rawParsed); break;
-      case "diagram": parsedOutput = normalizeDiagram(rawParsed); break;
-      case "revision-plan": parsedOutput = normalizeRevisionPlan(rawParsed); break;
-      case "weakness": parsedOutput = normalizeWeakness(rawParsed); break;
-      default: parsedOutput = outputText;
-    }
-  } catch { parsedOutput = outputText; }
-
-  // -------- Streaming if requested --------
-  if (body.stream === true) return await streamFinalChatResponse(res, outputText);
-
-  // -------- Return JSON --------
-  return res.status(200).json({
-    model,
-    tier,
-    question,
-    answer: parsedOutput,
-    usage,
-    attachments_count: attachments.length,
-    debug: debug ? { raw_output: outputText } : undefined,
+// --- STREAMING CASE ---
+if (body.stream === true) {
+  await openaiResponsesStream(requestBody, (token) => {
+    sendSseEvent(res, "delta", { text: token });
+    outputText += token;
   });
-};
+  sendSseEvent(res, "done", {});
+  return res.end();
+}
+
+// --- NON-STREAMING CASE ---
+const aiResp = await openaiResponsesCall(requestBody); // normal API call
+outputText = extractOutputText(aiResp);
+const usage = getUsageTokens(aiResp);
+
+// -------- Update usage and logs --------
+await bumpMonthlyUsage(user.id, month, model, usage.input, usage.output);
+await saveConversationMessage(user.id, "user", question);
+await saveConversationMessage(user.id, "assistant", outputText);
+
+// -------- Parse output based on action --------
+let parsedOutput;
+try {
+  const rawParsed = tryParseJsonLoose(outputText);
+  switch (action) {
+    case "flashcards": parsedOutput = normalizeFlashcards(rawParsed); break;
+    case "mark": parsedOutput = normalizeMarking(rawParsed); break;
+    case "summarise": parsedOutput = normalizeSummary(rawParsed); break;
+    case "diagram": parsedOutput = normalizeDiagram(rawParsed); break;
+    case "revision-plan": parsedOutput = normalizeRevisionPlan(rawParsed); break;
+    case "weakness": parsedOutput = normalizeWeakness(rawParsed); break;
+    default: parsedOutput = outputText;
+  }
+} catch {
+  parsedOutput = outputText;
+}
+
+// -------- Return JSON --------
+return res.status(200).json({
+  model,
+  tier,
+  question,
+  answer: parsedOutput,
+  usage,
+  attachments_count: attachments.length,
+  debug: debug ? { raw_output: outputText } : undefined,
+});
