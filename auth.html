@@ -276,34 +276,54 @@ async function signIn(){
   window.location.href="index.html"
 }
 
-async function signUp(){
-  signupMsg.textContent=""
-  const username = signupUsername.value.trim()
-  const emailVal = signupEmail.value.trim()
-  const passwordVal = signupPassword.value
-  const confirmVal = signupConfirmPassword.value
-  if(!username){ signupMsg.textContent="Please choose a username"; return }
-  if(passwordVal!==confirmVal){ signupMsg.textContent="Passwords do not match"; return }
+async function signUp() {
+  signupMsg.textContent = "";
+  const username = signupUsername.value.trim();
+  const emailVal = signupEmail.value.trim();
+  const passwordVal = signupPassword.value;
+  const confirmVal = signupConfirmPassword.value;
 
-  const {error} = await supabaseClient.auth.signUp({
-    email: emailVal,
-    password: passwordVal,
-    options:{data:{username}}
-  })
-  if(error){ signupMsg.textContent=error.message; return }
-  signupMsg.classList.add("success")
-  signupMsg.textContent="Account created. Check your email to verify."
+  if (!username) { signupMsg.textContent = "Please choose a username"; return; }
+  if (passwordVal !== confirmVal) { signupMsg.textContent = "Passwords do not match"; return; }
+
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'signup', email: emailVal, password: passwordVal })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      signupMsg.classList.add("success");
+      signupMsg.textContent = "Account created. Check your email to verify.";
+    } else {
+      signupMsg.textContent = data.error || "Signup failed";
+    }
+  } catch (err) {
+    signupMsg.textContent = err.message;
+  }
 }
 
-async function resetPassword(){
-  resetMsg.textContent=""
-  const {error} = await supabaseClient.auth.resetPasswordForEmail(
-    resetEmail.value.trim(),
-    {redirectTo: redirectURL}
-  )
-  if(error){ resetMsg.textContent=error.message; return }
-  resetMsg.classList.add("success")
-  resetMsg.textContent="Reset email sent"
+async function resetPassword() {
+  resetMsg.textContent = "";
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'reset', email: resetEmail.value.trim() })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      resetMsg.classList.add("success");
+      resetMsg.textContent = "Reset email sent";
+    } else {
+      resetMsg.textContent = data.error || "Reset failed";
+    }
+  } catch (err) {
+    resetMsg.textContent = err.message;
+  }
 }
 
 async function signInWithGoogle(){
