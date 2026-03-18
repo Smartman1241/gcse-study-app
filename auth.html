@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ReviseFlow — Sign In</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 :root {
   --bg: #0b1020;
@@ -17,219 +15,71 @@
   --transition-speed: 0.25s;
   --ms-blue: #0078D4;
 }
-
 * { box-sizing: border-box; }
-
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   background:
     radial-gradient(1200px 700px at 10% 10%, rgba(142,162,255,.25), transparent 60%),
     radial-gradient(900px 600px at 90% 20%, rgba(70,230,179,.15), transparent 55%),
     var(--bg);
-  color: var(--text);
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  overflow: hidden;
+  color: var(--text); height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; overflow:hidden;
 }
-
 .auth-container {
-  width: 100%;
-  max-width: 420px;
-  padding: 40px;
-  background: rgba(255,255,255,.06);
-  backdrop-filter: blur(22px);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  box-shadow: 0 25px 80px rgba(0,0,0,.5);
-  position: relative;
+  width:100%; max-width:420px; padding:40px; background:rgba(255,255,255,.06); backdrop-filter:blur(22px);
+  border:1px solid var(--border); border-radius:22px; box-shadow:0 25px 80px rgba(0,0,0,.5); position:relative;
 }
-
-h1 { 
-  margin: 0;
-  text-align: center;
-  font-size: 32px;
-  opacity: 0;
-  transform: translateY(-20px);
-  animation: fadeIn 0.5s forwards 0.1s;
-}
-
-.subtitle { 
-  margin: 8px 0 28px;
-  text-align: center;
-  color: var(--muted);
-  font-weight: 500;
-  opacity: 0;
-  transform: translateY(-10px);
-  animation: fadeIn 0.5s forwards 0.3s;
-}
-
-input, button, .oauth-btn, .link {
-  transition: all var(--transition-speed) ease;
-}
-
-input {
-  width: 100%;
-  padding: 14px;
-  margin-top: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.05);
-  color: white;
-  font-size: 14px;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.5s forwards;
-}
-
-button {
-  width: 100%;
-  padding: 14px;
-  margin-top: 18px;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 15px;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.5s forwards;
-}
-
-button:hover { filter: brightness(1.05); }
-
-.oauth-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 12px;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.5s forwards;
-}
-
-.google-btn { background: white; color: #1f1f1f; }
-.microsoft-btn { background: var(--ms-blue); color: white; }
-
-.google-icon,
-.ms-icon {
-  width: 18px;
-  height: 18px;
-  background-size: contain;
-  background-repeat: no-repeat;
-}
-
-.google-icon { background-image: url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"); }
-.ms-icon { background-image: url("https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"); }
-
-.link {
-  margin-top: 14px;
-  text-align: center;
-  font-size: 14px;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.hidden { display: none; }
-
-.message {
-  margin-top: 14px;
-  text-align: center;
-  color: #ff7b8f;
-  font-size: 13px;
-}
-
-.success { color: #46e6b3; }
-
-.divider {
-  margin: 16px 0;
-  text-align: center;
-  opacity: 0.6;
-  font-size: 14px;
-}
-
-.show-password {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--muted);
-}
-
-.show-password input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-@keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+h1{margin:0;text-align:center;font-size:32px;opacity:0;transform:translateY(-20px);animation:fadeIn .5s forwards .1s;}
+.subtitle{margin:8px 0 28px;text-align:center;color:var(--muted);font-weight:500;opacity:0;transform:translateY(-10px);animation:fadeIn .5s forwards .3s;}
+input, button, .oauth-btn, .link{transition:all var(--transition-speed) ease;}
+input{width:100%;padding:14px;margin-top:12px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:white;font-size:14px;opacity:0;transform:translateY(20px);animation:fadeInUp .5s forwards;}
+button{width:100%;padding:14px;margin-top:18px;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:15px;opacity:0;transform:translateY(20px);animation:fadeInUp .5s forwards;}
+button:hover{filter:brightness(1.05);}
+.oauth-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--border);font-weight:600;cursor:pointer;margin-top:12px;opacity:0;transform:translateY(20px);animation:fadeInUp .5s forwards;}
+.google-btn{background:white;color:#1f1f1f;}
+.microsoft-btn{background:var(--ms-blue);color:white;}
+.google-icon,.ms-icon{width:18px;height:18px;background-size:contain;background-repeat:no-repeat;}
+.google-icon{background-image:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg");}
+.ms-icon{background-image:url("https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg");}
+.link{margin-top:14px;text-align:center;font-size:14px;color:var(--muted);cursor:pointer;}
+.hidden{display:none;}
+.message{margin-top:14px;text-align:center;color:#ff7b8f;font-size:13px;}
+.success{color:#46e6b3;}
+.divider{margin:16px 0;text-align:center;opacity:.6;font-size:14px;}
+.show-password{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;cursor:pointer;color:var(--muted);}
+.show-password input[type="checkbox"]{width:16px;height:16px;cursor:pointer;}
+@keyframes fadeIn{to{opacity:1;transform:translateY(0);}}
+@keyframes fadeInUp{to{opacity:1;transform:translateY(0);}}
 </style>
 </head>
 
 <body>
 <div class="auth-container">
-
 <h1>ReviseFlow</h1>
 <div class="subtitle">Smarter revision. Real progress.</div>
 
 <!-- SIGN IN -->
 <div id="signin">
-
-  <button class="oauth-btn google-btn" onclick="signInWithGoogle()">
-    <span class="google-icon"></span> Continue with Google
-  </button>
-
-  <button class="oauth-btn microsoft-btn" onclick="signInWithMicrosoft()">
-    <span class="ms-icon"></span> Continue with Microsoft
-  </button>
-
+  <button class="oauth-btn google-btn" onclick="signInWithGoogle()"><span class="google-icon"></span> Continue with Google</button>
+  <button class="oauth-btn microsoft-btn" onclick="signInWithMicrosoft()"><span class="ms-icon"></span> Continue with Microsoft</button>
   <div class="divider"> or </div>
-
   <input id="email" type="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
-
-  <label class="show-password">
-    <input type="checkbox" id="showPasswordLogin">
-    Show password
-  </label>
-
+  <label class="show-password"><input type="checkbox" id="showPasswordLogin"> Show password</label>
   <button onclick="signIn()" style="background: var(--accent-gradient); color: white;">Sign In</button>
-
   <div class="link" onclick="showSignup()">Create account</div>
   <div class="link" onclick="showReset()">Forgot password?</div>
-
   <div id="signinMsg" class="message"></div>
 </div>
 
 <!-- SIGN UP -->
 <div id="signup" class="hidden">
-
   <input id="signupUsername" placeholder="Choose username">
   <input id="signupEmail" type="email" placeholder="Email">
   <input id="signupPassword" type="password" placeholder="Password">
   <input id="signupConfirmPassword" type="password" placeholder="Confirm Password">
-
-  <label class="show-password">
-    <input type="checkbox" id="showPasswordSignup">
-    Show passwords
-  </label>
-
+  <label class="show-password"><input type="checkbox" id="showPasswordSignup"> Show passwords</label>
   <div id="confirmMsg" class="message"></div>
-
   <button onclick="signUp()" style="background: var(--accent-gradient); color: white;">Create Account</button>
-
   <div class="link" onclick="showSignin()">Back to sign in</div>
   <div id="signupMsg" class="message"></div>
 </div>
@@ -241,118 +91,97 @@ button:hover { filter: brightness(1.05); }
   <div class="link" onclick="showSignin()">Back to sign in</div>
   <div id="resetMsg" class="message"></div>
 </div>
-
 </div>
 
 <script>
-const SUPABASE_URL="https://mgpwknnbhaljsscsvucm.supabase.co"
-const SUPABASE_KEY="sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
-const supabaseClient = supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
-const redirectURL = "https://www.reviseflow.co.uk"
+const supabaseClient = supabase.createClient(
+  "https://mgpwknnbhaljsscsvucm.supabase.co",
+  "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+);
+const redirectURL = "https://www.reviseflow.co.uk";
 
+// INITIAL CHECK
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data } = await supabaseClient.auth.getSession()
-  if(data?.session){ window.location.href="index.html"; return }
-  const mode = new URLSearchParams(window.location.search).get("mode")
-  if(mode==="signup") showSignup()
-  else showSignin()
-})
+  const { data } = await supabaseClient.auth.getSession();
+  if(data?.session){ window.location.href="index.html"; return; }
+  const mode = new URLSearchParams(window.location.search).get("mode");
+  if(mode==="signup") showSignup();
+  else showSignin();
+});
 
+// AUTH STATE
 supabaseClient.auth.onAuthStateChange((event, session) => {
-  if(event==="SIGNED_IN" && session) window.location.href="index.html"
-})
+  if(event==="SIGNED_IN" && session) window.location.href="index.html";
+});
 
+// UI TOGGLE FUNCTIONS
 function showSignup(){ signin.classList.add("hidden"); signup.classList.remove("hidden"); reset.classList.add("hidden"); }
 function showSignin(){ signup.classList.add("hidden"); reset.classList.add("hidden"); signin.classList.remove("hidden"); }
 function showReset(){ signin.classList.add("hidden"); signup.classList.add("hidden"); reset.classList.remove("hidden"); }
 
+// SIGN IN
 async function signIn(){
-  signinMsg.textContent=""
+  signinMsg.textContent="";
   const {error} = await supabaseClient.auth.signInWithPassword({
     email: email.value.trim(),
     password: password.value
-  })
-  if(error){ signinMsg.textContent=error.message; return }
-  window.location.href="index.html"
+  });
+  if(error){ signinMsg.textContent=error.message; return; }
+  window.location.href="index.html";
 }
 
-async function signUp() {
-  signupMsg.textContent = "";
+// SIGN UP (API)
+async function signUp(){
+  signupMsg.textContent="";
   const username = signupUsername.value.trim();
   const emailVal = signupEmail.value.trim();
   const passwordVal = signupPassword.value;
   const confirmVal = signupConfirmPassword.value;
-
-  if (!username) { signupMsg.textContent = "Please choose a username"; return; }
-  if (passwordVal !== confirmVal) { signupMsg.textContent = "Passwords do not match"; return; }
+  if(!username){ signupMsg.textContent="Please choose a username"; return; }
+  if(passwordVal!==confirmVal){ signupMsg.textContent="Passwords do not match"; return; }
 
   try {
     const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'signup', email: emailVal, password: passwordVal })
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:'signup', email:emailVal, password:passwordVal})
     });
     const data = await res.json();
-
-    if (res.ok) {
-      signupMsg.classList.add("success");
-      signupMsg.textContent = "Account created. Check your email to verify.";
-    } else {
-      signupMsg.textContent = data.error || "Signup failed";
-    }
-  } catch (err) {
-    signupMsg.textContent = err.message;
-  }
+    if(res.ok){ signupMsg.classList.add("success"); signupMsg.textContent="Account created. Check your email to verify."; }
+    else signupMsg.textContent = data.error || "Signup failed";
+  } catch(err){ signupMsg.textContent = err.message; }
 }
 
-async function resetPassword() {
-  resetMsg.textContent = "";
+// RESET PASSWORD (API)
+async function resetPassword(){
+  resetMsg.textContent="";
   try {
     const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'reset', email: resetEmail.value.trim() })
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:'reset', email:resetEmail.value.trim()})
     });
     const data = await res.json();
-
-    if (res.ok) {
-      resetMsg.classList.add("success");
-      resetMsg.textContent = "Reset email sent";
-    } else {
-      resetMsg.textContent = data.error || "Reset failed";
-    }
-  } catch (err) {
-    resetMsg.textContent = err.message;
-  }
+    if(res.ok){ resetMsg.classList.add("success"); resetMsg.textContent="Reset email sent"; }
+    else resetMsg.textContent = data.error || "Reset failed";
+  } catch(err){ resetMsg.textContent = err.message; }
 }
 
-async function signInWithGoogle(){
-  const {error} = await supabaseClient.auth.signInWithOAuth({provider:"google", options:{redirectTo:redirectURL}})
-  if(error) alert("Google sign in failed: "+error.message)
-}
+// OAUTH
+async function signInWithGoogle(){ const {error} = await supabaseClient.auth.signInWithOAuth({provider:"google", options:{redirectTo:redirectURL}}); if(error) alert("Google sign in failed: "+error.message);}
+async function signInWithMicrosoft(){ const {error} = await supabaseClient.auth.signInWithOAuth({provider:"azure", options:{redirectTo:redirectURL}}); if(error) alert("Microsoft sign in failed: "+error.message);}
 
-async function signInWithMicrosoft(){
-  const {error} = await supabaseClient.auth.signInWithOAuth({provider:"azure", options:{redirectTo:redirectURL}})
-  if(error) alert("Microsoft sign in failed: "+error.message)
-}
+// SHOW PASSWORD TOGGLE
+showPasswordLogin.addEventListener('change', e=>{ password.type = e.target.checked ? 'text' : 'password'; });
+showPasswordSignup.addEventListener('change', e=>{
+  const show = e.target.checked;
+  signupPassword.type = show ? 'text' : 'password';
+  signupConfirmPassword.type = show ? 'text' : 'password';
+});
 
-document.getElementById('showPasswordLogin').addEventListener('change', e=>{
-  password.type = e.target.checked ? 'text' : 'password'
-})
-
-document.getElementById('showPasswordSignup').addEventListener('change', e=>{
-  const show = e.target.checked
-  signupPassword.type = show ? 'text' : 'password'
-  signupConfirmPassword.type = show ? 'text' : 'password'
-})
-
-signupConfirmPassword.addEventListener('input', () => {
-  confirmMsg.textContent = (signupPassword.value !== signupConfirmPassword.value) ? "Passwords do not match" : ""
-})
-
-signupPassword.addEventListener('input', () => {
-  if(signupConfirmPassword.value) confirmMsg.textContent = (signupPassword.value !== signupConfirmPassword.value) ? "Passwords do not match" : ""
-})
+// CONFIRM PASSWORD CHECK
+signupConfirmPassword.addEventListener('input', () => { confirmMsg.textContent = (signupPassword.value!==signupConfirmPassword.value)?"Passwords do not match":""; });
+signupPassword.addEventListener('input', () => { if(signupConfirmPassword.value) confirmMsg.textContent = (signupPassword.value!==signupConfirmPassword.value)?"Passwords do not match":""; });
 </script>
 </body>
 </html>
