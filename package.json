@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "GCSE Study App — tasks, flashcards, AI, past papers",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"No tests yet — placeholder\" && exit 0",
     "start": "node index.js",
@@ -21,7 +22,6 @@
   ],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Smartman1241/gcse-study-app/issues"
   },
