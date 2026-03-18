@@ -591,9 +591,8 @@ async function openaiResponsesStream(body, onDelta) {
   const reader = resp.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
-  let doneReading = false;
 
-  while (!doneReading) {
+  while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
@@ -604,23 +603,19 @@ async function openaiResponsesStream(body, onDelta) {
     for (const line of lines) {
       if (!line.startsWith("data: ")) continue;
       const payload = line.slice(6);
-      if (payload === "[DONE]") {
-        doneReading = true;
-        break; // exit for-loop cleanly
-      }
+      if (payload === "[DONE]") return; // exit completely
       try {
         const deltaObj = JSON.parse(payload);
         const token =
           deltaObj?.output_text_delta ||
           deltaObj?.delta?.content?.[0]?.text;
         if (token) onDelta(token);
-      } catch {
-        // ignore JSON parse errors silently
+      } catch (err) {
+        // ignore parse errors
       }
     }
   }
-}
-// -------------------- Main Handler --------------------
+}// -------------------- Main Handler --------------------
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -686,29 +681,44 @@ await saveConversationMessage(user.id, "user", question);
 await saveConversationMessage(user.id, "assistant", outputText);
 
 // -------- Parse output based on action --------
-let parsedOutput;
+let parsedOutput = outputText;
+
 try {
   const rawParsed = tryParseJsonLoose(outputText);
+
   switch (action) {
-    case "flashcards": parsedOutput = normalizeFlashcards(rawParsed); break;
-    case "mark": parsedOutput = normalizeMarking(rawParsed); break;
-    case "summarise": parsedOutput = normalizeSummary(rawParsed); break;
-    case "diagram": parsedOutput = normalizeDiagram(rawParsed); break;
-    case "revision-plan": parsedOutput = normalizeRevisionPlan(rawParsed); break;
-    case "weakness": parsedOutput = normalizeWeakness(rawParsed); break;
-    default: parsedOutput = outputText;
+    case "flashcards":
+      parsedOutput = normalizeFlashcards(rawParsed);
+      break;
+    case "mark":
+      parsedOutput = normalizeMarking(rawParsed);
+      break;
+    case "summarise":
+      parsedOutput = normalizeSummary(rawParsed);
+      break;
+    case "diagram":
+      parsedOutput = normalizeDiagram(rawParsed);
+      break;
+    case "revision-plan":
+      parsedOutput = normalizeRevisionPlan(rawParsed);
+      break;
+    case "weakness":
+      parsedOutput = normalizeWeakness(rawParsed);
+      break;
+    default:
+      parsedOutput = outputText;
   }
-} catch {
+} catch (err) {
   parsedOutput = outputText;
 }
-
+// -------- Return JSON --------
 // -------- Return JSON --------
 return res.status(200).json({
   model,
   tier,
   question,
   answer: parsedOutput,
-  usage,
+  usage: usage || { input: 0, output: 0, total: 0 },
   attachments_count: attachments.length,
   debug: debug ? { raw_output: outputText } : undefined,
 });
