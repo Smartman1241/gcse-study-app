@@ -722,3 +722,4 @@ return res.status(200).json({
   attachments_count: attachments.length,
   debug: debug ? { raw_output: outputText } : undefined,
 });
+}; // <- closes module.exports async handler
