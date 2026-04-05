@@ -437,7 +437,7 @@ function actionInstruction(action) {
 
 // -------------------- OpenAI API Helpers --------------------
 async function openaiResponsesCall(body) {
-  const resp = await fetch("https://api.openai.com/v1/responses", {
+  const resp = await globalThis.fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -445,30 +445,39 @@ async function openaiResponsesCall(body) {
     },
     body: JSON.stringify(body),
   });
+
   if (!resp.ok) {
-  const errText = await resp.text();
-  console.error("OpenAI API ERROR:", errText);
-  throw new Error(`OpenAI API call failed: ${errText}`);
-}
+    const errText = await resp.text();
+    console.error("OpenAI API ERROR:", errText);
+    throw new Error(`OpenAI API call failed: ${errText}`);
+  }
+
   return await resp.json();
 }
 
 function extractOutputText(resp) {
   if (resp.output_text) return resp.output_text;
+
   if (resp.output?.length) {
-    return resp.output.map((o) => o.content?.[0]?.text).filter(Boolean).join("\n");
+    return resp.output
+      .map((o) =>
+        o.content
+          ?.map((c) => c.text || "")
+          .join("")
+      )
+      .filter(Boolean)
+      .join("\n");
   }
+
   return "";
 }
 
 function getUsageTokens(resp) {
-  function getUsageTokens(resp) {
   return {
     input: resp?.usage?.input_tokens || 0,
     output: resp?.usage?.output_tokens || 0,
     total: resp?.usage?.total_tokens || 0,
   };
-}
 }
 
 function buildResponsesRequestBody(model, input, maxOutput, reasoning, verbosity) {
@@ -598,7 +607,7 @@ async function streamFinalChatResponse(res, finalResponse) {
   res.end();
 }
 async function openaiResponsesStream(body, onDelta) {
-  const resp = await fetch("https://api.openai.com/v1/responses?stream=true", {
+  const resp = await globalThis.fetch("https://api.openai.com/v1/responses?stream=true", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -668,13 +677,14 @@ export default async function handler(req, res) {
   const actionInstr = actionInstruction(action);
 
   // -------- Build AI content --------
-const content = [
+const input = [
+  {
+    role: "system",
+    content: systemPrompt,
+  },
   {
     role: "user",
-    content: buildContentWithAttachments(
-      `${systemPrompt}\n${actionInstr}\n${question}`,
-      attachments
-    ),
+    content: buildContentWithAttachments(actionInstr + "\n" + question, attachments),
   },
 ];
   // -------- Model selection --------
@@ -682,10 +692,14 @@ const content = [
 
   // -------- Token allowance check --------
   const maxTokensMap = { free: { normal: 500, detailed: 1000 }, plus: { normal: 500, detailed: 1500 }, pro: { normal: 500, detailed: 2000 } };
-  const maxTokens = isDetailedPrompt(question) ? maxTokensMap[tier].detailed : maxTokensMap[tier].normal;
+  const safeTier = maxTokensMap[tier] ? tier : "free";
+
+const maxTokens = isDetailedPrompt(question)
+  ? maxTokensMap[safeTier].detailed
+  : maxTokensMap[safeTier].normal;
 
   // -------- Call OpenAI --------
-  const requestBody = buildResponsesRequestBody(model, content, maxTokens, reasoning, verbosity);
+  const requestBody = buildResponsesRequestBody(model, input, maxTokens, reasoning, verbosity);
 let outputText = "";
 
 // --- STREAMING CASE ---
@@ -700,10 +714,10 @@ if (body.stream === true) {
     sendSseEvent(res, "delta", { text: token });
     outputText += token;
   });
+
   sendSseEvent(res, "done", {});
   return res.end();
 }
-
 // --- NON-STREAMING CASE ---
 const aiResp = await openaiResponsesCall(requestBody); // normal API call
 outputText = extractOutputText(aiResp);
