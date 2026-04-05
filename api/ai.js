@@ -390,8 +390,19 @@ function hasAnyAttachment(attachments) {
 
 function buildContentWithAttachments(text, attachments) {
   const content = [];
-  for (const att of attachments) content.push({ type: "input_file", content: att });
-  content.push({ type: "input_text", content: text });
+
+  for (const att of attachments) {
+    content.push({
+      type: "input_file",
+      file_data: att
+    });
+  }
+
+  content.push({
+    type: "input_text",
+    text: text
+  });
+
   return content;
 }
 
@@ -434,7 +445,11 @@ async function openaiResponsesCall(body) {
     },
     body: JSON.stringify(body),
   });
-  if (!resp.ok) throw new Error("OpenAI API call failed");
+  if (!resp.ok) {
+  const errText = await resp.text();
+  console.error("OpenAI API ERROR:", errText);
+  throw new Error(`OpenAI API call failed: ${errText}`);
+}
   return await resp.json();
 }
 
@@ -447,7 +462,13 @@ function extractOutputText(resp) {
 }
 
 function getUsageTokens(resp) {
-  return resp?.usage ?? { input: 0, output: 0, total: 0 };
+  function getUsageTokens(resp) {
+  return {
+    input: resp?.usage?.input_tokens || 0,
+    output: resp?.usage?.output_tokens || 0,
+    total: resp?.usage?.total_tokens || 0,
+  };
+}
 }
 
 function buildResponsesRequestBody(model, input, maxOutput, reasoning, verbosity) {
@@ -647,8 +668,15 @@ export default async function handler(req, res) {
   const actionInstr = actionInstruction(action);
 
   // -------- Build AI content --------
-  const content = buildContentWithAttachments(`${systemPrompt}\n${actionInstr}\n${question}`, attachments);
-
+const content = [
+  {
+    role: "user",
+    content: buildContentWithAttachments(
+      `${systemPrompt}\n${actionInstr}\n${question}`,
+      attachments
+    ),
+  },
+];
   // -------- Model selection --------
   const { model, reasoning, verbosity } = await chooseMainModelForRequest(tier, action, question, hasAnyAttachment(attachments));
 
@@ -662,6 +690,12 @@ let outputText = "";
 
 // --- STREAMING CASE ---
 if (body.stream === true) {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+
   await openaiResponsesStream(requestBody, (token) => {
     sendSseEvent(res, "delta", { text: token });
     outputText += token;
