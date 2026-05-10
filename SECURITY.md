@@ -15,7 +15,7 @@ This prevents users from reading, modifying, or deleting other users' data.
 
 ## Protected Tables
 
-### ✅ RLS Enabled
+### ✅ RLS Enabled (Current Schema)
 
 | Table Name | Description | User ID Column | Policies |
 |------------|-------------|----------------|----------|
@@ -23,11 +23,20 @@ This prevents users from reading, modifying, or deleting other users' data.
 | `user_settings` | User preferences (theme, tier, username) | `user_id` | SELECT, INSERT, UPDATE, DELETE |
 | `streak_log` | Daily streak activity tracking | `user_id` | SELECT, INSERT, UPDATE, DELETE |
 | `user_tasks` | Supabase-synced tasks | `user_id` | SELECT, INSERT, UPDATE, DELETE |
-| `ai_usage_monthly` | AI token usage tracking | `user_id` | SELECT, INSERT, UPDATE, DELETE |
-| `ai_uploads_monthly` | Document upload quota tracking | `user_id` | SELECT, INSERT, UPDATE, DELETE |
-| `ai_throttle_minute` | Rate limiting per user | `user_id` | SELECT, INSERT, UPDATE, DELETE |
-| `ai_conversations` | AI chat history | `user_id` | SELECT, INSERT, UPDATE, DELETE |
-| `ai_weak_topics` | Subject weakness tracking | `user_id` | SELECT, INSERT, UPDATE, DELETE |
+
+### 🔜 Future Tables (Not Yet Implemented)
+
+These tables are referenced in API code but not yet created in the database:
+
+| Table Name | Description | Status |
+|------------|-------------|--------|
+| `ai_usage_monthly` | AI token usage tracking | Planned |
+| `ai_uploads_monthly` | Document upload quota tracking | Planned |
+| `ai_throttle_minute` | Rate limiting per user | Planned |
+| `ai_conversations` | AI chat history | Planned |
+| `ai_weak_topics` | Subject weakness tracking | Planned |
+
+**Note**: When these tables are created, apply the same RLS pattern shown in the existing policies.
 
 ### ⚠️ Public Tables (No User-Specific Data)
 
