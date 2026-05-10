@@ -1200,7 +1200,21 @@ html[data-theme="light"] .ai-panel{
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
   const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const todayISO = () => new Date().toISOString().slice(0,10);
+
+  // Local timezone date helpers (fixes timezone streak bugs)
+  const toLocalISODate = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayISO = () => toLocalISODate(new Date());
+
+  const timestampToLocalISODate = (timestamp) => {
+    return toLocalISODate(new Date(timestamp));
+  };
+
   const prettyDate = (iso) => {
     if(!iso) return "—";
     try{
@@ -1212,12 +1226,12 @@ html[data-theme="light"] .ai-panel{
     const dd = new Date(d);
     const day = (dd.getDay() + 6) % 7; // Monday=0
     dd.setDate(dd.getDate() - day);
-    return dd.toISOString().slice(0,10);
+    return toLocalISODate(dd);
   };
   const addDaysISO = (iso, days) => {
     const d = new Date(iso + "T00:00:00");
     d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0,10);
+    return toLocalISODate(d);
   };
 
   const toastEl = $("#toast");
@@ -1319,15 +1333,30 @@ html[data-theme="light"] .ai-panel{
     if(typeof saved.activeSetId === "string") state.activeSetId = saved.activeSetId;
   }
 
+  // Timeout wrapper for async operations
+  async function withTimeout(promise, timeoutMs, timeoutError) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(timeoutError)), timeoutMs)
+      )
+    ]);
+  }
+
   async function loadUserData(){
     if(!currentUser) return;
 
     try {
-      const { data, error } = await supabaseClient
-        .from("user_data")
-        .select("data")
-        .eq("user_id", currentUser.id)
-        .maybeSingle();
+      // Wrap Supabase call in 10-second timeout
+      const { data, error } = await withTimeout(
+        supabaseClient
+          .from("user_data")
+          .select("data")
+          .eq("user_id", currentUser.id)
+          .maybeSingle(),
+        10000,
+        'Load timeout'
+      );
 
       if (error && error.code !== "PGRST116") {
         console.error("Load error:", error);
@@ -1343,7 +1372,12 @@ html[data-theme="light"] .ai-panel{
       bootUI();
     } catch (err) {
       console.error("Load exception:", err);
-      toast("⚠️ Connection error. Using cached data.");
+
+      if (err.message === 'Load timeout') {
+        toast("⚠️ Syncing took too long. Check your connection.");
+      } else {
+        toast("⚠️ Connection error. Using cached data.");
+      }
 
       // Fall back to local storage only
       const local = storageGet();
@@ -1372,16 +1406,37 @@ html[data-theme="light"] .ai-panel{
     }
   }
 
-  const persist = async () => {
-    try {
-      // Always save locally first (this is synchronous and reliable)
-      storageSetLocal(state);
+  // ---------- Save Queue with Locking ----------
+  let isSaving = false;
+  let pendingSave = false;
 
-      // Then try to sync to cloud (may fail if offline)
+  const persist = async () => {
+    // Always save locally first (synchronous and reliable)
+    storageSetLocal(state);
+
+    // If already saving, mark that another save is needed
+    if (isSaving) {
+      pendingSave = true;
+      return;
+    }
+
+    // Acquire lock
+    isSaving = true;
+
+    try {
+      // Try to sync to cloud
       await saveUserData();
     } catch (err) {
-      // saveUserData already shows toast, just log here
       console.error("Persist failed:", err);
+    } finally {
+      // Release lock
+      isSaving = false;
+
+      // If another save was requested while we were saving, do it now
+      if (pendingSave) {
+        pendingSave = false;
+        await persist();
+      }
     }
   };
 
@@ -1399,7 +1454,7 @@ html[data-theme="light"] .ai-panel{
         .from('streak_log')
         .upsert({
           user_id: userId,
-          activity_date: new Date().toISOString().split('T')[0], // Server will use CURRENT_DATE
+          activity_date: todayISO(), // Use local date for consistency
           ...payload,
           last_activity_at: new Date().toISOString()
         }, {
@@ -1409,9 +1464,13 @@ html[data-theme="light"] .ai-panel{
 
       if (error) {
         console.error('Streak sync error:', error);
+        toast('⚠️ Changes not saved to cloud. Staying in local mode.');
+        throw error;
       }
     } catch (err) {
       console.error('Streak sync exception:', err);
+      toast('⚠️ Changes not saved to cloud. Staying in local mode.');
+      throw err;
     }
   }
 
@@ -1524,9 +1583,22 @@ html[data-theme="light"] .ai-panel{
     renderDashboard();
   }
 
+  // Debounce map to prevent double-click race conditions
+  const toggleTaskDebounce = new Map();
+
   async function toggleTaskDone(id){
+    // Prevent rapid double-clicks
+    if (toggleTaskDebounce.has(id)) {
+      return;
+    }
+    toggleTaskDebounce.set(id, true);
+
     const t = state.tasks.find(x => x.id===id);
-    if(!t) return;
+    if(!t) {
+      toggleTaskDebounce.delete(id);
+      return;
+    }
+
     t.done = !t.done;
     t.doneAt = t.done ? Date.now() : null;
 
@@ -1538,6 +1610,7 @@ html[data-theme="light"] .ai-panel{
       // SYNC TO SERVER: Update streak_log in background
       if (currentUser) {
         syncStreakToServer(currentUser.id, 'task').catch(err => {
+          // Error toast already shown in syncStreakToServer
           console.error('Background streak sync failed:', err);
         });
       }
@@ -1555,10 +1628,14 @@ html[data-theme="light"] .ai-panel{
         createdAt: Date.now()
       });
     }
+
     await persist();
     renderTasks();
     renderStats();
     renderDashboard();
+
+    // Clear debounce after 300ms
+    setTimeout(() => toggleTaskDebounce.delete(id), 300);
   }
 
   function deleteTask(id){
@@ -2475,6 +2552,7 @@ items.forEach(t => {
     // SYNC TO SERVER: Update streak_log in background
     if (currentUser) {
       syncStreakToServer(currentUser.id, 'study', min).catch(err => {
+        // Error toast already shown in syncStreakToServer
         console.error('Background streak sync failed:', err);
       });
     }
@@ -2489,12 +2567,12 @@ items.forEach(t => {
     // Build map of dates with study minutes
     const studyMap = new Map(state.studyLog.map(x=>[x.dateISO, Number(x.minutes||0)]));
 
-    // Build map of dates with completed tasks
+    // Build map of dates with completed tasks (using LOCAL timezone)
     const taskDates = new Set();
     state.tasks.forEach(task => {
       if (task.done && task.doneAt) {
-        // Convert timestamp to ISO date string
-        const dateISO = new Date(task.doneAt).toISOString().split('T')[0];
+        // Convert timestamp to LOCAL ISO date (fixes timezone bug)
+        const dateISO = timestampToLocalISODate(task.doneAt);
         taskDates.add(dateISO);
       }
     });
@@ -3136,37 +3214,60 @@ function setupDashboardTasksRealtime(){
     .subscribe();
 }
   async function init(){
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-      window.location.href = "start.html";
-      return;
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) {
+        window.location.href = "start.html";
+        return;
+      }
+
+      currentUser = session.user;
+      await loadDashboardTaskStats();
+      setupDashboardTasksRealtime();
+
+      // loadUserData already calls bootUI() internally
+      await loadUserData();
+
+      // SERVER VALIDATION: Reconcile streak with database
+      if (currentUser) {
+        try {
+          await withTimeout(
+            fetchServerStreak(currentUser.id),
+            10000,
+            'Streak sync timeout'
+          );
+        } catch (err) {
+          console.error("Streak validation failed:", err);
+          // Non-critical, continue without server streak
+        }
+      }
+
+      // Fetch username
+      try {
+        const { data: settings } = await supabaseClient
+          .from("user_settings")
+          .select("username")
+          .eq("user_id", currentUser.id)
+          .single();
+
+        const username = settings?.username || currentUser.email;
+
+        $("#navUsername").textContent = username;
+        $("#dropdownUsername").textContent = username;
+        $("#accountEmail").textContent = currentUser.email;
+      } catch (err) {
+        console.error("Failed to load username:", err);
+        $("#navUsername").textContent = currentUser.email;
+        $("#dropdownUsername").textContent = currentUser.email;
+        $("#accountEmail").textContent = currentUser.email;
+      }
+
+      bindEvents();
+      // bootUI is already called in loadUserData, don't call again
+    } catch (err) {
+      console.error("Init failed:", err);
+      toast("⚠️ Failed to initialize app. Please refresh the page.");
     }
-
-    currentUser = session.user;
-await loadDashboardTaskStats();
-setupDashboardTasksRealtime();
-    await loadUserData();
-
-    // SERVER VALIDATION: Reconcile streak with database
-    if (currentUser) {
-      await fetchServerStreak(currentUser.id);
-    }
-
-    // Fetch username
-    const { data: settings } = await supabaseClient
-      .from("user_settings")
-      .select("username")
-      .eq("user_id", currentUser.id)
-      .single();
-
-    const username = settings?.username || currentUser.email;
-
-    $("#navUsername").textContent = username;
-    $("#dropdownUsername").textContent = username;
-    $("#accountEmail").textContent = currentUser.email;
-
-    bindEvents();
-    bootUI();
   }
 
   init();
