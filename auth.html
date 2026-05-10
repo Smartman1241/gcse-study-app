@@ -36,10 +36,7 @@ button{width:100%;padding:14px;margin-top:18px;border:none;border-radius:12px;fo
 button:hover{filter:brightness(1.05);}
 .oauth-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--border);font-weight:600;cursor:pointer;margin-top:12px;opacity:0;transform:translateY(20px);animation:fadeInUp .5s forwards;}
 .google-btn{background:white;color:#1f1f1f;}
-.microsoft-btn{background:var(--ms-blue);color:white;}
-.google-icon,.ms-icon{width:18px;height:18px;background-size:contain;background-repeat:no-repeat;}
-.google-icon{background-image:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg");}
-.ms-icon{background-image:url("https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg");}
+.google-icon{width:18px;height:18px;background-size:contain;background-repeat:no-repeat;background-image:url("https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg");}
 .link{margin-top:14px;text-align:center;font-size:14px;color:var(--muted);cursor:pointer;}
 .hidden{display:none;}
 .message{margin-top:14px;text-align:center;color:#ff7b8f;font-size:13px;}
@@ -60,7 +57,6 @@ button:hover{filter:brightness(1.05);}
 <!-- SIGN IN -->
 <div id="signin">
   <button class="oauth-btn google-btn" onclick="signInWithGoogle()"><span class="google-icon"></span> Continue with Google</button>
-  <button class="oauth-btn microsoft-btn" onclick="signInWithMicrosoft()"><span class="ms-icon"></span> Continue with Microsoft</button>
   <div class="divider"> or </div>
   <input id="email" type="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
@@ -170,7 +166,6 @@ async function resetPassword(){
 
 // OAUTH
 async function signInWithGoogle(){ const {error} = await supabaseClient.auth.signInWithOAuth({provider:"google", options:{redirectTo:redirectURL}}); if(error) alert("Google sign in failed: "+error.message);}
-async function signInWithMicrosoft(){ const {error} = await supabaseClient.auth.signInWithOAuth({provider:"azure", options:{redirectTo:redirectURL}}); if(error) alert("Microsoft sign in failed: "+error.message);}
 
 // SHOW PASSWORD TOGGLE
 showPasswordLogin.addEventListener('change', e=>{ password.type = e.target.checked ? 'text' : 'password'; });
