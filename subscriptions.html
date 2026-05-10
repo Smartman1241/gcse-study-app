@@ -924,7 +924,7 @@
               <li><span class="tick"></span><span>Flashcards with spaced repetition</span></li>
               <li><span class="tick"></span><span>Quiz generator + instant marking</span></li>
               <li><span class="tick"></span><span>Study analytics + streak tracking</span></li>
-              <li><span class="tick"></span><span>Upload analysis: <strong>1 image/PDF per day</strong></span></li>
+              <li><span class="tick"></span><span><strong>1 Daily Document Scan</strong> (images + PDFs)</span></li>
             </ul>
           </div>
 
@@ -947,7 +947,7 @@
               <li><span class="tick"></span><span>Examiner-style feedback + weak-topic map</span></li>
               <li><span class="tick"></span><span>Premium packs + model answers</span></li>
               <li><span class="tick"></span><span>Priority support + early features</span></li>
-              <li><span class="tick"></span><span>Upload analysis: <strong>up to 4 images/PDFs per day</strong></span></li>
+              <li><span class="tick"></span><span><strong>4 Daily Document Scans</strong> (images + PDFs)</span></li>
             </ul>
           </div>
         </div>
@@ -991,27 +991,23 @@
           <div class="faq">
             <details>
               <summary>Can I cancel anytime?</summary>
-              <p>Yes. You can cancel your subscription in Stripe’s customer portal (recommended) or by contacting support.</p>
+              <p>Yes, you can manage or cancel your subscription at any time through your account settings.</p>
             </details>
 
             <details>
               <summary>Do I get access immediately?</summary>
-              <p>Yes. After payment, your subscription is confirmed by webhook and your plan is unlocked automatically.</p>
+              <p>Yes. Your premium features are unlocked instantly after checkout.</p>
             </details>
 
             <details>
-              <summary>What are the upload limits?</summary>
-              <p>Plus: up to 1 image/PDF per day. Pro: up to 4 images/PDFs per day. Limits reset daily.</p>
+              <summary>What are the document scan limits?</summary>
+              <p>Plus: 1 daily scan. Pro: 4 daily scans. Limits reset every 24 hours.</p>
             </details>
 
             <details>
-              <summary>How does the app know what plan I bought?</summary>
-              <p>Stripe webhooks update your plan in Supabase. The app reads your plan server-side, not from the success redirect.</p>
+              <summary>How will my account update?</summary>
+              <p>Your account status updates automatically across all your devices within seconds of payment.</p>
             </details>
-          </div>
-
-          <div class="fineprint">
-            Tip: Add a “Manage billing” button later via Stripe Billing Portal.
           </div>
         </div>
       </div>
@@ -1336,7 +1332,7 @@
       { g:"Included in Plus & Pro", f:"Study planner + tasks", plus:1, pro:1 },
       { g:"Included in Plus & Pro", f:"Progress analytics + streak tracking", plus:1, pro:1 },
 
-      { g:"Upload limits", f:"Upload work for analysis (Images + PDFs)", plus:1, pro:1, plusNote:"1 per day", proNote:"Up to 4 per day" },
+      { g:"Document Scanning", f:"Scan your work for AI analysis (Images + PDFs)", plus:1, pro:1, plusNote:"1 daily scan", proNote:"4 daily scans" },
 
       { g:"Pro upgrades", f:"Higher AI limits", plus:0, pro:1 },
       { g:"Pro upgrades", f:"Examiner-style feedback (marks / AO)", plus:0, pro:1 },

@@ -208,7 +208,7 @@ async function findPaper(){
   results.innerHTML = "";
   if(error || !data || data.length===0){
     const msg = document.createElement('p');
-    msg.textContent = "No papers found in the database.";
+    msg.textContent = "No papers found for this subject.";
     results.appendChild(msg);
     return;
   }
