@@ -137,14 +137,16 @@
   .fileBtn input[type="file"]{position:absolute; inset:0; opacity:0; cursor:pointer;}
 
   .grid{
-  display:block;
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:14px;
 }
 
 .grid.with-focus{
   grid-template-columns: 1.2fr .8fr;
 }
 
-@media (max-width: 980px){
+@media (max-width: 768px){
   .grid,
   .grid.with-focus{
     grid-template-columns:1fr;
@@ -413,22 +415,28 @@
   .dashHero h3{margin:0 0 6px; font-size:16px;}
   .dashHero p{margin:0; color:var(--muted); font-size:13px; line-height:1.55;}
 #focusPanel {
-  transition: transform .3s ease;
-}
-
-#focusPanel {
   display: none;
 }
 
 #focusPanel.active {
   display: block;
-  position: fixed;
-  right: 20px;
-  top: 120px;
-  width: 380px;
-  z-index: 999;
-  background: var(--bg);
-  backdrop-filter: blur(12px);
+}
+
+@media (max-width: 768px){
+  #focusPanel.active {
+    position: fixed;
+    right: 20px;
+    bottom: 80px;
+    left: 20px;
+    z-index: 999;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
 }
 /* ===== TRUE RIGHT SIDE AI PANEL ===== */
 
@@ -1184,10 +1192,13 @@ html[data-theme="light"] .ai-panel{
 (() => {
   "use strict";
 
-  // Supabase anon key is public (protected by RLS)
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Reuse the global Supabase client from theme.js to prevent multiple instances
+  const supabaseClient = window.supabaseClient || (() => {
+    // Fallback if theme.js hasn't loaded yet (shouldn't happen in normal flow)
+    const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+    return supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  })();
 
   let currentUser = null;
 
@@ -1318,38 +1329,67 @@ html[data-theme="light"] .ai-panel{
   async function loadUserData(){
     if(!currentUser) return;
 
-    const { data, error } = await supabaseClient
-      .from("user_data")
-      .select("data")
-      .eq("user_id", currentUser.id)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabaseClient
+        .from("user_data")
+        .select("data")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
 
-    if (error && error.code !== "PGRST116") {
-      console.error("Load error:", error);
-      return;
+      if (error && error.code !== "PGRST116") {
+        console.error("Load error:", error);
+        toast("⚠️ Failed to load saved data. Using local copy.");
+      }
+
+      const local = storageGet();
+      state = defaultState();
+
+      if(local) mergeIn(local);
+      if(data && data.data) mergeIn(data.data);
+
+      bootUI();
+    } catch (err) {
+      console.error("Load exception:", err);
+      toast("⚠️ Connection error. Using cached data.");
+
+      // Fall back to local storage only
+      const local = storageGet();
+      state = defaultState();
+      if(local) mergeIn(local);
+      bootUI();
     }
-
-    const local = storageGet();
-    state = defaultState();
-
-    if(local) mergeIn(local);
-    if(data && data.data) mergeIn(data.data);
-
-    bootUI();
   }
 
   async function saveUserData(){
     if (!currentUser) return;
-    const { error } = await supabaseClient
-      .from("user_data")
-      .upsert({ user_id: currentUser.id, data: state });
 
-    if (error) console.error("Save error:", error);
+    try {
+      const { error } = await supabaseClient
+        .from("user_data")
+        .upsert({ user_id: currentUser.id, data: state });
+
+      if (error) {
+        console.error("Save error:", error);
+        toast("⚠️ Save failed. Please check your connection.");
+        throw error;
+      }
+    } catch (err) {
+      console.error("Save exception:", err);
+      toast("⚠️ Save failed. Please check your connection.");
+    }
   }
 
-  const persist = () => {
-    storageSetLocal(state);
-    saveUserData();
+  const persist = async () => {
+    try {
+      // Always save locally first (this is synchronous and reliable)
+      storageSetLocal(state);
+
+      // Then try to sync to cloud (may fail if offline)
+      await saveUserData();
+    } catch (err) {
+      // saveUserData already shows toast, just log here
+      console.error("Persist failed:", err);
+    }
   };
 
   // ---------- Tabs ----------
@@ -2524,16 +2564,25 @@ items.forEach(t => {
 
     if (!input) {
       out.textContent = "Please enter a question first.";
+      toast("⚠️ Please enter a question first.");
       return;
     }
 
     out.textContent = "Thinking...";
 
     try {
-      const { data: { session } } = await supabaseClient.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+
+      if (sessionError) {
+        console.error("Session check failed:", sessionError);
+        out.textContent = "Authentication error. Please refresh and try again.";
+        toast("⚠️ Authentication error. Please refresh.");
+        return;
+      }
 
       if (!session) {
         out.textContent = "You must be logged in to use AI.";
+        toast("⚠️ Please log in to use AI.");
         return;
       }
 
@@ -2555,12 +2604,15 @@ items.forEach(t => {
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 429) {
-        out.textContent = data?.error || "Daily AI limit reached.";
+        const errorMsg = data?.error || "Daily AI limit reached.";
+        out.textContent = errorMsg;
+        toast("⚠️ " + errorMsg);
         return;
       }
 
       if (res.status === 401) {
         out.textContent = "Session expired. Please log in again.";
+        toast("⚠️ Session expired. Please log in again.");
         window.location.href = "auth.html";
         return;
       }
@@ -2568,12 +2620,16 @@ items.forEach(t => {
       if (res.ok && data?.reply) {
         out.textContent = data.reply;
       } else {
-        out.textContent = data?.error || "Something went wrong.";
+        const errorMsg = data?.error || "Something went wrong.";
+        out.textContent = errorMsg;
+        toast("⚠️ " + errorMsg);
       }
 
     } catch (e) {
       console.error("AI request error:", e);
-      out.textContent = "Error contacting AI service.";
+      const errorMsg = "Error contacting AI service. Please check your connection.";
+      out.textContent = errorMsg;
+      toast("⚠️ " + errorMsg);
     }
   }
 // IMAGE GENERATION
