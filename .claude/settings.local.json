@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(html|js|css|json\\)$\")",
+      "Bash(git add *)"
+    ]
+  }
+}

@@ -8,8 +8,10 @@ Centralized Supabase Client
 Uses environment variables instead of hardcoded keys.
 For client-side usage, you may still use the public anon key.
 */
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+// Note: These values are public anon keys (safe to expose in frontend)
+// Protected by Supabase Row Level Security (RLS) policies
+const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
 
 export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

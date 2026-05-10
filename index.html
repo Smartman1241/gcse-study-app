@@ -519,6 +519,7 @@ body.ai-active .wrap{
   color:var(--muted);
   font-size:12px;
 }
+</style>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
 <link rel="apple-touch-icon" href="/favicon-192.png">
@@ -541,10 +542,6 @@ body.ai-active .wrap{
 html[data-theme="light"] .ai-panel{
   background: rgba(255,255,255,.95);
 }
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
-<link rel="apple-touch-icon" href="/favicon-192.png">
-<meta name="theme-color" content="#0b1020">
 </style>
 </head>
 
@@ -650,7 +647,73 @@ html[data-theme="light"] .ai-panel{
         </section>
 
         <!-- TASKS -->
-        
+        <section class="tabpanel" data-tabpanel="tasks" hidden>
+          <div class="row">
+            <div class="field">
+              <span class="label">Task name</span>
+              <input id="taskName" type="text" placeholder="e.g. Biology revision" maxlength="80">
+            </div>
+            <div class="field small">
+              <span class="label">Subject</span>
+              <select id="taskSubject"></select>
+            </div>
+            <div class="field small">
+              <span class="label">Priority</span>
+              <select id="taskPriority">
+                <option value="low">Low</option>
+                <option value="med" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="field small">
+              <span class="label">Due date</span>
+              <input id="taskDue" type="date">
+            </div>
+            <div class="field small">
+              <span class="label">Repeat</span>
+              <select id="taskRepeat">
+                <option value="none" selected>None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn primary" id="btnAddTask">Add task</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div class="field small">
+              <span class="label">Filter by subject</span>
+              <select id="taskFilterSubject"></select>
+            </div>
+            <div class="field small">
+              <span class="label">Show</span>
+              <select id="taskFilterStatus">
+                <option value="all" selected>All tasks</option>
+                <option value="open">Open only</option>
+                <option value="done">Done only</option>
+              </select>
+            </div>
+            <div class="field small">
+              <span class="label">Sort by</span>
+              <select id="taskSort">
+                <option value="priority" selected>Priority</option>
+                <option value="due">Due date</option>
+                <option value="recent">Most recent</option>
+              </select>
+            </div>
+            <div class="field small" style="align-self:flex-end">
+              <button class="btn danger" id="btnClearDone">Clear done</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="list" id="tasksList"></div>
+        </section>
 
         <!-- STUDYSETS -->
         <section class="tabpanel" data-tabpanel="studysets" hidden>
@@ -1116,6 +1179,7 @@ html[data-theme="light"] .ai-panel{
 (() => {
   "use strict";
 
+  // Supabase anon key is public (protected by RLS)
   const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
   const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2428,27 +2492,23 @@ items.forEach(t => {
     const weakCount = state.topics.filter(t => Number(t.confidence)<=4).length;
     $("#dashWeakCount").textContent = String(weakCount);
 
-    const nowISO = todayISO();
-    const nextTasks = state.tasks
-      .filter(t => !t.done)
-      .sort((a,b) => (a.dueISO||"9999-12-31").localeCompare(b.dueISO||"9999-12-31") || priorityRank(b.priority)-priorityRank(a.priority))
-      .slice(0, 5);
+    const openTasks = state.tasks.filter(t => !t.done).length;
+    $("#dashTasksOpen").textContent = String(openTasks);
 
+    const nowISO = todayISO();
     const dueTopics = state.topics
       .filter(t => (t.nextReviewISO || nowISO) <= nowISO)
       .sort((a,b)=> (a.confidence-b.confidence))
       .slice(0, 4);
 
-    const parts = [];
-  
-
-    if(dueTopics.length){
-      parts.push(`<br><br><b>Due topics</b><br>` + dueTopics.map(t => `• ${escapeHtml(t.subject)} — ${escapeHtml(t.topic)} <span class="muted">(conf ${t.confidence}/10)</span>`).join("<br>"));
-    } else {
-      parts.push(`<br><br><b>Due topics</b><br><span class="muted">Nothing due right now.</span>`);
+    const nextEl = $("#dashNextUp");
+    if(nextEl){
+      if(dueTopics.length){
+        nextEl.innerHTML = dueTopics.map(t => `• ${escapeHtml(t.subject)} — ${escapeHtml(t.topic)} <span class="muted">(conf ${t.confidence}/10)</span>`).join("<br>");
+      } else {
+        nextEl.innerHTML = `<span class="muted">No topics due right now.</span>`;
+      }
     }
-
-    
   }
 
   // ---------- AI ----------
@@ -2650,6 +2710,11 @@ $("#navContinue")?.addEventListener("change", (e) => {
 });
 
     // Tasks
+    $("#btnAddTask")?.addEventListener("click", addTask);
+    $("#taskFilterSubject")?.addEventListener("change", renderTasks);
+    $("#taskFilterStatus")?.addEventListener("change", renderTasks);
+    $("#taskSort")?.addEventListener("change", renderTasks);
+    $("#btnClearDone")?.addEventListener("click", clearDoneTasks);
    
 
     // Sets

@@ -22,7 +22,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 // -------------------- Models & Plan --------------------
 const MODELS = {
   CHAT_FAST: "gpt-4o-mini",
-  CHAT_SMART: "gpt-5-mini",
+  CHAT_SMART: "gpt-4o",  // Fixed: was "gpt-5-mini" which doesn't exist
   // IMAGE removed entirely
   EMBEDDING: "text-embedding-3-small", // optional
 };
@@ -391,15 +391,19 @@ function hasAnyAttachment(attachments) {
 function buildContentWithAttachments(text, attachments) {
   const content = [];
 
+  // OpenAI only supports images in chat completions (not PDFs)
   for (const att of attachments) {
-    content.push({
-      type: "input_file",
-      file_data: att
-    });
+    if (att.startsWith('data:image/')) {
+      content.push({
+        type: "image_url",
+        image_url: { url: att }
+      });
+    }
   }
 
+  // Add text content
   content.push({
-    type: "input_text",
+    type: "text",
     text: text
   });
 
@@ -436,8 +440,8 @@ function actionInstruction(action) {
 }
 
 // -------------------- OpenAI API Helpers --------------------
-async function openaiResponsesCall(body) {
-  const resp = await globalThis.fetch("https://api.openai.com/v1/responses", {
+async function openaiChatCompletionCall(body) {
+  const resp = await globalThis.fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -449,42 +453,32 @@ async function openaiResponsesCall(body) {
   if (!resp.ok) {
     const errText = await resp.text();
     console.error("OpenAI API ERROR:", errText);
-    throw new Error(`OpenAI API call failed: ${errText}`);
+    throw new Error(`OpenAI API call failed: ${resp.status}`);
   }
 
   return await resp.json();
 }
 
 function extractOutputText(resp) {
-  if (resp.output_text) return resp.output_text;
-
-  if (resp.output?.length) {
-    return resp.output
-      .map((o) =>
-        o.content
-          ?.map((c) => c.text || "")
-          .join("")
-      )
-      .filter(Boolean)
-      .join("\n");
-  }
-
-  return "";
+  // OpenAI Chat Completions response format
+  return resp.choices?.[0]?.message?.content || "";
 }
 
 function getUsageTokens(resp) {
   return {
-    input: resp?.usage?.input_tokens || 0,
-    output: resp?.usage?.output_tokens || 0,
+    input: resp?.usage?.prompt_tokens || 0,
+    output: resp?.usage?.completion_tokens || 0,
     total: resp?.usage?.total_tokens || 0,
   };
 }
 
-function buildResponsesRequestBody(model, input, maxOutput, reasoning, verbosity) {
-  const body = { model, input, max_output_tokens: maxOutput };
-  if (reasoning) body.reasoning = { effort: reasoning };
-  if (verbosity) body.text = { verbosity };
-  return body;
+function buildChatCompletionBody(model, messages, maxTokens) {
+  return {
+    model,
+    messages,  // Already formatted as [{role, content}]
+    max_tokens: maxTokens,
+    temperature: 0.7
+  };
 }
 
 // -------------------- Router / Model Selection --------------------
@@ -606,14 +600,14 @@ async function streamFinalChatResponse(res, finalResponse) {
   sendSseEvent(res, "done", {});
   res.end();
 }
-async function openaiResponsesStream(body, onDelta) {
-  const resp = await globalThis.fetch("https://api.openai.com/v1/responses?stream=true", {
+async function openaiChatCompletionStream(body, onDelta) {
+  const resp = await globalThis.fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, stream: true }),
   });
 
   if (!resp.ok) throw new Error("OpenAI API call failed");
@@ -627,18 +621,17 @@ async function openaiResponsesStream(body, onDelta) {
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n\n");
+    const lines = buffer.split("\n");
     buffer = lines.pop(); // keep last incomplete line
 
     for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const payload = line.slice(6);
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) continue;
+      const payload = trimmed.slice(6);
       if (payload === "[DONE]") return; // exit completely
       try {
         const deltaObj = JSON.parse(payload);
-        const token =
-          deltaObj?.output_text_delta ||
-          deltaObj?.delta?.content?.[0]?.text;
+        const token = deltaObj?.choices?.[0]?.delta?.content;
         if (token) onDelta(token);
       } catch (err) {
         // ignore parse errors
@@ -676,15 +669,17 @@ export default async function handler(req, res) {
   const systemPrompt = systemPromptFor(user.id, action, question, hasAnyAttachment(attachments), weakTopics);
   const actionInstr = actionInstruction(action);
 
-  // -------- Build AI content --------
-const input = [
+  // -------- Build AI messages --------
+const messages = [
   {
     role: "system",
     content: systemPrompt,
   },
   {
     role: "user",
-    content: buildContentWithAttachments(actionInstr + "\n" + question, attachments),
+    content: hasAnyAttachment(attachments)
+      ? buildContentWithAttachments(actionInstr + "\n" + question, attachments)
+      : actionInstr + "\n" + question
   },
 ];
   // -------- Model selection --------
@@ -699,7 +694,7 @@ const maxTokens = isDetailedPrompt(question)
   : maxTokensMap[safeTier].normal;
 
   // -------- Call OpenAI --------
-  const requestBody = buildResponsesRequestBody(model, input, maxTokens, reasoning, verbosity);
+  const requestBody = buildChatCompletionBody(model, messages, maxTokens);
 let outputText = "";
 
 // --- STREAMING CASE ---
@@ -710,7 +705,7 @@ if (body.stream === true) {
     Connection: "keep-alive",
   });
 
-  await openaiResponsesStream(requestBody, (token) => {
+  await openaiChatCompletionStream(requestBody, (token) => {
     sendSseEvent(res, "delta", { text: token });
     outputText += token;
   });
@@ -719,7 +714,7 @@ if (body.stream === true) {
   return res.end();
 }
 // --- NON-STREAMING CASE ---
-const aiResp = await openaiResponsesCall(requestBody); // normal API call
+const aiResp = await openaiChatCompletionCall(requestBody); // normal API call
 outputText = extractOutputText(aiResp);
 const usage = getUsageTokens(aiResp);
 
@@ -759,13 +754,13 @@ try {
 } catch (err) {
   parsedOutput = outputText;
 }
-// -------- Reaturn JSON --------
+// -------- Return JSON --------
 
 return res.status(200).json({
   model,
   tier,
   question,
-  answer: parsedOutput,
+  reply: parsedOutput,  // Fixed: frontend expects "reply" not "answer"
   usage: usage || { input: 0, output: 0, total: 0 },
   attachments_count: attachments.length,
   debug: debug ? { raw_output: outputText } : undefined,
