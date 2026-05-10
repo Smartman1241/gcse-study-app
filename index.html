@@ -1187,10 +1187,10 @@ html[data-theme="light"] .ai-panel{
 
   // Reuse the global Supabase client from theme.js to prevent multiple instances
   const supabaseClient = window.supabaseClient || (() => {
-    // Fallback if theme.js hasn't loaded yet (shouldn't happen in normal flow)
-    const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-    return supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Fallback using centralized config
+    const CONFIG = window.REVISEFLOW_CONFIG?.supabase;
+    if (!CONFIG) throw new Error("REVISEFLOW_CONFIG not loaded");
+    return supabase.createClient(CONFIG.url, CONFIG.anonKey);
   })();
 
   let currentUser = null;

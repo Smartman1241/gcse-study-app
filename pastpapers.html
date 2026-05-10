@@ -131,9 +131,8 @@ a{
 </div>
 
 <script>
-const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const CONFIG = window.REVISEFLOW_CONFIG?.supabase;
+const supabaseClient = supabase.createClient(CONFIG.url, CONFIG.anonKey);
 
 // Populate subject dropdown dynamically
 const subjects = ["English Language","English Literature","Biology","Chemistry","Physics","Maths"];

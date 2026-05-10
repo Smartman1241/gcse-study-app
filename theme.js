@@ -7,13 +7,22 @@
 
   "use strict";
 
-  const KEY = "reviseflow_theme";
+  // =====================================================
+  // GLOBAL CONFIG (SINGLE SOURCE OF TRUTH)
+  // =====================================================
+  window.REVISEFLOW_CONFIG = {
+    supabase: {
+      url: "https://mgpwknnbhaljsscsvucm.supabase.co",
+      anonKey: "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+    },
+    theme: {
+      storageKey: "reviseflow_theme"
+    }
+  };
 
-  const SUPABASE_URL =
-    "https://mgpwknnbhaljsscsvucm.supabase.co";
-
-  const SUPABASE_ANON =
-    "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+  const KEY = window.REVISEFLOW_CONFIG.theme.storageKey;
+  const SUPABASE_URL = window.REVISEFLOW_CONFIG.supabase.url;
+  const SUPABASE_ANON = window.REVISEFLOW_CONFIG.supabase.anonKey;
 
   // -----------------------------
   // Normalize

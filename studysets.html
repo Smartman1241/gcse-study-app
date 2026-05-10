@@ -372,9 +372,10 @@
 <script>
   // Supabase client (same keys you used)
   if (!window.supabaseClient) {
+    const CONFIG = window.REVISEFLOW_CONFIG?.supabase;
     window.supabaseClient = window.supabase.createClient(
-      "https://mgpwknnbhaljsscsvucm.supabase.co",
-      "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+      CONFIG.url,
+      CONFIG.anonKey
     );
   }
 

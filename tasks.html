@@ -360,10 +360,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const sb = window.supabase.createClient(
-    "https://mgpwknnbhaljsscsvucm.supabase.co",
-    "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
-  );
+  const CONFIG = window.REVISEFLOW_CONFIG?.supabase;
+  const sb = window.supabase.createClient(CONFIG.url, CONFIG.anonKey);
 
   const $ = (s, r=document) => r.querySelector(s);
 

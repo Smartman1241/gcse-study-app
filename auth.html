@@ -111,9 +111,10 @@ button:hover{filter:brightness(1.05);}
 
 <script>
 // Reuse global Supabase client from theme.js to prevent multiple instances
+const CONFIG = window.REVISEFLOW_CONFIG?.supabase;
 const supabaseClient = window.supabaseClient || supabase.createClient(
-  "https://mgpwknnbhaljsscsvucm.supabase.co",
-  "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+  CONFIG.url,
+  CONFIG.anonKey
 );
 
 // Ensure global reference exists

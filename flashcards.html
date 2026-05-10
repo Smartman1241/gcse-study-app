@@ -568,12 +568,11 @@
 <script>
 (()=>{
 
-  /* ===== Client init (Anon key is public - protected by RLS) ===== */
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+  /* ===== Client init (uses centralized config - protected by RLS) ===== */
+  const CONFIG = window.REVISEFLOW_CONFIG?.supabase;
 
   if (!window.supabaseClient) {
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.supabaseClient = window.supabase.createClient(CONFIG.url, CONFIG.anonKey);
   }
   const sb = window.supabaseClient;
 

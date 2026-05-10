@@ -394,11 +394,10 @@
   /* =========================
      SAFE SUPABASE INIT
   ========================== */
-  const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"; // Public anon key (RLS protected)
+  const CONFIG = window.REVISEFLOW_CONFIG?.supabase;
 
   if (!window.supabaseClient) {
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.supabaseClient = window.supabase.createClient(CONFIG.url, CONFIG.anonKey);
   }
   const supabaseClient = window.supabaseClient;
 

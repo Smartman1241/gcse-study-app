@@ -8,12 +8,14 @@ Centralized Supabase Client
 Reuses the global client if available (from theme.js), otherwise creates a new one.
 This prevents multiple client instances and race conditions.
 */
-// Note: These values are public anon keys (safe to expose in frontend)
+// Note: Credentials centralized in theme.js window.REVISEFLOW_CONFIG
 // Protected by Supabase Row Level Security (RLS) policies
-const SUPABASE_URL = "https://mgpwknnbhaljsscsvucm.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+const CONFIG = window.REVISEFLOW_CONFIG?.supabase || {
+  url: "https://mgpwknnbhaljsscsvucm.supabase.co",
+  anonKey: "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs"
+};
 
-export const supabaseClient = window.supabaseClient || createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabaseClient = window.supabaseClient || createClient(CONFIG.url, CONFIG.anonKey);
 
 // Make sure window reference is set for other modules
 if (!window.supabaseClient) {

@@ -5,7 +5,8 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git push *)",
-      "Bash(grep -n \"}$\" start.html)"
+      "Bash(grep -n \"}$\" start.html)",
+      "Bash(grep -E '\\\\.\\(html|css|js\\)$')"
     ]
   }
 }

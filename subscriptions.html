@@ -1112,12 +1112,11 @@
     // SUPABASE AUTH (USER ID)
     // =========================
     // IMPORTANT: Use your real Supabase anon key (NOT Stripe keys).
-    // If you already set these globally, it will reuse them.
-    const SUPABASE_URL = window.SUPABASE_URL || "https://mgpwknnbhaljsscsvucm.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_6tdnozSH6Ck75uDgXPN-sg_Mn7vyLFs";
+    // Use centralized config from theme.js
+    const CONFIG = window.REVISEFLOW_CONFIG?.supabase;
 
-    const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
-      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    const supabaseClient = (window.supabase && CONFIG)
+      ? window.supabase.createClient(CONFIG.url, CONFIG.anonKey)
       : null;
 
     let currentUserId = null;
