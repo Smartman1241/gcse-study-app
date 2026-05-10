@@ -606,13 +606,6 @@ html[data-theme="light"] .ai-panel{
       </div>
 
       <button class="btn" id="btnTheme">🌙 Theme</button>
-      <button class="btn" id="btnExport">⬇️ Export</button>
-
-      <label class="btn fileBtn">⬆️ Import
-        <input id="fileImport" type="file" accept="application/json" />
-      </label>
-
-      <button class="btn danger" id="btnReset">🧨 Reset</button>
     </div>
   </header>
 
@@ -2850,15 +2843,17 @@ $("#btnGenerateImage")?.addEventListener(
   generateImage
 );
 
-    // Theme / export / import / reset
+    // Theme toggle
     $("#btnTheme")?.addEventListener("click", toggleTheme);
-    $("#btnExport")?.addEventListener("click", exportAll);
-    $("#fileImport")?.addEventListener("change", (e) => {
-      const f = e.target.files?.[0];
-      if(f) importAll(f);
-      e.target.value = "";
-    });
-    $("#btnReset")?.addEventListener("click", hardReset);
+
+    // Export / Import / Reset functions preserved for manual support (no UI buttons)
+    // $("#btnExport")?.addEventListener("click", exportAll);
+    // $("#fileImport")?.addEventListener("change", (e) => {
+    //   const f = e.target.files?.[0];
+    //   if(f) importAll(f);
+    //   e.target.value = "";
+    // });
+    // $("#btnReset")?.addEventListener("click", hardReset);
 
     // Dashboard quick buttons
     $("#dashGoTasks")?.addEventListener("click", () => {
