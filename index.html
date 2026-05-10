@@ -1385,6 +1385,36 @@ html[data-theme="light"] .ai-panel{
     }
   };
 
+  // ---------- Streak Sync ----------
+  // Sync streak activity to Supabase streak_log table
+  async function syncStreakToServer(userId, activityType = 'task', minutes = 0) {
+    if (!userId) return;
+
+    try {
+      const payload = activityType === 'task'
+        ? { tasks_completed: 1 }
+        : { study_minutes: minutes };
+
+      const { error } = await supabaseClient
+        .from('streak_log')
+        .upsert({
+          user_id: userId,
+          activity_date: new Date().toISOString().split('T')[0], // Server will use CURRENT_DATE
+          ...payload,
+          last_activity_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,activity_date',
+          ignoreDuplicates: false
+        });
+
+      if (error) {
+        console.error('Streak sync error:', error);
+      }
+    } catch (err) {
+      console.error('Streak sync exception:', err);
+    }
+  }
+
   // ---------- Tabs ----------
   function setLeftTitle(tab){
     const map = {
@@ -1494,11 +1524,24 @@ html[data-theme="light"] .ai-panel{
     renderDashboard();
   }
 
-  function toggleTaskDone(id){
+  async function toggleTaskDone(id){
     const t = state.tasks.find(x => x.id===id);
     if(!t) return;
     t.done = !t.done;
     t.doneAt = t.done ? Date.now() : null;
+
+    if(t.done){
+      // OPTIMISTIC: Update UI immediately
+      state.streakCount = calcStreak();
+      renderStreak();
+
+      // SYNC TO SERVER: Update streak_log in background
+      if (currentUser) {
+        syncStreakToServer(currentUser.id, 'task').catch(err => {
+          console.error('Background streak sync failed:', err);
+        });
+      }
+    }
 
     if(t.done && t.repeat && t.repeat !== "none"){
       const baseDue = t.dueISO || todayISO();
@@ -1512,7 +1555,7 @@ html[data-theme="light"] .ai-panel{
         createdAt: Date.now()
       });
     }
-    persist();
+    await persist();
     renderTasks();
     renderStats();
     renderDashboard();
@@ -2413,7 +2456,7 @@ items.forEach(t => {
     return row ? Number(row.minutes||0) : 0;
   }
 
-  function addStudyMinutes(min){
+  async function addStudyMinutes(min){
     const d = todayISO();
     let row = state.studyLog.find(x=>x.dateISO===d);
     if(!row){
@@ -2425,23 +2468,91 @@ items.forEach(t => {
     state.studyLog.sort((a,b)=>a.dateISO.localeCompare(b.dateISO));
     if(state.studyLog.length > 120) state.studyLog = state.studyLog.slice(-120);
 
-    persist();
+    // OPTIMISTIC: Update UI immediately
+    state.streakCount = calcStreak();
+    renderStreak();
+
+    // SYNC TO SERVER: Update streak_log in background
+    if (currentUser) {
+      syncStreakToServer(currentUser.id, 'study', min).catch(err => {
+        console.error('Background streak sync failed:', err);
+      });
+    }
+
+    await persist();
     renderTimer();
     renderStats();
     renderDashboard();
   }
 
   function calcStreak(){
-    const map = new Map(state.studyLog.map(x=>[x.dateISO, Number(x.minutes||0)]));
+    // Build map of dates with study minutes
+    const studyMap = new Map(state.studyLog.map(x=>[x.dateISO, Number(x.minutes||0)]));
+
+    // Build map of dates with completed tasks
+    const taskDates = new Set();
+    state.tasks.forEach(task => {
+      if (task.done && task.doneAt) {
+        // Convert timestamp to ISO date string
+        const dateISO = new Date(task.doneAt).toISOString().split('T')[0];
+        taskDates.add(dateISO);
+      }
+    });
+
     let streak = 0;
     let d = todayISO();
+
     for(;;){
-      if((map.get(d) || 0) > 0){
+      const hasStudy = (studyMap.get(d) || 0) > 0;
+      const hasTasks = taskDates.has(d);
+
+      if (hasStudy || hasTasks) {
         streak++;
         d = addDaysISO(d, -1);
-      }else break;
+      } else {
+        break;
+      }
+
+      if (streak > 1000) break; // Safety limit
     }
+
     return streak;
+  }
+
+  // Render streak counter in UI
+  function renderStreak(){
+    const streak = calcStreak();
+    const el = document.getElementById("uiStreak");
+    if(el) el.textContent = String(streak);
+  }
+
+  // Fetch authoritative streak from Supabase and reconcile with local state
+  async function fetchServerStreak(userId) {
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabaseClient.rpc('calculate_streak', {
+        p_user_id: userId
+      });
+
+      if (error) {
+        console.error('Server streak fetch error:', error);
+        return;
+      }
+
+      const serverStreak = data || 0;
+      const localStreak = state.streakCount || 0;
+
+      // If server differs from local, trust the server
+      if (serverStreak !== localStreak) {
+        console.log(`Streak reconciled: local=${localStreak}, server=${serverStreak}`);
+        state.streakCount = serverStreak;
+        renderStreak();
+        await persist();
+      }
+    } catch (err) {
+      console.error('Server streak exception:', err);
+    }
   }
 
   function getMinutesThisWeek(){
@@ -3035,6 +3146,11 @@ function setupDashboardTasksRealtime(){
 await loadDashboardTaskStats();
 setupDashboardTasksRealtime();
     await loadUserData();
+
+    // SERVER VALIDATION: Reconcile streak with database
+    if (currentUser) {
+      await fetchServerStreak(currentUser.id);
+    }
 
     // Fetch username
     const { data: settings } = await supabaseClient
