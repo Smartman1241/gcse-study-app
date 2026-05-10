@@ -2694,8 +2694,14 @@ $("#aiFileUpload")?.addEventListener("change", async e => {
     const html = document.documentElement;
     const cur = html.getAttribute("data-theme") || "dark";
     const next = cur === "dark" ? "light" : "dark";
-    html.setAttribute("data-theme", next);
-    localStorage.setItem(THEME_KEY, next);
+    // Use global setTheme from theme.js (saves to localStorage + DB)
+    if (typeof window.setTheme === 'function') {
+      window.setTheme(next);
+    } else {
+      // Fallback if theme.js not loaded
+      html.setAttribute("data-theme", next);
+      localStorage.setItem("reviseflow_theme", next);
+    }
   }
 
   // ---------- Wiring ----------

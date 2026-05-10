@@ -4,7 +4,8 @@
       "Bash(grep -E \"\\\\.\\(html|js|css|json\\)$\")",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(grep -n \"}$\" start.html)"
     ]
   }
 }
